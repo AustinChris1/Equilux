@@ -5,7 +5,7 @@ const waves = [
     wave: "Wave 1",
     dates: "Aug 27 — Sep 16",
     status: "Building",
-    items: ["Compact contract compiling — 4 circuits with proving keys", "Protocol simulator with 12 passing tests", "Interactive in-browser demo of the full enroll → attest → prove flow"],
+    items: ["Compact contract compiling — 4 circuits with proving keys", "21 tests passing, including circuit-level runs via compact-runtime", "Interactive in-browser demo of the full enroll → attest → prove flow"],
   },
   {
     wave: "Wave 2",

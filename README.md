@@ -47,9 +47,13 @@ Palette: Olive `#202B22` · Royal Yellow `#FFD85F`.
     and the proven report. The mean gap is verified **without division in-circuit** via
     cross-multiplied bounds on the claimed basis-points figure.
   - `sim/protocol.ts` — a TypeScript simulator mirroring the circuit semantics.
-  - `test/protocol.test.ts` — 12 passing vitest cases covering enrollment nullifiers,
-    the employer attestation gate, cherry-picking/forgery/duplicate rejection, and
-    exactness of the division-free gap verification.
+  - `test/circuits.test.ts` — circuit-level tests that execute the **compiler-generated
+    contract module** through `@midnight-ntwrk/compact-runtime`: real ledger state
+    transitions, Merkle receipt paths via `findPathForLeaf`, and every assertion
+    (double-enroll, non-employer attest, omitted employee, false gap claim, duplicates)
+    failing with the message the circuit throws.
+  - `test/protocol.test.ts` — protocol-semantics tests against the simulator.
+  - 21 passing vitest cases in total.
   - `pnpm test` runs the suite; `pnpm compile` runs the Compact compiler
     (`compact` CLI on PATH — on Windows, via WSL).
 - `webapp/` — the product site with a **live in-browser protocol demo**

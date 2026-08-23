@@ -59,7 +59,7 @@ export function Hero() {
           <motion.div {...fadeUp(0.6)} className="mt-14 flex flex-wrap gap-x-10 gap-y-4 border-t border-gold/10 pt-6">
             {[
               ["4", "circuits compiling"],
-              ["12", "protocol tests passing"],
+              ["21", "protocol tests passing"],
               ["0", "salaries ever disclosed"],
             ].map(([n, label]) => (
               <div key={label}>
