@@ -1,0 +1,12 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A · Equilux Disc", "x": 0, "y": 0, "w": 720, "h": 520 },
+    { "file": "EqualsSeal.dc.html", "title": "B · Equals Seal", "x": 820, "y": 0, "w": 720, "h": 520 },
+    { "file": "QuartileE.dc.html", "title": "C · Quartile E", "x": 0, "y": 660, "w": 720, "h": 520 },
+    { "file": "EclipseProof.dc.html", "title": "D · Eclipse Proof", "x": 820, "y": 660, "w": 720, "h": 520 }
+  ],
+  "annotations": [
+    { "id": "how-to-pick", "x": 0, "y": -170, "w": 420, "text": "Equilux — logo directions.\nFour marks, each rooted in what the product is. Every artboard shows the mark on Midnight olive and on light cream, with a 16px favicon test.\nA (Equilux Disc) is my recommendation and is what the webapp ships with — say the word and I swap in any other; it is one SVG component." }
+  ],
+  "launch": { "view": "canvas" }
+}

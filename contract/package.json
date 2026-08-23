@@ -1,0 +1,18 @@
+{
+  "name": "@equilux/contract",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Equilux Compact contract, protocol simulator and test suite",
+  "scripts": {
+    "compile": "compact compile src/equilux.compact build",
+    "compile:fast": "compact compile --skip-zk src/equilux.compact build",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@rolldown/binding-win32-x64-msvc": "1.2.5",
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.18"
+  }
+}

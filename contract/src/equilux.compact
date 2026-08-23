@@ -1,0 +1,196 @@
+pragma language_version >= 0.16;
+
+import CompactStandardLibrary;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Equilux — employee-verifiable pay-equity reporting.
+//
+// Dual-ledger layout:
+//   PUBLIC  — employer key hash, enrollment commitments (Merkle tree),
+//             nullifier set, attested set, and the published PayReport.
+//   PRIVATE — every salary, gender marker and employee secret. They enter
+//             circuits only as witness data and never reach the ledger.
+//
+// v0 scope (Wave 1): single worker category, mean-gap statistic verified
+// without division via cross-multiplied bounds. Median/quartiles and
+// category partitions land in Wave 2.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Maximum payroll size this circuit instance supports (tree depth 5 = 32 leaves).
+// A production deployment parameterizes this per company size band.
+
+export struct PayReport {
+  round: Uint<32>;
+  headcountWomen: Uint<16>;
+  headcountMen: Uint<16>;
+  meanGapBps: Uint<16>;        // verified basis points, |gap| relative to men's mean
+  gapFavorsMen: Boolean;
+  breachesThreshold: Boolean;  // true when gap >= 500 bps (directive art. 10 trigger)
+}
+
+// One private payroll record as supplied by the reporting witness.
+struct EnrolledRecord {
+  salary: Uint<32>;   // annualized, minor units
+  gender: Uint<1>;    // 0 = woman, 1 = man (v0: binary reporting categories per directive annex)
+  sk: Bytes<32>;      // employee enrollment secret
+  active: Boolean;    // padding flag — inactive slots are ignored
+}
+
+// ── public state ─────────────────────────────────────────────────────────────
+
+export sealed ledger employerPk: Bytes<32>;
+export ledger round: Counter;
+export ledger enrolled: Counter;
+export ledger commitments: MerkleTree<5, Bytes<32>>;
+export ledger nullifiers: Set<Bytes<32>>;
+export ledger attested: Set<Bytes<32>>;
+export ledger latestReport: Maybe<PayReport>;
+
+constructor(employerPkInit: Bytes<32>) {
+  employerPk = disclose(employerPkInit);
+  round.increment(1);
+  latestReport = none<PayReport>();
+}
+
+// ── witnesses (private state, provided by the local TypeScript driver) ───────
+
+witness employeeSecret(): Bytes<32>;
+witness employeeRecord(): [Uint<32>, Uint<1>];          // salary, gender
+witness employerSecret(): Bytes<32>;
+witness payrollRecords(): Vector<16, EnrolledRecord>;
+witness claimedGapBps(): Uint<16>;
+
+// ── hashing helpers ──────────────────────────────────────────────────────────
+
+export circuit publicKey(sk: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>([pad(32, "equilux:pk:"), sk]);
+}
+
+circuit recordCommitment(salary: Uint<32>, gender: Uint<1>, sk: Bytes<32>, r: Field): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>(
+    [pad(32, "equilux:rec:"),
+     r as Bytes<32>,
+     ((salary as Field) * 2 + (gender as Field)) as Bytes<32>,
+     sk]);
+}
+
+circuit enrollmentNullifier(sk: Bytes<32>, r: Field): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>([pad(32, "equilux:nul:"), r as Bytes<32>, sk]);
+}
+
+// ── circuits ─────────────────────────────────────────────────────────────────
+
+// An employee seals their pay record into the reporting set.
+// Public effects: one opaque commitment, one opaque nullifier. Nothing else.
+export circuit enroll(): Bytes<32> {
+  const sk = employeeSecret();
+  const [salary, gender] = employeeRecord();
+  const r = round as Field;
+
+  const nul = enrollmentNullifier(sk, r);
+  assert(!nullifiers.member(disclose(nul)), "already enrolled this round");
+
+  const cm = recordCommitment(salary, gender, sk, r);
+  nullifiers.insert(disclose(nul));
+  commitments.insert(disclose(cm));
+  enrolled.increment(1);
+  return disclose(cm);
+}
+
+// The employer co-signs a commitment it recognizes from payroll.
+// Only attested records may be counted by publishReport.
+export circuit attest(cm: Bytes<32>): [] {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(!attested.member(disclose(cm)), "already attested");
+  attested.insert(disclose(cm));
+}
+
+// An employee (or auditor they delegate to) proves a commitment is inside
+// the reporting set without revealing which leaf it is.
+export circuit checkReceipt(path: MerkleTreePath<5, Bytes<32>>): Boolean {
+  return commitments.checkRoot(disclose(merkleTreePathRoot<5, Bytes<32>>(path)));
+}
+
+circuit womenSalary(rec: EnrolledRecord): Uint<32> {
+  if (rec.active && rec.gender == 0) return rec.salary; else return 0;
+}
+circuit menSalary(rec: EnrolledRecord): Uint<32> {
+  if (rec.active && rec.gender == 1) return rec.salary; else return 0;
+}
+circuit womenCount(rec: EnrolledRecord): Uint<1> {
+  if (rec.active && rec.gender == 0) return 1; else return 0;
+}
+circuit menCount(rec: EnrolledRecord): Uint<1> {
+  if (rec.active && rec.gender == 1) return 1; else return 0;
+}
+circuit activeCount(rec: EnrolledRecord): Uint<1> {
+  if (rec.active) return 1; else return 0;
+}
+
+// The employer publishes the mandated report. The circuit proves:
+//   completeness — the witness payroll is exactly the enrolled+attested set;
+//   integrity    — every record re-derives a commitment in both sets;
+//   distinctness — no record is counted twice;
+//   correctness  — the disclosed gap figure is the true mean gap, verified
+//                  by cross-multiplication so no division happens in-circuit.
+// Disclosed: headcounts, gap in basis points, direction, threshold flag.
+export circuit publishReport(): PayReport {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+
+  const recs = payrollRecords();
+  const r = round as Field;
+
+  // integrity + completeness: every active record is enrolled and attested.
+  // Disclosing the per-slot activity flag is deliberate: slot order is local
+  // to the prover and the active count is already public via `enrolled`.
+  for (const i of 0..16) {
+    if (disclose(recs[i].active)) {
+      const cm = recordCommitment(recs[i].salary, recs[i].gender, recs[i].sk, r);
+      assert(attested.member(disclose(cm)), "record not attested by employer");
+      assert(nullifiers.member(disclose(enrollmentNullifier(recs[i].sk, r))), "record not enrolled");
+    }
+  }
+
+  // distinctness: active records carry pairwise-distinct secrets
+  for (const i of 0..16) {
+    for (const j of 0..16) {
+      if (i < j && recs[i].active && recs[j].active) {
+        assert(recs[i].sk != recs[j].sk, "duplicate record in payroll witness");
+      }
+    }
+  }
+
+  const nActive = fold((acc, rec) => (acc + activeCount(rec)) as Uint<16>, 0 as Uint<16>, recs);
+  assert(nActive as Field == enrolled as Field, "payroll witness must cover every enrolled employee");
+
+  const cntW = fold((acc, rec) => (acc + womenCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
+  const cntM = fold((acc, rec) => (acc + menCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
+  assert(cntW as Field != 0, "no women in reporting set");
+  assert(cntM as Field != 0, "no men in reporting set");
+
+  const sumW = fold((acc, rec) => (acc + womenSalary(rec)) as Uint<40>, 0 as Uint<40>, recs);
+  const sumM = fold((acc, rec) => (acc + menSalary(rec)) as Uint<40>, 0 as Uint<40>, recs);
+
+  // mean gap in bps, relative to men's mean:  gap = (sumM/cntM - sumW/cntW) / (sumM/cntM)
+  // cross-multiplied:  diff = sumM*cntW - sumW*cntM  (or its negation)
+  // claimed g verifies iff  g*sumM*cntW <= diff*10000 < (g+1)*sumM*cntW
+  const favorsMen = sumM * cntW >= sumW * cntM;
+  const diff = (favorsMen ? sumM * cntW - sumW * cntM : sumW * cntM - sumM * cntW) as Uint<48>;
+  const base = (favorsMen ? sumM * cntW : sumW * cntM) as Uint<48>;
+
+  const g = claimedGapBps();
+  assert(g * base <= diff * 10000, "claimed gap too high");
+  assert(diff * 10000 < (g + 1) * base, "claimed gap too low");
+
+  const report = PayReport {
+    round: (round as Field) as Uint<32>,
+    headcountWomen: cntW,
+    headcountMen: cntM,
+    meanGapBps: g,
+    gapFavorsMen: favorsMen,
+    breachesThreshold: g >= 500
+  };
+
+  latestReport = disclose(some<PayReport>(report));
+  return disclose(report);
+}

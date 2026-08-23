@@ -1,0 +1,127 @@
+@import "tailwindcss";
+
+@theme {
+  --color-night: #202b22;
+  --color-night-deep: #131a15;
+  --color-night-soft: #2b382d;
+  --color-gold: #ffd85f;
+  --color-gold-deep: #d9a723;
+  --color-gold-dim: #8a6d1f;
+  --color-cream: #faf6e9;
+  --color-paper: #fffdf5;
+  --color-moss: #55604f;
+  --color-sage: #9aa398;
+  --font-display: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-wordmark: "Instrument Serif", Georgia, serif;
+  --font-body: "Instrument Sans", system-ui, sans-serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-night-deep);
+  color: var(--color-cream);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-gold);
+  color: var(--color-night);
+}
+
+/* Section overline label */
+.overline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.overline::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.6;
+}
+
+/* Small data chip (hashes, statuses) */
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  border-radius: 6px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+/* The brand face — wordmark only */
+.wordmark {
+  font-family: var(--font-wordmark);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* film-grain overlay */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 32s linear infinite;
+}
+
+/* duotone image treatment: grayscale photo pushed into the olive/gold world */
+.duotone {
+  position: relative;
+  overflow: hidden;
+}
+.duotone > img {
+  filter: grayscale(1) contrast(1.05) brightness(0.92);
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.duotone::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(160deg, rgba(32, 43, 34, 0.75), rgba(32, 43, 34, 0.25) 45%, rgba(255, 216, 95, 0.28));
+  mix-blend-mode: multiply;
+}
+.duotone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: rgba(255, 216, 95, 0.1);
+  mix-blend-mode: overlay;
+}

@@ -1,0 +1,4 @@
+build/keys/
+build/zkir/*.bzkir
+node_modules/
+compile.sh

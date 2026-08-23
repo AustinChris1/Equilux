@@ -1,0 +1,381 @@
+{
+  "compiler-version": "0.31.1",
+  "language-version": "0.23.0",
+  "runtime-version": "0.16.0",
+  "circuits": [
+    {
+      "name": "publicKey",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "sk",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "enroll",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "attest",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "cm",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "checkReceipt",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "path",
+          "type": {
+            "type-name": "Struct",
+            "name": "MerkleTreePath",
+            "elements": [
+              {
+                "name": "leaf",
+                "type": {
+                  "type-name": "Bytes",
+                  "length": 32
+                }
+              },
+              {
+                "name": "path",
+                "type": {
+                  "type-name": "Vector",
+                  "length": 5,
+                  "type": {
+                    "type-name": "Struct",
+                    "name": "MerkleTreePathEntry",
+                    "elements": [
+                      {
+                        "name": "sibling",
+                        "type": {
+                          "type-name": "Struct",
+                          "name": "MerkleTreeDigest",
+                          "elements": [
+                            {
+                              "name": "field",
+                              "type": {
+                                "type-name": "Field"
+                              }
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "name": "goes_left",
+                        "type": {
+                          "type-name": "Boolean"
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Boolean"
+      }
+    },
+    {
+      "name": "publishReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Struct",
+        "name": "PayReport",
+        "elements": [
+          {
+            "name": "round",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 4294967295
+            }
+          },
+          {
+            "name": "headcountWomen",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "headcountMen",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "meanGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "gapFavorsMen",
+            "type": {
+              "type-name": "Boolean"
+            }
+          },
+          {
+            "name": "breachesThreshold",
+            "type": {
+              "type-name": "Boolean"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "name": "employeeSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "employeeRecord",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Tuple",
+        "types": [
+          {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          },
+          {
+            "type-name": "Uint",
+            "maxval": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "employerSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "payrollRecords",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Vector",
+        "length": 16,
+        "type": {
+          "type-name": "Struct",
+          "name": "EnrolledRecord",
+          "elements": [
+            {
+              "name": "salary",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 4294967295
+              }
+            },
+            {
+              "name": "gender",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 1
+              }
+            },
+            {
+              "name": "sk",
+              "type": {
+                "type-name": "Bytes",
+                "length": 32
+              }
+            },
+            {
+              "name": "active",
+              "type": {
+                "type-name": "Boolean"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "claimedGapBps",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Uint",
+        "maxval": 65535
+      }
+    }
+  ],
+  "contracts": [
+  ],
+  "ledger": [
+    {
+      "name": "employerPk",
+      "index": 0,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "round",
+      "index": 1,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "enrolled",
+      "index": 2,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "commitments",
+      "index": 3,
+      "exported": true,
+      "storage": "MerkleTree",
+      "depth": 5,
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "nullifiers",
+      "index": 4,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "attested",
+      "index": 5,
+      "exported": true,
+      "storage": "Set",
+      "type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "latestReport",
+      "index": 6,
+      "exported": true,
+      "storage": "Cell",
+      "type": {
+        "type-name": "Struct",
+        "name": "Maybe",
+        "elements": [
+          {
+            "name": "is_some",
+            "type": {
+              "type-name": "Boolean"
+            }
+          },
+          {
+            "name": "value",
+            "type": {
+              "type-name": "Struct",
+              "name": "PayReport",
+              "elements": [
+                {
+                  "name": "round",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 4294967295
+                  }
+                },
+                {
+                  "name": "headcountWomen",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "headcountMen",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "meanGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "gapFavorsMen",
+                  "type": {
+                    "type-name": "Boolean"
+                  }
+                },
+                {
+                  "name": "breachesThreshold",
+                  "type": {
+                    "type-name": "Boolean"
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
