@@ -4,9 +4,9 @@ import { Reveal } from "./Reveal";
 const steps = [
   {
     icon: Users,
-    title: "Commit the roster",
-    body: "Before the reporting period closes, the payroll provider or worker representatives commit a roster root on Midnight. From that moment, the employer cannot quietly omit an inconvenient employee from the report.",
-    tag: "Public state · roster root",
+    title: "Seal every record",
+    body: "Each employee seals their own record on Midnight before any report exists — one opaque commitment and one nullifier, nothing else. Every sealed record is counted by the contract; the report cannot cover fewer people than enrolled. A payroll-provider-committed roster, so nobody can be left un-enrolled, is Wave 3.",
+    tag: "Public state · commitments + nullifiers",
   },
   {
     icon: PenLine,
@@ -60,7 +60,7 @@ export function Protocol() {
         <Reveal>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-moss/80">
             Midnight's dual-ledger model is the whole trick: salaries live in private state and never leave it;
-            the roster root, the aggregates and the proof live in public state where anyone can verify them.
+            the commitments, the aggregates and the proof live in public state where anyone can verify them.
           </p>
         </Reveal>
       </div>

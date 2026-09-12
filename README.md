@@ -20,8 +20,9 @@ seeing everyone's salary. That is precisely the gap zero-knowledge proofs close.
 
 Three are implemented and proven on-chain today; the fourth is designed and lands in Wave 2.
 
-1. **Roster integrity** — the reporting set is committed on-chain before the report exists;
-   employees cannot be quietly omitted after the fact.
+1. **Completeness** — every record sealed on-chain must appear in the report; the circuit
+   rejects a payroll witness covering fewer records than were enrolled. (A pre-committed
+   roster, so nobody can be left un-enrolled, is Wave 3.)
 2. **Inclusion receipts** — every worker holds a private receipt proving their record was
    counted, revealing nothing about them.
 3. **Proven statistics** — the mean pay gap is computed inside a Compact zero-knowledge
@@ -33,7 +34,7 @@ Three are implemented and proven on-chain today; the fourth is designed and land
    can be inferred.
 
 Midnight's dual-ledger model carries the design: salaries live in **private state** and never
-leave it; the roster root, aggregates, and proofs live in **public state** where anyone can verify.
+leave it; the commitments, aggregates, and proofs live in **public state** where anyone can verify.
 
 ## Brand
 

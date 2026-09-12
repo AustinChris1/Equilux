@@ -5,8 +5,8 @@ const guarantees = [
   {
     icon: LockKeyhole,
     n: "01",
-    title: "Roster integrity",
-    body: "The reporting set is committed before the report exists. Omitting the lowest-paid team after the fact is cryptographically impossible, not just against the rules.",
+    title: "Completeness",
+    body: "Every record sealed on-chain must appear in the report: the circuit rejects a payroll witness that covers fewer records than were enrolled. Dropping an enrolled employee is cryptographically impossible, not just against the rules.",
   },
   {
     icon: Receipt,

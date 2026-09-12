@@ -1,4 +1,15 @@
-/** Compatibility probe: does our runtime-0.15 / ledger-v8 SDK line talk to preprod? No funds needed. */
+/**
+ * Compatibility probe: does our runtime-0.15 / ledger-v8 SDK line talk to preprod? No funds needed.
+ *
+ * RESULT (2026-09-12): every endpoint is reachable and correct — HTTP RPC, WS RPC, indexer
+ * GraphQL, indexer WS subscriptions (the unshieldedTransactions subscription returns valid
+ * data) — and the wallet derives a correct mn_addr_preprod1… address, yet sync never
+ * completes. Tested against BOTH /api/v3 and /api/v4 (identical aliases on preprod): same
+ * outcome. Cause: payload-schema drift between wallet-sdk-unshielded-wallet@2.1.0 (v1 sync
+ * client) and the current preprod indexer. No newer STABLE wallet SDK exists (only canary
+ * pre-releases), so public-testnet deployment is blocked pending an SDK release.
+ * Set INDEXER_API=v4 to re-run against v4.
+ */
 import { Buffer } from "node:buffer";
 import { WebSocket } from "ws";
 import * as Rx from "rxjs";
@@ -15,8 +26,8 @@ globalThis.WebSocket = WebSocket;
 
 setNetworkId("preprod");
 const cfg = {
-  indexer: "https://indexer.preprod.midnight.network/api/v3/graphql",
-  indexerWS: "wss://indexer.preprod.midnight.network/api/v3/graphql/ws",
+  indexer: `https://indexer.preprod.midnight.network/api/${process.env.INDEXER_API ?? "v3"}/graphql`,
+  indexerWS: `wss://indexer.preprod.midnight.network/api/${process.env.INDEXER_API ?? "v3"}/graphql/ws`,
   node: "https://rpc.preprod.midnight.network",
   proofServer: "http://127.0.0.1:6300",
 };
