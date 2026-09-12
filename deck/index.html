@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Equilux — Midnight Buildathon Wave 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --night: #202b22; --night-deep: #131a15; --gold: #ffd85f; --gold-deep: #d9a723; --gold-dim: #8a6d1f;
+    --cream: #faf6e9; --paper: #fffdf5; --moss: #55604f; --sage: #9aa398;
+    --display: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+    --wordmark: "Instrument Serif", Georgia, serif;
+    --body: "Instrument Sans", system-ui, sans-serif;
+    --mono: "Spline Sans Mono", ui-monospace, monospace;
+  }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0d120f; font-family: var(--body); -webkit-font-smoothing: antialiased; }
+  .slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; padding: 110px 140px; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
+  .slide.night { background: var(--night); color: var(--cream); }
+  .slide.gold { background: var(--gold); color: var(--night); }
+  .slide.paper { background: var(--paper); color: var(--night); }
+  .slide.deep { background: var(--night-deep); color: var(--cream); }
+  .overline { font-family: var(--mono); font-size: 20px; letter-spacing: .22em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 14px; }
+  .overline::before { content: ""; width: 34px; height: 2px; background: currentColor; opacity: .6; }
+  .night .overline, .deep .overline { color: var(--gold); } .gold .overline { color: rgba(32,43,34,.7); } .paper .overline { color: var(--moss); }
+  h1, h2 { font-family: var(--display); font-weight: 600; letter-spacing: -.025em; margin: 0; }
+  h1 { font-size: 120px; line-height: 1.0; }
+  h2 { font-size: 88px; line-height: 1.02; margin-top: 28px; max-width: 1500px; }
+  .sub { font-size: 30px; line-height: 1.45; max-width: 1240px; margin-top: 34px; }
+  .night .sub, .deep .sub { color: var(--sage); } .gold .sub { color: rgba(32,43,34,.78); } .paper .sub { color: var(--moss); }
+  .grid { display: grid; gap: 28px; margin-top: 56px; }
+  .g3 { grid-template-columns: repeat(3, 1fr); } .g2 { grid-template-columns: repeat(2, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { border-radius: 24px; padding: 40px; }
+  .night .card, .deep .card { border: 1.5px solid rgba(255,216,95,.18); } .gold .card { border: 1.5px solid rgba(32,43,34,.18); } .paper .card { border: 1.5px solid rgba(32,43,34,.12); background: #fff; }
+  .card h3 { font-family: var(--display); font-weight: 600; font-size: 40px; letter-spacing: -.02em; margin: 0 0 14px; }
+  .card p { font-size: 25px; line-height: 1.45; margin: 0; }
+  .night .card p, .deep .card p { color: var(--sage); } .gold .card p { color: rgba(32,43,34,.78); } .paper .card p { color: var(--moss); }
+  .stat { font-family: var(--display); font-weight: 600; font-size: 110px; letter-spacing: -.03em; line-height: 1; }
+  .stat small { display: block; font-family: var(--mono); font-size: 20px; letter-spacing: .18em; text-transform: uppercase; margin-top: 16px; font-weight: 400; opacity: .75; }
+  .mono { font-family: var(--mono); }
+  .code { font-family: var(--mono); font-size: 24px; line-height: 1.55; background: var(--night-deep); color: var(--cream); border: 1.5px solid rgba(255,216,95,.18); border-radius: 20px; padding: 36px 44px; white-space: pre; }
+  .code b { color: var(--gold); font-weight: 500; }
+  .foot { position: absolute; left: 140px; right: 140px; bottom: 56px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 18px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
+  .lockup { display: flex; align-items: center; gap: 22px; }
+  .lockup .wm { font-family: var(--wordmark); font-style: italic; font-size: 64px; }
+  ul.clean { list-style: none; padding: 0; margin: 40px 0 0; display: flex; flex-direction: column; gap: 22px; font-size: 30px; line-height: 1.4; }
+  ul.clean li { display: flex; gap: 20px; align-items: flex-start; }
+  ul.clean li::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%; margin-top: 15px; background: var(--gold); }
+  .paper ul.clean li::before, .gold ul.clean li::before { background: var(--night); }
+  .chip { font-family: var(--mono); font-size: 19px; letter-spacing: .06em; border-radius: 10px; padding: 8px 14px; display: inline-block; }
+  .night .chip, .deep .chip { background: rgba(255,216,95,.14); color: var(--gold); }
+  .gold .chip { background: rgba(32,43,34,.12); } .paper .chip { background: rgba(32,43,34,.06); color: var(--moss); }
+  table { border-collapse: collapse; width: 100%; margin-top: 40px; font-size: 26px; }
+  th, td { text-align: left; padding: 18px 22px; border-bottom: 1.5px solid rgba(255,216,95,.14); vertical-align: top; }
+  .paper th, .paper td, .gold th, .gold td { border-color: rgba(32,43,34,.14); }
+  th { font-family: var(--mono); font-size: 18px; letter-spacing: .16em; text-transform: uppercase; font-weight: 500; opacity: .7; }
+  .shot { width: 100%; border-radius: 22px; border: 1.5px solid rgba(255,216,95,.2); display: block; }
+</style>
+</head>
+<body>
+
+<!-- 1 · Title -->
+<section class="slide night" style="justify-content:flex-end">
+  <svg width="1100" height="1100" viewBox="0 0 64 64" fill="none" aria-hidden="true" style="position:absolute;right:-260px;top:-230px;opacity:.12">
+    <rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/>
+  </svg>
+  <div class="lockup" style="margin-bottom:60px">
+    <svg width="72" height="72" viewBox="0 0 64 64" fill="none"><rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/></svg>
+    <span class="wm">Equilux</span>
+  </div>
+  <h1>Pay, proven equal.<br/><span style="color:var(--gold)">No salary revealed.</span></h1>
+  <p class="sub" style="max-width:1400px">The first employee-verifiable pay-transparency reporting protocol. A company proves its legally required gender pay gap report was computed from its complete, co-signed payroll — while every salary stays sealed in Midnight's private state.</p>
+  <div style="display:flex;gap:16px;margin-top:44px"><span class="chip">Midnight Buildathon · Wave 1</span><span class="chip">Compact · TypeScript · Apache 2.0</span><span class="chip">github.com/AustinChris1/Equilux</span></div>
+  <div class="foot"><span>Equilux</span><span>01 / 11</span></div>
+</section>
+
+<!-- 2 · Mandate -->
+<section class="slide gold">
+  <div class="overline">The mandate · Directive (EU) 2023/970</div>
+  <h2>The law now demands a number companies cannot prove.</h2>
+  <div class="grid g3">
+    <div class="card"><div class="stat" style="font-size:84px">7 June 2027<small>first reports due · 2026 pay data</small></div></div>
+    <div class="card"><div class="stat">250+<small>employees, annual · 150+ same date, triennial</small></div></div>
+    <div class="card"><div class="stat">≥ 5%<small>unjustified gap in a category → joint pay assessment</small></div></div>
+  </div>
+  <p class="sub" style="margin-top:52px">Article 9 requires seven indicators. Article 7 gives every employee the right to ask what their category earns. And today every one of those reports is <strong>self-declared</strong>: nobody can verify the numbers without seeing everyone's salary.</p>
+  <div class="foot"><span>Equilux</span><span>02 / 11</span></div>
+</section>
+
+<!-- 3 · Problem -->
+<section class="slide paper">
+  <div class="overline">The problem</div>
+  <h2>Trust me, or prove it.</h2>
+  <div class="grid g2">
+    <div class="card">
+      <h3>Today</h3>
+      <p>HR exports payroll to a spreadsheet, computes a gap, publishes a PDF. An employee cannot check they were counted. A works council cannot check nobody was dropped. A regulator can only audit by subpoenaing the whole payroll — the data the law is trying to protect.</p>
+    </div>
+    <div class="card" style="background:var(--night);color:var(--cream);border-color:transparent">
+      <h3 style="color:var(--gold)">With Equilux</h3>
+      <p style="color:var(--sage)">Every employee seals their record. The employer co-signs it. A zero-knowledge circuit computes the gap over the sealed set and publishes only the figure plus a proof that it came from all of it. Verification takes seconds. No salary ever leaves the company.</p>
+    </div>
+  </div>
+  <p class="sub">Equilux does not replace the HRIS. Payroll stays in Personio, DATEV or Workday. Equilux is the <strong>notary on top</strong>: it proves the set was complete and the published figure matches it.</p>
+  <div class="foot"><span>Equilux</span><span>03 / 11</span></div>
+</section>
+
+<!-- 4 · What the circuit proves -->
+<section class="slide night">
+  <div class="overline">What the circuit proves</div>
+  <h2>Trust neither side. <span style="color:var(--gold)">Verify both.</span></h2>
+  <div class="grid g2" style="margin-top:48px">
+    <div class="card"><h3>Completeness</h3><p>The report must cover every enrolled record. A payroll witness with fewer records than were enrolled is rejected — dropping an employee is cryptographically impossible.</p></div>
+    <div class="card"><h3>No invented records</h3><p>Every record carries an employee-held secret and an employer attestation. The circuit re-derives each commitment; a forged row fails.</p></div>
+    <div class="card"><h3>No double counting</h3><p>Enrollment nullifiers make counting anyone twice unprovable.</p></div>
+    <div class="card"><h3>An exact figure</h3><p>The claimed gap is verified in-circuit without division, by cross-multiplied bounds. The circuit accepts one value and rejects every other — one basis point off fails.</p></div>
+  </div>
+  <p class="sub" style="margin-top:44px">Plus an <strong style="color:var(--cream)">inclusion receipt</strong> for every employee: a Merkle path proving their record is inside the numbers, revealing nothing about anyone.</p>
+  <div class="foot"><span>Equilux</span><span>04 / 11</span></div>
+</section>
+
+<!-- 5 · How it works -->
+<section class="slide paper">
+  <div class="overline">The protocol · four circuits</div>
+  <h2>Both sides sign. The circuit does the math. Everyone can check.</h2>
+  <div class="grid g4" style="margin-top:56px">
+    <div class="card"><span class="chip">01 · enroll</span><h3 style="margin-top:22px">Seal</h3><p>Employee seals salary + gender marker as a commitment and a nullifier. Nothing else touches the chain.</p></div>
+    <div class="card"><span class="chip">02 · attest</span><h3 style="margin-top:22px">Co-sign</h3><p>The employer, gated by its secret key, attests each commitment it recognizes from payroll.</p></div>
+    <div class="card"><span class="chip">03 · publishReport</span><h3 style="margin-top:22px">Prove</h3><p>Over the full witness: every record enrolled and attested, pairwise distinct, count equals enrolled, gap claim verified. Discloses only the report.</p></div>
+    <div class="card"><span class="chip">04 · checkReceipt</span><h3 style="margin-top:22px">Verify</h3><p>Any employee proves their leaf is in the commitment tree against the on-chain root.</p></div>
+  </div>
+  <div class="foot"><span>Equilux</span><span>05 / 11</span></div>
+</section>
+
+<!-- 6 · Dual ledger -->
+<section class="slide deep">
+  <div class="overline">Midnight's dual ledger · why this only works here</div>
+  <h2>Private state holds the payroll. Public state holds the proof.</h2>
+  <div class="grid g2" style="margin-top:56px">
+    <div class="card"><h3>Private state · witnesses</h3>
+      <ul class="clean" style="font-size:27px">
+        <li>salary, gender marker per employee</li>
+        <li>employee enrollment secret</li>
+        <li>employer secret key</li>
+        <li>the full 16-slot payroll witness</li>
+        <li>the claimed gap (verified, never trusted)</li>
+      </ul></div>
+    <div class="card"><h3 style="color:var(--gold)">Public ledger</h3>
+      <ul class="clean" style="font-size:27px">
+        <li>commitments — a depth-5 Merkle tree</li>
+        <li>nullifier set, attested set, enrolled counter</li>
+        <li>employer public key (sealed)</li>
+        <li><span class="mono">PayReport</span>: headcounts, mean gap in bps, direction, <span class="mono">meanGapAtOrAbove5pct</span></li>
+        <li>the zero-knowledge proof for every transition</li>
+      </ul></div>
+  </div>
+  <p class="sub" style="margin-top:40px">Every witness value that reaches the ledger passes an explicit <span class="mono" style="color:var(--gold)">disclose()</span>. The compiler refuses anything else.</p>
+  <div class="foot"><span>Equilux</span><span>06 / 11</span></div>
+</section>
+
+<!-- 7 · Evidence -->
+<section class="slide night">
+  <div class="overline">Wave 1 evidence</div>
+  <h2>Compiled. Tested. Run end-to-end on a Midnight network.</h2>
+  <div class="grid g3" style="margin-top:44px">
+    <div class="card"><div class="stat">4<small>circuits compiling · prover + verifier keys</small></div></div>
+    <div class="card"><div class="stat">21<small>tests passing · circuit-level via compact-runtime</small></div></div>
+    <div class="card"><div class="stat">0<small>salaries on chain · ever</small></div></div>
+  </div>
+  <div class="code" style="margin-top:36px">deployed at <b>a42b898d…44c8</b>                                   (block 11)
+enrolled alice — commitment 727fd19c…  tx 004fd009…           (block 15)
+enrolled bob · carol · dan — each with a proof from the proof server
+attested alice · bob · carol · dan                        (4 txs)
+publishReport <b>proven &amp; finalized</b>  tx 00826901…            (block 54)
+on-chain PayReport: women 2 · men 2 · mean gap <b>23.52%</b> · salaries on chain: <b>NONE</b></div>
+  <div class="foot"><span>pnpm network:up &amp;&amp; pnpm demo:standalone · midnight-node 0.22.3 · proof-server 8.0.3</span><span>07 / 11</span></div>
+</section>
+
+<!-- 8 · Demo -->
+<section class="slide paper">
+  <div class="overline">The demo · file a proven report, then try to cheat</div>
+  <h2 style="font-size:72px">Omit an employee. Claim a zero gap. The same assertions reject both.</h2>
+  <img class="shot" src="assets/demo-rejected.png" alt="Equilux demo: the circuit rejects a payroll witness that omits an employee" style="margin-top:40px;max-height:640px;object-fit:contain;object-position:top;background:var(--night)" />
+  <div class="foot"><span>Browser panel runs the protocol rules · on Midnight, publish additionally produces a ZK proof</span><span>08 / 11</span></div>
+</section>
+
+<!-- 9 · Scope -->
+<section class="slide gold">
+  <div class="overline">Threat model · scope</div>
+  <h2>Honest about what a proof can prove.</h2>
+  <table>
+    <tr><th>It does not claim</th><th>What is true instead</th></tr>
+    <tr><td>Salaries hidden from HR</td><td>HR already holds payroll. Hidden from the public, colleagues, the regulator and Equilux. Wave 3: payroll provider attests.</td></tr>
+    <tr><td>The Article 10 trigger</td><td>Our flag is the company-wide mean ≥ 5%, named for what it measures. Article 10 is per worker category — Wave 2.</td></tr>
+    <tr><td>The full Article 9 return</td><td>One of seven metrics: the mean. Median, variable pay, quartiles follow.</td></tr>
+    <tr><td>Production scale</td><td>A sized instance: 32 commitment slots, 16-record witness. Sizing is a compile-time parameter.</td></tr>
+    <tr><td>A model of identity</td><td>Binary gender markers, as the Directive's reporting annex is written today.</td></tr>
+  </table>
+  <div class="foot"><span>Equilux</span><span>09 / 11</span></div>
+</section>
+
+<!-- 10 · Roadmap -->
+<section class="slide deep">
+  <div class="overline">Three waves</div>
+  <h2>Built in the open, wave by wave.</h2>
+  <div class="grid g3" style="margin-top:52px">
+    <div class="card" style="background:var(--gold);color:var(--night);border-color:transparent">
+      <span class="chip" style="background:rgba(32,43,34,.14);color:var(--night)">Wave 1 · delivered</span>
+      <h3 style="margin-top:22px">Prove it works</h3>
+      <p style="color:rgba(32,43,34,.78)">Compact contract, 4 circuits with keys · 21 tests on the compiled circuits · end-to-end run on a Midnight network with real proofs · interactive demo with adversarial toggles · honest scope.</p>
+    </div>
+    <div class="card"><span class="chip">Wave 2</span><h3 style="margin-top:22px">The product</h3><p>Public testnet deployment with the site reading live state · Article 7 cohort-safe category query (k-anonymity) · worker categories · median · employer / employee / regulator screens · Lace wallet writes.</p></div>
+    <div class="card"><span class="chip">Wave 3</span><h3 style="margin-top:22px">Fundable</h3><p>Payroll-provider attestation (Personio / DATEV mock) · per-category Article 10 trigger · Article 9-shaped filing pack with proof hash + verify URL · instance sized past 250 · one named pilot.</p></div>
+  </div>
+  <div class="foot"><span>Equilux</span><span>10 / 11</span></div>
+</section>
+
+<!-- 11 · Market + ask -->
+<section class="slide night" style="justify-content:space-between">
+  <div>
+    <div class="overline">Who buys · what we ask</div>
+    <h2>The notary for Directive 2023/970.</h2>
+    <div class="grid g3" style="margin-top:48px">
+      <div class="card"><h3>Buyers</h3><p>Works councils that don't trust the numbers. GDPR-sensitive employers. Regulators who want completeness without holding payroll.</p></div>
+      <div class="card"><h3>Not competing with</h3><p>Workday, SAP, Sysarb, Figures. They compute pay. We prove the set was complete and the figure matches — next to them, not instead of them.</p></div>
+      <div class="card"><h3>Why Midnight</h3><p>A forced legal deadline plus a problem only dual-ledger selective disclosure solves honestly. Incumbents can copy a dashboard; they cannot copy the proof.</p></div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end">
+    <div class="lockup"><svg width="56" height="56" viewBox="0 0 64 64" fill="none"><rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/></svg><span class="wm" style="font-size:56px">Equilux</span></div>
+    <div class="mono" style="font-size:22px;color:var(--sage);text-align:right;line-height:1.8">github.com/AustinChris1/Equilux<br/>Apache License 2.0 · #midnightntwrk<br/>Prove everything · Reveal no one</div>
+  </div>
+  <div class="foot"><span>Equilux</span><span>11 / 11</span></div>
+</section>
+
+</body>
+</html>
