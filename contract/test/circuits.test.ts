@@ -157,7 +157,7 @@ describe("generated circuits via compact-runtime", () => {
     expect(report.headcountMen).toBe(2n);
     expect(report.meanGapBps).toBe(2352n);
     expect(report.gapFavorsMen).toBe(true);
-    expect(report.breachesThreshold).toBe(true);
+    expect(report.meanGapAtOrAbove5pct).toBe(true);
     expect(h.ledger.latestReport.is_some).toBe(true);
     expect(h.ledger.latestReport.value.meanGapBps).toBe(2352n);
   });

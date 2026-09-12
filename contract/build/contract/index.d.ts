@@ -5,7 +5,7 @@ export type PayReport = { round: bigint;
                           headcountMen: bigint;
                           meanGapBps: bigint;
                           gapFavorsMen: boolean;
-                          breachesThreshold: boolean
+                          meanGapAtOrAbove5pct: boolean
                         };
 
 export type Witnesses<PS> = {

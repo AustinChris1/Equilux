@@ -11,13 +11,13 @@ const steps = [
   {
     icon: PenLine,
     title: "Co-sign every salary",
-    body: "Each pay record — salary, variable pay, category, gender marker — becomes a private commitment co-signed by employee and employer. No invented records, no cherry-picking; nullifiers stop anyone being counted twice.",
+    body: "Each pay record — salary and gender marker — becomes a private commitment co-signed by employee and employer. No invented records, no cherry-picking; nullifiers stop anyone being counted twice.",
     tag: "Private state · sealed records",
   },
   {
     icon: Sigma,
     title: "Prove the report in-circuit",
-    body: "A Compact contract computes the directive's required statistics — mean and median gaps, quartiles, category analysis — inside the zero-knowledge circuit, over the committed dataset and nothing else.",
+    body: "A Compact contract computes the mean pay gap inside the zero-knowledge circuit, over the committed dataset and nothing else — no division, just cross-multiplied bounds the prover cannot fake. Median, quartiles and per-category gaps are Wave 2.",
     tag: "Compact contract · ZK circuit",
   },
   {

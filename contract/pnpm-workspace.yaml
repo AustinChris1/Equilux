@@ -1,0 +1,6 @@
+verifyDepsBeforeRun: false
+confirmModulesPurge: false
+onlyBuiltDependencies:
+  - classic-level
+  - esbuild
+  - msgpackr-extract

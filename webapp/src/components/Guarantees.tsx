@@ -18,12 +18,13 @@ const guarantees = [
     icon: ShieldCheck,
     n: "03",
     title: "Proven statistics",
-    body: "The published gaps and quartiles carry a zero-knowledge proof that they were computed, correctly, from the committed payroll. A regulator verifies instead of auditing.",
+    body: "The published gap carries a zero-knowledge proof that it was computed, correctly, from the committed payroll — and from all of it. A regulator verifies instead of auditing.",
   },
   {
     icon: EyeOff,
     n: "04",
     title: "Cohort-safe queries",
+    wave2: true,
     body: "Employees get their legal right to category-level pay data — behind a minimum cohort threshold, so a three-person team can never be used to reverse a colleague's salary.",
   },
 ];
@@ -47,7 +48,9 @@ export function Guarantees() {
               <div className="group flex h-full flex-col rounded-2xl border border-gold/15 p-7 transition-colors hover:border-gold/40 md:p-8">
                 <div className="flex items-center justify-between">
                   <g.icon size={24} className="text-gold" strokeWidth={1.6} />
-                  <span className="font-mono text-xs tracking-[0.2em] text-sage">GUARANTEE {g.n}</span>
+                  <span className="font-mono text-xs tracking-[0.2em] text-sage">
+                    {"wave2" in g && g.wave2 ? "WAVE 2 · DESIGNED" : `GUARANTEE ${g.n}`}
+                  </span>
                 </div>
                 <h3 className="display mt-6 text-2xl text-cream md:text-3xl">{g.title}</h3>
                 <p className="mt-3 text-[15px] leading-relaxed text-sage">{g.body}</p>

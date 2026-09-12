@@ -274,9 +274,9 @@ export function Demo() {
                         <div className="text-cream">{report.headcountMen}</div>
                         <div className="text-sage/70">men</div>
                       </div>
-                      <div className={`rounded-md p-2 text-center ${report.breachesThreshold ? "bg-red-950/40 text-red-300" : "bg-gold/10 text-gold"}`}>
-                        <div>{report.breachesThreshold ? "≥ 5%" : "< 5%"}</div>
-                        <div className="opacity-70">{report.breachesThreshold ? "assessment due" : "compliant"}</div>
+                      <div className={`rounded-md p-2 text-center ${report.meanGapAtOrAbove5pct ? "bg-cream/10 text-cream" : "bg-gold/10 text-gold"}`}>
+                        <div>{report.meanGapAtOrAbove5pct ? "mean ≥ 5%" : "mean < 5%"}</div>
+                        <div className="opacity-70">company-wide</div>
                       </div>
                     </div>
                   </motion.div>

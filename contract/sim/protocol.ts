@@ -25,7 +25,7 @@ export interface PayReport {
   headcountMen: number;
   meanGapBps: number;
   gapFavorsMen: boolean;
-  breachesThreshold: boolean;
+  meanGapAtOrAbove5pct: boolean;
 }
 
 const h = (...parts: (string | Uint8Array)[]) => {
@@ -138,7 +138,7 @@ export class EquiluxSim {
       headcountMen: men.length,
       meanGapBps: Number(claimedGapBps),
       gapFavorsMen: favorsMen,
-      breachesThreshold: claimedGapBps >= 500n,
+      meanGapAtOrAbove5pct: claimedGapBps >= 500n,
     };
     this.latestReport = report;
     return report;

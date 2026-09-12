@@ -59,7 +59,7 @@ describe("publishReport", () => {
     // women mean 69k, men mean 81.33k → gap ≈ 15.16%
     expect(report.meanGapBps).toBe(1516);
     expect(report.gapFavorsMen).toBe(true);
-    expect(report.breachesThreshold).toBe(true);
+    expect(report.meanGapAtOrAbove5pct).toBe(true);
     expect(report.headcountWomen).toBe(3);
     expect(report.headcountMen).toBe(3);
   });

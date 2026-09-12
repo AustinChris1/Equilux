@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.16.0');
+__compactRuntime.checkRuntimeVersion('0.15.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
 
@@ -43,11 +43,11 @@ class _PayReport_0 {
       headcountMen: _descriptor_6.fromValue(value_0),
       meanGapBps: _descriptor_6.fromValue(value_0),
       gapFavorsMen: _descriptor_3.fromValue(value_0),
-      breachesThreshold: _descriptor_3.fromValue(value_0)
+      meanGapAtOrAbove5pct: _descriptor_3.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_0.toValue(value_0.round).concat(_descriptor_6.toValue(value_0.headcountWomen).concat(_descriptor_6.toValue(value_0.headcountMen).concat(_descriptor_6.toValue(value_0.meanGapBps).concat(_descriptor_3.toValue(value_0.gapFavorsMen).concat(_descriptor_3.toValue(value_0.breachesThreshold))))));
+    return _descriptor_0.toValue(value_0.round).concat(_descriptor_6.toValue(value_0.headcountWomen).concat(_descriptor_6.toValue(value_0.headcountMen).concat(_descriptor_6.toValue(value_0.meanGapBps).concat(_descriptor_3.toValue(value_0.gapFavorsMen).concat(_descriptor_3.toValue(value_0.meanGapAtOrAbove5pct))))));
   }
 }
 
@@ -246,7 +246,7 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('enroll',
                                      'argument 1 (as invoked from Typescript)',
-                                     'equilux.compact line 85 char 1',
+                                     'equilux.compact line 89 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
@@ -270,14 +270,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('attest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'equilux.compact line 102 char 1',
+                                     'equilux.compact line 106 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(cm_0.buffer instanceof ArrayBuffer && cm_0.BYTES_PER_ELEMENT === 1 && cm_0.length === 32)) {
           __compactRuntime.typeError('attest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'equilux.compact line 102 char 1',
+                                     'equilux.compact line 106 char 1',
                                      'Bytes<32>',
                                      cm_0)
         }
@@ -304,14 +304,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('checkReceipt',
                                      'argument 1 (as invoked from Typescript)',
-                                     'equilux.compact line 110 char 1',
+                                     'equilux.compact line 114 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(path_0) === 'object' && path_0.leaf.buffer instanceof ArrayBuffer && path_0.leaf.BYTES_PER_ELEMENT === 1 && path_0.leaf.length === 32 && Array.isArray(path_0.path) && path_0.path.length === 5 && path_0.path.every((t) => typeof(t) === 'object' && typeof(t.sibling) === 'object' && typeof(t.sibling.field) === 'bigint' && t.sibling.field >= 0 && t.sibling.field <= __compactRuntime.MAX_FIELD && typeof(t.goes_left) === 'boolean'))) {
           __compactRuntime.typeError('checkReceipt',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'equilux.compact line 110 char 1',
+                                     'equilux.compact line 114 char 1',
                                      'struct MerkleTreePath<leaf: Bytes<32>, path: Vector<5, struct MerkleTreePathEntry<sibling: struct MerkleTreeDigest<field: Field>, goes_left: Boolean>>>',
                                      path_0)
         }
@@ -337,7 +337,7 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('publishReport',
                                      'argument 1 (as invoked from Typescript)',
-                                     'equilux.compact line 137 char 1',
+                                     'equilux.compact line 141 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
@@ -387,7 +387,7 @@ export class Contract {
     if (!(employerPkInit_0.buffer instanceof ArrayBuffer && employerPkInit_0.BYTES_PER_ELEMENT === 1 && employerPkInit_0.length === 32)) {
       __compactRuntime.typeError('Contract state constructor',
                                  'argument 1 (argument 2 as invoked from Typescript)',
-                                 'equilux.compact line 49 char 1',
+                                 'equilux.compact line 53 char 1',
                                  'Bytes<32>',
                                  employerPkInit_0)
     }
@@ -485,7 +485,7 @@ export class Contract {
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_25.toValue(6n),
                                                                                               alignment: _descriptor_25.alignment() }).encode() } },
                                        { push: { storage: true,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue({ is_some: false, value: { round: 0n, headcountWomen: 0n, headcountMen: 0n, meanGapBps: 0n, gapFavorsMen: false, breachesThreshold: false } }),
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_8.toValue({ is_some: false, value: { round: 0n, headcountWomen: 0n, headcountMen: 0n, meanGapBps: 0n, gapFavorsMen: false, meanGapAtOrAbove5pct: false } }),
                                                                                               alignment: _descriptor_8.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
     __compactRuntime.queryLedgerState(context,
@@ -536,7 +536,7 @@ export class Contract {
   _none_0() {
     return { is_some: false,
              value:
-               { round: 0n, headcountWomen: 0n, headcountMen: 0n, meanGapBps: 0n, gapFavorsMen: false, breachesThreshold: false } };
+               { round: 0n, headcountWomen: 0n, headcountMen: 0n, meanGapBps: 0n, gapFavorsMen: false, meanGapAtOrAbove5pct: false } };
   }
   _merkleTreePathRoot_0(path_0) {
     return { field:
@@ -586,7 +586,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('employeeSecret',
                                  'return value',
-                                 'equilux.compact line 57 char 1',
+                                 'equilux.compact line 61 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -603,7 +603,7 @@ export class Contract {
     if (!(Array.isArray(result_0) && result_0.length === 2  && typeof(result_0[0]) === 'bigint' && result_0[0] >= 0n && result_0[0] <= 4294967295n && typeof(result_0[1]) === 'bigint' && result_0[1] >= 0n && result_0[1] <= 1n)) {
       __compactRuntime.typeError('employeeRecord',
                                  'return value',
-                                 'equilux.compact line 58 char 1',
+                                 'equilux.compact line 62 char 1',
                                  '[Uint<0..4294967296>, Uint<0..2>]',
                                  result_0)
     }
@@ -620,7 +620,7 @@ export class Contract {
     if (!(result_0.buffer instanceof ArrayBuffer && result_0.BYTES_PER_ELEMENT === 1 && result_0.length === 32)) {
       __compactRuntime.typeError('employerSecret',
                                  'return value',
-                                 'equilux.compact line 59 char 1',
+                                 'equilux.compact line 63 char 1',
                                  'Bytes<32>',
                                  result_0)
     }
@@ -637,7 +637,7 @@ export class Contract {
     if (!(Array.isArray(result_0) && result_0.length === 16 && result_0.every((t) => typeof(t) === 'object' && typeof(t.salary) === 'bigint' && t.salary >= 0n && t.salary <= 4294967295n && typeof(t.gender) === 'bigint' && t.gender >= 0n && t.gender <= 1n && t.sk.buffer instanceof ArrayBuffer && t.sk.BYTES_PER_ELEMENT === 1 && t.sk.length === 32 && typeof(t.active) === 'boolean'))) {
       __compactRuntime.typeError('payrollRecords',
                                  'return value',
-                                 'equilux.compact line 60 char 1',
+                                 'equilux.compact line 64 char 1',
                                  'Vector<16, struct EnrolledRecord<salary: Uint<0..4294967296>, gender: Uint<0..2>, sk: Bytes<32>, active: Boolean>>',
                                  result_0)
     }
@@ -654,7 +654,7 @@ export class Contract {
     if (!(typeof(result_0) === 'bigint' && result_0 >= 0n && result_0 <= 65535n)) {
       __compactRuntime.typeError('claimedGapBps',
                                  'return value',
-                                 'equilux.compact line 61 char 1',
+                                 'equilux.compact line 65 char 1',
                                  'Uint<0..65536>',
                                  result_0)
     }
@@ -672,19 +672,19 @@ export class Contract {
     return this._persistentHash_2([new Uint8Array([101, 113, 117, 105, 108, 117, 120, 58, 114, 101, 99, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         r_0,
-                                                                        'equilux.compact line 72 char 6'),
+                                                                        'equilux.compact line 76 char 6'),
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         __compactRuntime.addField(__compactRuntime.mulField(salary_0,
                                                                                                                             2n),
                                                                                                   gender_0),
-                                                                        'equilux.compact line 73 char 6'),
+                                                                        'equilux.compact line 77 char 6'),
                                    sk_0]);
   }
   _enrollmentNullifier_0(sk_0, r_0) {
     return this._persistentHash_3([new Uint8Array([101, 113, 117, 105, 108, 117, 120, 58, 110, 117, 108, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
                                    __compactRuntime.convertFieldToBytes(32,
                                                                         r_0,
-                                                                        'equilux.compact line 78 char 73'),
+                                                                        'equilux.compact line 82 char 73'),
                                    sk_0]);
   }
   _enroll_0(context, partialProofData) {
@@ -1056,7 +1056,7 @@ export class Contract {
                                       {
                                         return ((t1) => {
                                                  if (t1 > 65535n) {
-                                                   throw new __compactRuntime.CompactError('equilux.compact line 163 char 38: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 65535');
+                                                   throw new __compactRuntime.CompactError('equilux.compact line 167 char 38: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 65535');
                                                  }
                                                  return t1;
                                                })(acc_0
@@ -1086,7 +1086,7 @@ export class Contract {
                                    {
                                      return ((t1) => {
                                               if (t1 > 255n) {
-                                                throw new __compactRuntime.CompactError('equilux.compact line 166 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 255');
+                                                throw new __compactRuntime.CompactError('equilux.compact line 170 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 255');
                                               }
                                               return t1;
                                             })(acc_1 + this._womenCount_0(rec_1));
@@ -1099,7 +1099,7 @@ export class Contract {
                                    {
                                      return ((t1) => {
                                               if (t1 > 255n) {
-                                                throw new __compactRuntime.CompactError('equilux.compact line 167 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 255');
+                                                throw new __compactRuntime.CompactError('equilux.compact line 171 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 255');
                                               }
                                               return t1;
                                             })(acc_2 + this._menCount_0(rec_2));
@@ -1114,7 +1114,7 @@ export class Contract {
                                    {
                                      return ((t1) => {
                                               if (t1 > 1099511627775n) {
-                                                throw new __compactRuntime.CompactError('equilux.compact line 171 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 1099511627775');
+                                                throw new __compactRuntime.CompactError('equilux.compact line 175 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 1099511627775');
                                               }
                                               return t1;
                                             })(acc_3
@@ -1129,7 +1129,7 @@ export class Contract {
                                    {
                                      return ((t1) => {
                                               if (t1 > 1099511627775n) {
-                                                throw new __compactRuntime.CompactError('equilux.compact line 172 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 1099511627775');
+                                                throw new __compactRuntime.CompactError('equilux.compact line 176 char 35: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 1099511627775');
                                               }
                                               return t1;
                                             })(acc_4 + this._menSalary_0(rec_4));
@@ -1162,7 +1162,7 @@ export class Contract {
     const report_0 = { round:
                          ((t1) => {
                            if (t1 > 4294967295n) {
-                             throw new __compactRuntime.CompactError('equilux.compact line 186 char 12: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
+                             throw new __compactRuntime.CompactError('equilux.compact line 190 char 12: cast from Field or Uint value to smaller Uint value failed: ' + t1 + ' is greater than 4294967295');
                            }
                            return t1;
                          })(_descriptor_5.fromValue(__compactRuntime.queryLedgerState(context,
@@ -1181,7 +1181,7 @@ export class Contract {
                        headcountMen: cntM_0,
                        meanGapBps: g_0,
                        gapFavorsMen: favorsMen_0,
-                       breachesThreshold: g_0 >= 500n };
+                       meanGapAtOrAbove5pct: g_0 >= 500n };
     const tmp_1 = this._some_0(report_0);
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
@@ -1353,7 +1353,7 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(rt_0) === 'object' && typeof(rt_0.field) === 'bigint' && rt_0.field >= 0 && rt_0.field <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('checkRoot',
                                      'argument 1',
-                                     'equilux.compact line 44 char 1',
+                                     'equilux.compact line 48 char 1',
                                      'struct MerkleTreeDigest<field: Field>',
                                      rt_0)
         }
@@ -1404,14 +1404,14 @@ export function ledger(stateOrChargedState) {
         if (!(typeof(index_0) === 'bigint' && index_0 >= 0 && index_0 <= __compactRuntime.MAX_FIELD)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 1',
-                                     'equilux.compact line 44 char 1',
+                                     'equilux.compact line 48 char 1',
                                      'Field',
                                      index_0)
         }
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('path_for_leaf',
                                      'argument 2',
-                                     'equilux.compact line 44 char 1',
+                                     'equilux.compact line 48 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -1426,7 +1426,7 @@ export function ledger(stateOrChargedState) {
         if (!(leaf_0.buffer instanceof ArrayBuffer && leaf_0.BYTES_PER_ELEMENT === 1 && leaf_0.length === 32)) {
           __compactRuntime.typeError('find_path_for_leaf',
                                      'argument 1',
-                                     'equilux.compact line 44 char 1',
+                                     'equilux.compact line 48 char 1',
                                      'Bytes<32>',
                                      leaf_0)
         }
@@ -1483,7 +1483,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'equilux.compact line 45 char 1',
+                                     'equilux.compact line 49 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -1561,7 +1561,7 @@ export function ledger(stateOrChargedState) {
         if (!(elem_0.buffer instanceof ArrayBuffer && elem_0.BYTES_PER_ELEMENT === 1 && elem_0.length === 32)) {
           __compactRuntime.typeError('member',
                                      'argument 1',
-                                     'equilux.compact line 46 char 1',
+                                     'equilux.compact line 50 char 1',
                                      'Bytes<32>',
                                      elem_0)
         }
@@ -1625,7 +1625,7 @@ export const pureCircuits = {
     if (!(sk_0.buffer instanceof ArrayBuffer && sk_0.BYTES_PER_ELEMENT === 1 && sk_0.length === 32)) {
       __compactRuntime.typeError('publicKey',
                                  'argument 1',
-                                 'equilux.compact line 65 char 1',
+                                 'equilux.compact line 69 char 1',
                                  'Bytes<32>',
                                  sk_0)
     }

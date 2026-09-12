@@ -2,3 +2,6 @@ build/keys/
 build/zkir/*.bzkir
 node_modules/
 compile.sh
+midnight-level-db/
+compile015.sh
+logs/

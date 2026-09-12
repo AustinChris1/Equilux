@@ -36,6 +36,14 @@ export function Roles() {
             Three dashboards, one truth.
           </h2>
         </Reveal>
+        <Reveal delay={0.18}>
+          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-moss">
+            Equilux does not replace your HRIS. Payroll stays in Personio, DATEV or Workday and
+            still computes what people are paid. Equilux is the notary on top: it proves the
+            reporting set was complete and that the published figure matches it — without a
+            salary leaving the company.
+          </p>
+        </Reveal>
 
         <div className="mt-14 grid gap-4 md:grid-cols-3">
           {roles.map((r, i) => (

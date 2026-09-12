@@ -25,7 +25,11 @@ export struct PayReport {
   headcountMen: Uint<16>;
   meanGapBps: Uint<16>;        // verified basis points, |gap| relative to men's mean
   gapFavorsMen: Boolean;
-  breachesThreshold: Boolean;  // true when gap >= 500 bps (directive art. 10 trigger)
+  // True when the COMPANY-WIDE MEAN gap is >= 500 bps. NOTE: this is not yet the
+  // Directive art. 10 trigger, which requires an *unjustified* gap >= 5% within a
+  // *category of workers*. Worker categories land in Wave 2; until then this is a
+  // headline indicator only, deliberately named for what it actually measures.
+  meanGapAtOrAbove5pct: Boolean;
 }
 
 // One private payroll record as supplied by the reporting witness.
@@ -188,7 +192,7 @@ export circuit publishReport(): PayReport {
     headcountMen: cntM,
     meanGapBps: g,
     gapFavorsMen: favorsMen,
-    breachesThreshold: g >= 500
+    meanGapAtOrAbove5pct: g >= 500
   };
 
   latestReport = disclose(some<PayReport>(report));

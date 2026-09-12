@@ -4,6 +4,7 @@ import { Mandate } from "./components/Mandate";
 import { Protocol } from "./components/Protocol";
 import { Demo } from "./components/Demo";
 import { Guarantees } from "./components/Guarantees";
+import { Scope } from "./components/Scope";
 import { Roles } from "./components/Roles";
 import { Roadmap } from "./components/Roadmap";
 import { Footer } from "./components/Footer";
@@ -18,6 +19,7 @@ export default function App() {
         <Protocol />
         <Demo />
         <Guarantees />
+        <Scope />
         <Roles />
         <Roadmap />
       </main>
