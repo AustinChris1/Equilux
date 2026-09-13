@@ -2,3 +2,6 @@ node_modules/
 dist/
 *.local
 .DS_Store
+
+# published design-canvas payload (tool output, 2 MB) — keep local only
+brand/equilux-logo-directions.html
