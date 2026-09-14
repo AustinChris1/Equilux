@@ -10,7 +10,8 @@
     "test": "vitest run",
     "network:up": "docker compose -f deploy/standalone.yml up -d --wait",
     "network:down": "docker compose -f deploy/standalone.yml down -v",
-    "demo:standalone": "tsx deploy/standalone-demo.ts"
+    "demo:standalone": "tsx deploy/standalone-demo.ts",
+    "app:server": "tsx deploy/server.ts"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.15.0",

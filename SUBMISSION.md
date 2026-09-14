@@ -51,15 +51,20 @@ prover can publish exactly one value and nothing else.
    every preprod endpoint is reachable and correct, but the current stable wallet SDK
    cannot decode preprod's sync payloads and no newer stable release exists. Public
    testnet deployment is therefore the Wave 2 headline.
-6. **Interactive demo, deck, and hosted site.** The site runs the protocol rules in the
-   browser (enroll → attest → publish, plus adversarial toggles that are rejected by the
-   same assertions the circuit enforces), deployed on Vercel; 11-slide deck.
+6. **The web workspace drives the real contract.** A local API (`contract/deploy/server.ts`)
+   exposes the deployed contract to the site: employer deploys, attests and publishes;
+   employees enroll and verify their inclusion receipt on-chain (a real `checkReceipt`
+   proof over a Merkle path); the regulator reads the proven report from the indexer.
+   The adversarial toggles send a cheating witness to the real circuit and display its
+   rejection. Visitors without Docker get a browser sandbox with the same rules. Hosted
+   on Vercel; 11-slide deck.
 
 ## Current state, stated precisely
 
 - Compact contract with 4 circuits compiles; prover and verifier keys generated.
 - Proven end-to-end on a local Midnight network. Not yet on the public testnet (see 5).
-- The browser demo mirrors the circuit's rules; it does not generate proofs.
+- The Workspace needs the local network + API; without them the site falls back to a
+  browser sandbox that mirrors the circuit's rules without proofs.
 - Computes the mean gap only (one of Article 9's seven metrics); company-wide, not per
   category; sized instance (32 commitment slots, 16-record witness); binary gender
   markers as the Directive's annex is written.
@@ -68,7 +73,9 @@ prover can publish exactly one value and nothing else.
 
 - `cd contract && pnpm install && pnpm test` — 21 tests.
 - `pnpm network:up && pnpm demo:standalone` (Docker) — the on-network run with proofs.
-- Open the live site, run the demo, tick "Omit one employee", publish, watch it reject.
+- `pnpm app:server`, then use the Workspace on the live site: deploy, enroll, attest,
+  tick "Omit one attested employee", publish — the real circuit rejects it; publish
+  honestly — the regulator tab shows the proven report read from the indexer.
 - `contract/src/equilux.compact` is the contract; `contract/build/` the compiled output.
 
 ## Wave 2 plan

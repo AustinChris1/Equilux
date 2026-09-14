@@ -88,7 +88,7 @@ export function Demo() {
     <section id="demo" className="grain relative mx-2 mt-2 rounded-[28px] bg-night md:mx-3 md:mt-3">
       <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
         <Reveal>
-          <div className="overline text-gold">Live protocol demo</div>
+          <div className="overline text-gold">Sandbox · in-browser replica, no proofs</div>
         </Reveal>
         <Reveal delay={0.1}>
           <h2 className="display mt-5 max-w-3xl text-4xl leading-[1.05] text-cream md:text-6xl">

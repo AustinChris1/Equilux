@@ -42,10 +42,10 @@ export function Hero() {
 
           <motion.div {...fadeUp(0.45)} className="mt-10 flex flex-wrap items-center gap-5">
             <a
-              href="#demo"
+              href="#workspace"
               className="inline-flex items-center gap-2 rounded-lg bg-gold px-6 py-3.5 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-night transition-transform hover:-translate-y-0.5"
             >
-              Run the protocol
+              Open the workspace
               <ArrowDown size={15} />
             </a>
             <a

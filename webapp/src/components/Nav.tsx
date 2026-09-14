@@ -3,6 +3,7 @@ import { ArrowUpRight } from "lucide-react";
 import { LogoMark } from "./Logo";
 
 const links = [
+  { label: "Workspace", href: "#workspace" },
   { label: "Mandate", href: "#mandate" },
   { label: "Protocol", href: "#protocol" },
   { label: "Demo", href: "#demo" },
@@ -38,10 +39,10 @@ export function Nav() {
           ))}
         </div>
         <a
-          href="#demo"
+          href="#workspace"
           className="group inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-night transition-transform hover:-translate-y-0.5"
         >
-          Run the demo
+          Open workspace
           <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </a>
       </nav>

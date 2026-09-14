@@ -92,10 +92,36 @@ other); each employee can verify their own inclusion without seeing anyone else'
   - 21 passing vitest cases in total.
   - `pnpm test` runs the suite; `pnpm compile` runs the Compact compiler
     (`compact` CLI on PATH — on Windows, via WSL).
-- `webapp/` — the product site with a **live in-browser protocol demo**
-  (enroll → attest → publish, plus adversarial toggles that get rejected by the same
-  assertions the circuit enforces). Vite + React + TypeScript, Tailwind CSS v4,
-  Framer Motion, lucide-react. `pnpm install && pnpm dev`.
+- `contract/deploy/` — the Midnight network side.
+  - `server.ts` — a small local API that exposes the deployed contract to the web
+    workspace: deploy, enroll, attest, publishReport, checkReceipt. Every write is a
+    real circuit call proven by the proof server and finalized on the node; every read
+    comes from the indexer. Circuit assertions surface as HTTP 400 with the circuit's
+    own message. `pnpm app:server`.
+  - `standalone-demo.ts` — the same flow as a scripted CLI run. `pnpm demo:standalone`.
+  - `standalone.yml` — node, indexer and proof-server containers. `pnpm network:up`.
+- `webapp/` — the product. The **Workspace** on the main page is three roles on one
+  contract: the employer deploys, attests and publishes; employees enroll and verify
+  their inclusion receipt on-chain; the regulator reads the proven report from the
+  indexer. Adversarial toggles send a cheating witness to the *real* circuit and show
+  its rejection. Below it, a **sandbox** runs the same protocol rules in the browser
+  without proofs, for visitors without Docker. Vite + React + TypeScript, Tailwind v4,
+  Framer Motion. `pnpm install && pnpm dev`.
+
+## Run the product end-to-end
+
+```bash
+cd contract
+pnpm install
+pnpm network:up      # Midnight node + indexer + proof server (Docker)
+pnpm app:server      # local API on http://127.0.0.1:8787 — syncs the genesis wallet first
+```
+
+Then open https://equilux-lac.vercel.app (or `cd webapp && pnpm dev`). The Workspace
+detects the API and switches from the sandbox to the live contract. Deploy from the
+Employer tab, enroll from the Employee tab, attest and publish as the employer, read
+the report as the regulator. Each action takes 20–90 seconds: local circuit execution,
+proof generation, finality, then an indexer read.
 - `brand/` — logo exploration artboards and brand canvas.
 
 ## Roadmap (The Midnight Buildathon)
