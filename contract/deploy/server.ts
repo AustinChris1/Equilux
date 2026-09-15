@@ -236,8 +236,9 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "127.0.0.1", async () => {
-  log(`API listening on http://127.0.0.1:${PORT}`);
+const HOST = process.env.HOST ?? "0.0.0.0";
+server.listen(PORT, HOST, async () => {
+  log(`API listening on http://${HOST === "0.0.0.0" ? "127.0.0.1" : HOST}:${PORT}`);
   try {
     mn = await connectMidnight(log);
     ready = true;

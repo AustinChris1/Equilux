@@ -97,9 +97,8 @@ export function Demo() {
         </Reveal>
         <Reveal delay={0.18}>
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-sage">
-            This runs the real protocol rules in your browser — the same commitments, nullifiers
-            and assertions as the Compact circuits (sample company data; edit the salaries).
-            On Midnight, step three additionally produces a zero-knowledge proof.
+            Linear sandbox of the same circuit rules (sample company; edit salaries). Prefer the
+            Workspace above for the three-role flow — including on the hosted Vercel site.
           </p>
         </Reveal>
 

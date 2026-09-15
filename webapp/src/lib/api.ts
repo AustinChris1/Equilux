@@ -1,6 +1,23 @@
-/** Client for the local Equilux API (contract/deploy/server.ts). */
+/** Client for the Equilux API (contract/deploy/server.ts). */
 
-export const API_BASE = (import.meta.env.VITE_EQUILUX_API as string | undefined) ?? "http://127.0.0.1:8787";
+/**
+ * Live proofs need a Midnight node + proof server. That stack is Docker on a
+ * developer machine (or a hosted API). Vercel cannot reach 127.0.0.1, so we
+ * only probe localhost when the page itself is served from localhost.
+ *
+ * Hosted override: set VITE_EQUILUX_API at build time to a public API URL.
+ */
+export function resolveApiBase(): string | null {
+  const fromEnv = (import.meta.env.VITE_EQUILUX_API as string | undefined)?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") return "http://127.0.0.1:8787";
+  }
+  return null;
+}
+
+export const API_BASE = resolveApiBase();
 
 export interface PayReportOnChain {
   round: number;
@@ -40,10 +57,12 @@ export interface Job<T = unknown> {
 }
 
 async function req<T>(path: string, init?: RequestInit, timeoutMs = 8000): Promise<T> {
+  const base = resolveApiBase();
+  if (!base) throw new Error("no live API on this host");
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const r = await fetch(`${API_BASE}${path}`, {
+    const r = await fetch(`${base}${path}`, {
       ...init,
       signal: ctl.signal,
       headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
@@ -60,7 +79,10 @@ export const getStatus = () => req<Status>("/api/status", undefined, 4000);
 export const getLedger = () => req<LedgerView>("/api/ledger");
 
 const post = (path: string, body: unknown) =>
-  req<{ jobId?: string; contractAddress?: string; alreadyDeployed?: boolean }>(path, { method: "POST", body: JSON.stringify(body) });
+  req<{ jobId?: string; contractAddress?: string; alreadyDeployed?: boolean }>(path, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 
 /** Start a job, then poll it until it finishes. `onLog` receives new log lines as they arrive. */
 export async function runJob<T>(path: string, body: unknown, onLog?: (lines: string[]) => void): Promise<Job<T>> {

@@ -100,13 +100,13 @@ other); each employee can verify their own inclusion without seeing anyone else'
     own message. `pnpm app:server`.
   - `standalone-demo.ts` — the same flow as a scripted CLI run. `pnpm demo:standalone`.
   - `standalone.yml` — node, indexer and proof-server containers. `pnpm network:up`.
-- `webapp/` — the product. The **Workspace** on the main page is three roles on one
-  contract: the employer deploys, attests and publishes; employees enroll and verify
-  their inclusion receipt on-chain; the regulator reads the proven report from the
-  indexer. Adversarial toggles send a cheating witness to the *real* circuit and show
-  its rejection. Below it, a **sandbox** runs the same protocol rules in the browser
-  without proofs, for visitors without Docker. Vite + React + TypeScript, Tailwind v4,
-  Framer Motion. `pnpm install && pnpm dev`.
+- `webapp/` — the product. The **Workspace** is three roles on one contract: employer
+  deploys / attests / publishes, employees enroll and verify an inclusion receipt,
+  the regulator reads the report. On localhost with `pnpm app:server` those writes
+  are real proofs. On the hosted Vercel site the same UI runs the Compact circuit
+  rules in the browser (Docker is unreachable from Vercel). Adversarial toggles
+  send a cheating witness into those same assertions. Vite + React + TypeScript,
+  Tailwind v4, Framer Motion. `pnpm install && pnpm dev`.
 
 ## Run the product end-to-end
 
@@ -117,11 +117,37 @@ pnpm network:up      # Midnight node + indexer + proof server (Docker)
 pnpm app:server      # local API on http://127.0.0.1:8787 — syncs the genesis wallet first
 ```
 
-Then open https://equilux-lac.vercel.app (or `cd webapp && pnpm dev`). The Workspace
-detects the API and switches from the sandbox to the live contract. Deploy from the
-Employer tab, enroll from the Employee tab, attest and publish as the employer, read
-the report as the regulator. Each action takes 20–90 seconds: local circuit execution,
-proof generation, finality, then an indexer read.
+Then open http://localhost:5173 (`cd webapp && pnpm dev`). The Workspace detects the
+API and switches from the in-browser circuit to live proofs. Deploy from the Employer
+tab, enroll from the Employee tab, attest and publish as the employer, read the report
+as the regulator. Each on-chain action takes 20–90 seconds: circuit execution, proof
+generation, finality, then an indexer read.
+
+The hosted site (https://equilux-lac.vercel.app) cannot reach Docker on your laptop.
+The Workspace still runs there: same enroll / attest / publish / cheat-reject flow,
+using the Compact circuit rules in the browser. Point `VITE_EQUILUX_API` at a public
+API URL if you later expose `pnpm app:server`.
+
+### Preprod faucet tokens (for a public-network deploy)
+
+Faucet tokens are **not** required for the Vercel demo or for local Docker (the
+genesis wallet is pre-funded). They fund a wallet on **Midnight Preprod** so you can
+pay fees (tDUST, generated from tNIGHT) when deploying the contract to the public
+testnet.
+
+1. Install [Lace](https://www.lace.io/), create a wallet, set the network to **Preprod**.
+2. Copy the **unshielded** address — it starts with `mn_addr_preprod1`. Shielded and
+   DUST addresses are rejected.
+3. Open the Preprod faucet: **https://midnight-tmnight-preprod.nethermind.dev/**
+   (also listed at https://midnight.network/test-faucet). Paste the address, complete
+   the captcha, request tokens. You receive **1,000 tNIGHT** (rate-limited).
+4. In Lace: **Tokens → Generate tDUST**. Wait a few minutes. Transactions spend tDUST,
+   not tNIGHT.
+
+`cd contract && pnpm faucet-address` prints a derived `mn_addr_preprod1…` address
+without syncing a wallet. Prefer Lace if you want an address you can actually spend
+from. The current stable wallet SDK still cannot finish a Preprod sync, so a public
+deploy is blocked until that release lands — the faucet is ready the moment it does.
 - `brand/` — logo exploration artboards and brand canvas.
 
 ## Roadmap (The Midnight Buildathon)
