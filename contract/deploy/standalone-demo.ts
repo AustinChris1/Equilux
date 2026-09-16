@@ -285,7 +285,7 @@ async function main() {
   log(`on-chain PayReport (round ${report.value.round}):`);
   log(`  headcount   women ${report.value.headcountWomen} · men ${report.value.headcountMen}`);
   log(`  mean gap    ${(Number(report.value.meanGapBps) / 100).toFixed(2)}% (favors ${report.value.gapFavorsMen ? "men" : "women"})`);
-  log(`  ≥5% joint-assessment trigger: ${report.value.meanGapAtOrAbove5pct}`);
+  log(`  ≥5% company-wide mean: ${report.value.meanGapAtOrAbove5pct}`);
   log(`  enrolled ${l.enrolled} · nullifiers ${l.nullifiers.size()} · attested ${l.attested.size()}`);
   log(`  salaries on chain: NONE — only commitments`);
   log("──────────────────────────────────────────────");
