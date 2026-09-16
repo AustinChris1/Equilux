@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500&family=Instrument+Serif:ital@1&family=Schibsted+Grotesk:wght@600&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    html, body { margin: 0; width: 1920px; height: 1080px; background: #202B22; color: #FAF6E9; }
+    body { font-family: "Instrument Sans", system-ui, sans-serif; position: relative; overflow: hidden; padding: 88px 96px; box-sizing: border-box; }
+    .lockup { display: flex; align-items: center; gap: 18px; }
+    .word { font-family: "Instrument Serif", Georgia, serif; font-style: italic; font-size: 42px; }
+    h1 { font-family: "Schibsted Grotesk", system-ui, sans-serif; font-weight: 600; font-size: 96px; letter-spacing: -0.03em; line-height: 1.02; margin: 72px 0 0; max-width: 1200px; }
+    h1 span { color: #FFD85F; display: block; }
+    p { max-width: 920px; font-size: 26px; line-height: 1.45; color: #9AA398; margin: 36px 0 0; }
+    .chips { position: absolute; left: 96px; bottom: 80px; display: flex; gap: 12px; }
+    .chip { font-family: "Spline Sans Mono", ui-monospace, monospace; font-size: 16px; letter-spacing: 0.04em; color: #FFD85F; border: 1px solid rgba(255,216,95,0.28); border-radius: 8px; padding: 10px 16px; }
+    .seal { position: absolute; right: -80px; top: 180px; opacity: 0.22; }
+  </style>
+</head>
+<body>
+  <div class="lockup">
+    <svg width="48" height="48" viewBox="0 0 64 64" fill="none">
+      <rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F" />
+      <rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3" />
+    </svg>
+    <div class="word">Equilux</div>
+  </div>
+  <h1>Pay, proven equal.<span>No salary revealed.</span></h1>
+  <p>Employee-verifiable pay-transparency on Midnight. Companies prove the gender pay gap report came from the complete, co-signed payroll. Every salary stays sealed.</p>
+  <div class="chips">
+    <div class="chip">Midnight Buildathon · Wave 1</div>
+    <div class="chip">Compact · TypeScript</div>
+    <div class="chip">github.com/AustinChris1/Equilux</div>
+  </div>
+  <svg class="seal" width="720" height="720" viewBox="0 0 64 64" fill="none">
+    <rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F" />
+    <rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3" />
+  </svg>
+</body>
+</html>
