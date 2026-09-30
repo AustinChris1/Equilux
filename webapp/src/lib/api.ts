@@ -11,6 +11,8 @@ export function resolveApiBase(): string | null {
   const fromEnv = (import.meta.env.VITE_EQUILUX_API as string | undefined)?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, "");
   if (typeof window !== "undefined") {
+    // ?mode=browser forces the in-browser contract even when a local API is running
+    if (new URLSearchParams(window.location.search).get("mode") === "browser") return null;
     const host = window.location.hostname;
     if (host === "localhost" || host === "127.0.0.1") return "http://127.0.0.1:8787";
   }
@@ -19,6 +21,18 @@ export function resolveApiBase(): string | null {
 
 export const API_BASE = resolveApiBase();
 
+export interface CategoryStats {
+  headcountWomen: number;
+  headcountMen: number;
+  /** false when either cohort has fewer than 3 people — pay figures are then suppressed (0). */
+  disclosed: boolean;
+  meanWomen: number;
+  meanMen: number;
+  meanGapBps: number;
+  gapFavorsMen: boolean;
+  gapAtOrAbove5pct: boolean;
+}
+
 export interface PayReportOnChain {
   round: number;
   headcountWomen: number;
@@ -26,16 +40,29 @@ export interface PayReportOnChain {
   meanGapBps: number;
   gapFavorsMen: boolean;
   meanGapAtOrAbove5pct: boolean;
+  medianGapBps: number;
+  medianFavorsMen: boolean;
+  categories: CategoryStats[];
 }
 
 export interface LedgerView {
   contractAddress: string;
+  rosterDeclared: boolean;
+  declaredHeadcount: number;
   enrolled: number;
   nullifiers: number;
   attested: number;
   round: number;
   employerPk: string;
+  providerPk: string;
   latestReport: PayReportOnChain | null;
+}
+
+/** Adversarial edits for the "try to cheat" toggles. */
+export interface Tamper {
+  meanGapBps?: number;
+  medianWomen?: number;
+  categoryGap?: { category: number; bps: number };
 }
 
 export interface Status {

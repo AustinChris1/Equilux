@@ -1,0 +1,232 @@
+/**
+ * The REAL compiled Equilux contract, executed in the browser.
+ *
+ * `contract/build/contract/index.js` is the module the Compact compiler emits;
+ * it runs on Midnight's own WebAssembly runtime (@midnight-ntwrk/compact-runtime
+ * → onchain-runtime-v3). Every circuit call here is the same code, the same
+ * persistentHash, the same Merkle tree and the same assertions as on-chain.
+ * What is NOT here: zero-knowledge proof generation and a consensus network —
+ * those need a proof server and a node (the Live workspace mode).
+ *
+ * Contract state is not serializable, but circuits are deterministic, so we
+ * persist the list of successful actions and replay them on load.
+ */
+import {
+  createCircuitContext,
+  createConstructorContext,
+  sampleContractAddress,
+  type CircuitContext,
+} from "@midnight-ntwrk/compact-runtime";
+import { Contract, ledger, pureCircuits, type Witnesses } from "../../../contract/build/contract/index.js";
+import { buildClaim, padRecords, type PayRecord, type ReportClaim } from "../../../contract/deploy/claims";
+import type { LedgerView, Tamper } from "./api";
+
+interface PS {
+  employeeSecret: Uint8Array;
+  employeeRecord: [bigint, bigint, bigint];
+  employerSecret: Uint8Array;
+  providerSecret: Uint8Array;
+  payroll: ReturnType<typeof padRecords>;
+  claim: ReportClaim;
+}
+
+export interface Row { salary: number; gender: 0 | 1; category: number; secret: string }
+
+export type Action =
+  | { k: "deploy"; employerSecret: string; providerSecret: string }
+  | { k: "roster"; headcount: number }
+  | { k: "enroll"; row: Row }
+  | { k: "attest"; commitment: string }
+  | { k: "publish"; rows: Row[] };
+
+const KEY = "equilux.browser-contract.v2";
+
+export const bytes32 = (seed: string): Uint8Array => {
+  const b = new Uint8Array(32);
+  const e = new TextEncoder().encode(seed);
+  b.set(e.slice(0, 32));
+  return b;
+};
+const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+const fromHex = (h: string) => new Uint8Array(h.match(/../g)!.map((x) => parseInt(x, 16)));
+
+const witnesses: Witnesses<PS> = {
+  employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
+  employeeRecord: ({ privateState }) => [privateState, privateState.employeeRecord],
+  employerSecret: ({ privateState }) => [privateState, privateState.employerSecret],
+  providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
+  payrollRecords: ({ privateState }) => [privateState, privateState.payroll],
+  reportClaim: ({ privateState }) => [privateState, privateState.claim],
+};
+
+const toRecord = (r: Row): PayRecord => ({
+  salary: BigInt(r.salary), gender: BigInt(r.gender), category: BigInt(r.category), sk: bytes32(r.secret),
+});
+
+/** Turns a thrown circuit assertion into its human message. */
+export function circuitMessage(e: unknown): string {
+  const m = e instanceof Error ? e.message : String(e);
+  const i = m.indexOf("failed assert:");
+  return i >= 0 ? m.slice(i + "failed assert:".length).trim() : m;
+}
+
+function applyTamper(claim: ReportClaim, t?: Tamper): ReportClaim {
+  if (!t) return claim;
+  const c = { ...claim, catMeanWomen: [...claim.catMeanWomen], catMeanMen: [...claim.catMeanMen], catGapBps: [...claim.catGapBps] };
+  if (t.meanGapBps != null) c.meanGapBps = BigInt(t.meanGapBps);
+  if (t.medianWomen != null) c.medianWomen = BigInt(t.medianWomen);
+  if (t.categoryGap) c.catGapBps[t.categoryGap.category] = BigInt(t.categoryGap.bps);
+  return c;
+}
+
+export class BrowserContract {
+  private contract = new Contract<PS, Witnesses<PS>>(witnesses);
+  private ctx: CircuitContext<PS> | null = null;
+  private base: PS | null = null;
+  address: string | null = null;
+  actions: Action[] = [];
+
+  static restore(): BrowserContract {
+    const bc = new BrowserContract();
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(KEY) ?? "[]") as Action[];
+      for (const a of saved) bc.apply(a, false);
+    } catch {
+      bc.reset();
+    }
+    return bc;
+  }
+
+  reset() {
+    this.ctx = null; this.base = null; this.address = null; this.actions = [];
+    try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
+  }
+
+  private persist() {
+    try { sessionStorage.setItem(KEY, JSON.stringify(this.actions)); } catch { /* ignore */ }
+  }
+
+  private set(patch: Partial<PS>) {
+    this.ctx = { ...this.ctx!, currentPrivateState: { ...this.base!, ...patch } };
+  }
+
+  /** Runs one action through the real circuits; throws the circuit's message on rejection. */
+  apply(a: Action, record = true): unknown {
+    let result: unknown;
+    try {
+      result = this.run(a);
+    } catch (e) {
+      throw new Error(circuitMessage(e));
+    }
+    if (record) { this.actions.push(a); this.persist(); }
+    else this.actions.push(a);
+    return result;
+  }
+
+  private run(a: Action): unknown {
+    if (a.k === "deploy") {
+      if (this.ctx) throw new Error("contract already deployed");
+      const eSk = bytes32(a.employerSecret), pSk = bytes32(a.providerSecret);
+      this.base = {
+        employeeSecret: new Uint8Array(32), employeeRecord: [0n, 0n, 0n],
+        employerSecret: eSk, providerSecret: pSk, payroll: padRecords([]), claim: buildClaim([]),
+      };
+      const init = this.contract.initialState(
+        createConstructorContext(this.base, "0".repeat(64)),
+        pureCircuits.publicKey(eSk),
+        pureCircuits.publicKey(pSk),
+      );
+      this.address = sampleContractAddress();
+      this.ctx = createCircuitContext(this.address, init.currentZswapLocalState, init.currentContractState, init.currentPrivateState);
+      return this.address;
+    }
+    if (!this.ctx) throw new Error("No contract deployed yet — deploy from the Employer tab");
+    const c = this.contract.impureCircuits;
+    switch (a.k) {
+      case "roster": {
+        this.set({});
+        this.ctx = c.declareRoster(this.ctx, BigInt(a.headcount)).context;
+        return a.headcount;
+      }
+      case "enroll": {
+        const r = toRecord(a.row);
+        this.set({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category] });
+        const res = c.enroll(this.ctx);
+        this.ctx = res.context;
+        return toHex(res.result);
+      }
+      case "attest": {
+        this.set({});
+        this.ctx = c.attest(this.ctx, fromHex(a.commitment)).context;
+        return a.commitment;
+      }
+      case "publish": {
+        const recs = a.rows.map(toRecord);
+        this.set({ payroll: padRecords(recs), claim: buildClaim(recs) });
+        const res = c.publishReport(this.ctx);
+        this.ctx = res.context;
+        return res.result;
+      }
+    }
+  }
+
+  /** A cheating publish: runs the circuit with a tampered witness or claim, never recorded. */
+  tryCheat(rows: Row[], tamper?: Tamper): never {
+    if (!this.ctx) throw new Error("No contract deployed yet");
+    const recs = rows.map(toRecord);
+    this.set({ payroll: padRecords(recs), claim: applyTamper(buildClaim(recs), tamper) });
+    try {
+      this.contract.impureCircuits.publishReport(this.ctx);
+    } catch (e) {
+      throw new Error(circuitMessage(e));
+    }
+    throw new Error("the circuit accepted this report — it was not actually a cheat");
+  }
+
+  /** Real checkReceipt circuit over the Merkle path from the current tree. */
+  receipt(commitment: string): boolean {
+    if (!this.ctx) throw new Error("No contract deployed yet");
+    const l = ledger(this.ctx.currentQueryContext.state);
+    const path = l.commitments.findPathForLeaf(fromHex(commitment));
+    if (!path) throw new Error("commitment is not in the on-chain tree");
+    this.set({});
+    const res = this.contract.impureCircuits.checkReceipt(this.ctx, path);
+    this.ctx = res.context;
+    return res.result;
+  }
+
+  view(): LedgerView | null {
+    if (!this.ctx || !this.address) return null;
+    const l = ledger(this.ctx.currentQueryContext.state);
+    const n = (x: bigint) => Number(x);
+    const rep = l.latestReport;
+    return {
+      contractAddress: this.address,
+      rosterDeclared: l.rosterDeclared,
+      declaredHeadcount: n(l.declaredHeadcount),
+      enrolled: n(l.enrolled),
+      nullifiers: n(l.nullifiers.size()),
+      attested: n(l.attested.size()),
+      round: n(l.round),
+      employerPk: toHex(l.employerPk),
+      providerPk: toHex(l.providerPk),
+      latestReport: rep.is_some
+        ? {
+            round: n(rep.value.round),
+            headcountWomen: n(rep.value.headcountWomen),
+            headcountMen: n(rep.value.headcountMen),
+            meanGapBps: n(rep.value.meanGapBps),
+            gapFavorsMen: rep.value.gapFavorsMen,
+            meanGapAtOrAbove5pct: rep.value.meanGapAtOrAbove5pct,
+            medianGapBps: n(rep.value.medianGapBps),
+            medianFavorsMen: rep.value.medianFavorsMen,
+            categories: rep.value.categories.map((c) => ({
+              headcountWomen: n(c.headcountWomen), headcountMen: n(c.headcountMen), disclosed: c.disclosed,
+              meanWomen: n(c.meanWomen), meanMen: n(c.meanMen), meanGapBps: n(c.meanGapBps),
+              gapFavorsMen: c.gapFavorsMen, gapAtOrAbove5pct: c.gapAtOrAbove5pct,
+            })),
+          }
+        : null,
+    };
+  }
+}
