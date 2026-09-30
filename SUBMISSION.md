@@ -1,85 +1,93 @@
-# Equilux — Wave 1 submission notes
+# Equilux — Wave 2 submission notes
 
 Text for the AKINDO submission form. Each section maps to a field the rules ask for.
 
 ## Links
 
 - Repository: https://github.com/AustinChris1/Equilux (topic `midnightntwrk`, Apache-2.0)
-- Live site: https://equilux-lac.vercel.app
-- Deck: `deck/Equilux-Wave1-deck.pdf` in the repository
-- Demo video: [YOUTUBE LINK]
+- Live site: https://equilux-lac.vercel.app — Workspace → **Run the full flow**
+- Deck: `deck/` in the repository
+- Demo video: [WAVE 2 VIDEO LINK]
 
 ## What Equilux is
 
-The first employee-verifiable pay-transparency reporting protocol. Under Directive (EU)
-2023/970, large EU employers must publish gender pay gap reports from June 2027, and today
-those reports are self-declared: no employee or regulator can check the numbers without
-seeing every salary. Equilux lets a company prove its report was computed from its
-complete, employee-co-signed payroll while every salary stays in Midnight's private state.
-It does not replace the HRIS; it is the notary on top of it.
+The first employee-verifiable pay-transparency reporting protocol. Under Directive (EU) 2023/970,
+EU employers must publish gender pay gap figures from June 2027, and today those reports are
+self-declared: no employee or regulator can check them without seeing every salary. Equilux lets a
+company prove its report was computed from its complete payroll — each record sealed by the
+employee and vouched for by the payroll provider — while every salary stays in Midnight's private
+state. It sits next to the HRIS as a verification layer, not in place of it.
+
+## What changed since Wave 1
+
+The Wave 1 judge asked for payroll-provider attestation and for Equilux to become a plugin for
+Workday / Personio rather than a standalone app. Both are built.
+
+1. **A third party: the payroll provider.** It holds its own key, declares the roster headcount
+   before anyone enrolls, and attests each record. The employer can no longer vouch for its own
+   data — the Wave 1 weakness.
+2. **Nobody can be left out.** The report must cover exactly the declared headcount. In Wave 1 an
+   employee who never enrolled could be silently excluded; now the circuit rejects that report.
+3. **More of the Directive, proven.** `publishReport` now verifies the **median gap** (lower median
+   by rank counting — no sort in-circuit) and the **mean gap per worker category**, the unit
+   Article 10 assesses. Categories at 5% or more are flagged.
+4. **Article 7 with k-anonymity.** Average pay by gender per category is published only when both
+   groups have at least three people; smaller groups show headcounts only, so no colleague's salary
+   can be inferred.
+5. **The real contract on the public site.** The hosted Workspace now executes the compiled Compact
+   contract in the browser on Midnight's WebAssembly runtime — the same circuits, hashes, Merkle
+   tree and assertions as on-chain. In Wave 1 it ran a hand-written replica. A judge can run the
+   whole flow and every cheat without installing anything.
+6. **The plugin surface.** A Personio / DATEV CSV importer (German headers, `62.000,00` amounts)
+   and a documented API for each party's actions.
+7. **Four parties in the Workspace**: employer, payroll provider, employee, regulator — with a
+   one-click full flow and four cheats (omit an employee, fake mean gap, inflated median, hidden
+   category gap), each rejected by the circuit with its own message.
+
+## Progress completed during Wave 2
+
+- Contract v2: 5 circuits compile with proving and verifier keys (`declareRoster` new;
+  `publishReport` extended to median and per-category statistics with k = 3 suppression).
+- **Verified on a Midnight network with real proofs:** deploy with two role keys; enrollment
+  rejected before the roster; roster declared; eight enrollments; a ninth rejected past the roster;
+  eight provider attestations; four cheating reports rejected; the honest report proven and
+  finalized; a receipt proven. The on-chain report matches the tests to the basis point.
+- **Verified on the live Vercel site:** the full flow in about two seconds, all four cheats
+  rejected, a receipt verified through the real `checkReceipt`, state preserved across reload,
+  no page errors, no horizontal overflow on mobile.
+- Tests: 21 → 41, covering roster, roles, every statistic, every rejection, and the CSV importer.
+- Public-testnet probe re-run on Midnight's new stable wallet SDK (facade 4.0.1): the Wave 1
+  decode error is fixed upstream, but syncing preprod now fails inside the SDK's WebAssembly
+  (`RuntimeError: unreachable` while applying a sync update). Documented; deployment follows
+  Midnight's fix.
 
 ## How privacy shapes the design
 
-Midnight's dual ledger is the architecture, not a feature. Salaries, gender markers and
-employee secrets exist only as witnesses. The public ledger holds commitments (a Merkle
-tree), nullifiers, employer attestations, and the proven report. Every witness value that
-reaches the ledger passes an explicit `disclose()`. The mean gap is verified inside the
-circuit without division, via cross-multiplied bounds on the claimed figure, so the
-prover can publish exactly one value and nothing else.
-
-## Progress completed during Wave 1
-
-1. **Contract deployed and executed end-to-end on a Midnight network with real
-   zero-knowledge proofs.** `contract/deploy/standalone-demo.ts` runs the full protocol
-   against a Midnight node, indexer and proof server: deploy, four employee enrollments,
-   four employer attestations, and `publishReport` — every transaction proven and
-   finalized, the PayReport read back from the indexer (2 women, 2 men, 23.52% mean gap,
-   4 nullifiers, 4 attestations, zero salaries on chain). Reproducible with
-   `pnpm network:up && pnpm demo:standalone`.
-2. **Circuit-level test suite.** 21 passing tests, 9 of which drive the compiler-generated
-   contract through `@midnight-ntwrk/compact-runtime`: real ledger transitions, Merkle
-   receipt paths, and every assertion (omitted employee, false gap claim, double
-   enrollment, non-employer attest, duplicate record) failing with the circuit's message.
-3. **Toolchain alignment.** Pinned the Compact toolchain (`+0.30.0`, runtime 0.15.0) to
-   the stable midnight-js 4.0.4 / ledger-v8 SDK line so compiled artifacts deploy.
-4. **Honesty pass on the legal model.** Renamed the ledger flag to
-   `meanGapAtOrAbove5pct` (the Directive's Article 10 trigger is per worker category and
-   is Wave 2), removed every claim of metrics the circuit does not yet compute, and
-   published a threat-model section stating the exact trust boundary (HR necessarily holds
-   payroll; hidden from the public, colleagues, the regulator and Equilux).
-5. **Public testnet compatibility probe.** Documented in `contract/deploy/probe-preprod.ts`:
-   every preprod endpoint is reachable and correct, but the current stable wallet SDK
-   cannot decode preprod's sync payloads and no newer stable release exists. Public
-   testnet deployment is therefore the Wave 2 headline.
-6. **The web workspace drives the real contract.** A local API (`contract/deploy/server.ts`)
-   exposes the deployed contract to the site: employer deploys, attests and publishes;
-   employees enroll and verify their inclusion receipt on-chain (a real `checkReceipt`
-   proof over a Merkle path); the regulator reads the proven report from the indexer.
-   The adversarial toggles send a cheating witness to the real circuit and display its
-   rejection. Visitors without Docker get a browser sandbox with the same rules. Hosted
-   on Vercel; 11-slide deck.
+Salaries, gender markers, worker categories and secrets exist only as witnesses. The public ledger
+holds hashed role keys, the declared headcount, commitments (a Merkle tree), nullifiers,
+attestations and the proven report. Every witness value that reaches the ledger passes an explicit
+`disclose()`. The circuit discloses only aggregates, and for small categories not even those.
 
 ## Current state, stated precisely
 
-- Compact contract with 4 circuits compiles; prover and verifier keys generated.
-- Proven end-to-end on a local Midnight network. Not yet on the public testnet (see 5).
-- The Workspace needs the local network + API; without them the site falls back to a
-  browser sandbox that mirrors the circuit's rules without proofs.
-- Computes the mean gap only (one of Article 9's seven metrics); company-wide, not per
-  category; sized instance (32 commitment slots, 16-record witness); binary gender
-  markers as the Directive's annex is written.
+- 5 circuits, keys generated; proven end to end on a local Midnight network; not yet on the public
+  testnet (SDK sync failure above).
+- The hosted site runs the compiled contract in the browser without proofs; live proofs need the
+  local network and API (`pnpm network:up && pnpm app:server`).
+- 3 of Article 9's 7 indicators: mean gap, median gap, per-category gap on basic pay.
+- HR still holds payroll; the provider's roster is trusted; sized instance of 16 records and
+  4 categories; binary gender markers as the Directive's annex is written.
 
 ## How judges can evaluate it
 
-- `cd contract && pnpm install && pnpm test` — 21 tests.
-- `pnpm network:up && pnpm demo:standalone` (Docker) — the on-network run with proofs.
-- `pnpm app:server`, then use the Workspace on the live site: deploy, enroll, attest,
-  tick "Omit one attested employee", publish — the real circuit rejects it; publish
-  honestly — the regulator tab shows the proven report read from the indexer.
-- `contract/src/equilux.compact` is the contract; `contract/build/` the compiled output.
+- Live site → Workspace → **Run the full flow**, then Regulator tab; then Employer tab → pick a
+  cheat → Publish.
+- `cd contract && pnpm install && pnpm test` — 41 tests.
+- `pnpm network:up && pnpm app:server`, then the Workspace on localhost — real proofs.
+- `contract/src/equilux.compact` is the contract.
 
-## Wave 2 plan
+## Wave 3 plan
 
-Public testnet deployment with the site reading live state; the Article 7 cohort-safe
-category query (k-anonymity threshold); worker categories; median; employer / employee /
-regulator screens; Lace wallet write path.
+Public testnet deployment and Lace wallet writes; variable-pay gaps and quartiles (all of
+Article 9); an Article 9 filing pack with proof hash and verify URL; a works-council co-signature
+on the roster; one named pilot.
