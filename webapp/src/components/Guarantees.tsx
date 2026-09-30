@@ -6,7 +6,7 @@ const guarantees = [
     icon: LockKeyhole,
     n: "01",
     title: "Completeness",
-    body: "Every record sealed on-chain must appear in the report: the circuit rejects a payroll witness that covers fewer records than were enrolled. Dropping an enrolled employee is cryptographically impossible, not just against the rules.",
+    body: "The payroll provider declares the headcount before anyone enrolls, and the report must cover exactly that many sealed records. Leaving someone out — even by never enrolling them — is cryptographically impossible, not just against the rules.",
   },
   {
     icon: Receipt,
@@ -18,14 +18,13 @@ const guarantees = [
     icon: ShieldCheck,
     n: "03",
     title: "Proven statistics",
-    body: "The published gap carries a zero-knowledge proof that it was computed, correctly, from the committed payroll — and from all of it. A regulator verifies instead of auditing.",
+    body: "Mean gap, median gap, and the gap in every worker category carry one zero-knowledge proof that they were computed correctly from the complete, provider-attested payroll. A regulator verifies instead of auditing.",
   },
   {
     icon: EyeOff,
     n: "04",
     title: "Cohort-safe queries",
-    wave2: true,
-    body: "Employees get their legal right to category-level pay data — behind a minimum cohort threshold, so a three-person team can never be used to reverse a colleague's salary.",
+    body: "Average pay by gender for each worker category — the figures Article 7 lets every employee ask for — is published only when both groups have at least three people. Smaller groups are suppressed, so no colleague's salary can be reversed.",
   },
 ];
 

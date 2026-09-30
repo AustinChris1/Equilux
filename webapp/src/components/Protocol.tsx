@@ -5,19 +5,19 @@ const steps = [
   {
     icon: Users,
     title: "Seal every record",
-    body: "Each employee seals their own record on Midnight before any report exists — one opaque commitment and one nullifier, nothing else. Every sealed record is counted by the contract; the report cannot cover fewer people than enrolled. A payroll-provider-committed roster, so nobody can be left un-enrolled, is Wave 3.",
+    body: "The payroll provider declares the headcount from payroll. Then each employee seals their own record — salary, gender marker, worker category — as one opaque commitment and one nullifier. Nothing else touches the chain.",
     tag: "Public state · commitments + nullifiers",
   },
   {
     icon: PenLine,
-    title: "Co-sign every salary",
-    body: "Each pay record — salary and gender marker — becomes a private commitment co-signed by employee and employer. No invented records, no cherry-picking; nullifiers stop anyone being counted twice.",
+    title: "The provider attests",
+    body: "The payroll provider — not the employer — attests each record it recognises from payroll. No invented records, no cherry-picking; nullifiers stop anyone being counted twice.",
     tag: "Private state · sealed records",
   },
   {
     icon: Sigma,
     title: "Prove the report in-circuit",
-    body: "A Compact contract computes the mean pay gap inside the zero-knowledge circuit, over the committed dataset and nothing else — no division, just cross-multiplied bounds the prover cannot fake. Median, quartiles and per-category gaps are Wave 2.",
+    body: "A Compact circuit verifies the mean gap, the median gap and every worker category's gap over the committed set — no division, no sort, just bounds the prover cannot fake. Categories with fewer than three per group are suppressed.",
     tag: "Compact contract · ZK circuit",
   },
   {

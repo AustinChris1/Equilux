@@ -2,29 +2,38 @@ import { Check, Minus } from "lucide-react";
 import { Reveal } from "./Reveal";
 
 const proves = [
-  "The published gap was computed from every enrolled, employer-attested record — not a convenient subset.",
-  "No record was invented: each carries an employee-held secret and an employer attestation.",
+  "The report covers exactly the headcount the payroll provider declared before anyone enrolled — no one can be left out, not even by never enrolling.",
+  "No record was invented: each carries an employee-held secret and an attestation from the payroll provider — never from the employer itself.",
   "Nobody was counted twice — enrollment nullifiers make duplicates unprovable.",
-  "The disclosed figure is exact. The circuit accepts one value and rejects every other, including one basis point off.",
+  "Every disclosed figure — mean gap, median gap, each category's pay and gap — is exact. The circuit accepts one value and rejects every other, including one basis point off.",
+  "No category's pay is published unless both groups have at least three people, so no colleague's salary can be worked out.",
   "Each employee can verify their own record was inside the numbers, without seeing anyone else's.",
 ];
 
 const doesNot = [
   {
     head: "The employer already has the payroll",
-    body: "It must, to run payroll at all. Equilux hides salaries from the public, from colleagues, from the regulator and from us — not from HR. Wave 3 moves attestation to the payroll provider so HR never assembles the full table.",
+    body: "It must, to run payroll at all. Equilux hides salaries from the public, from colleagues, from the regulator and from us — not from HR. What changed in Wave 2: the employer can no longer vouch for its own data; the payroll provider does.",
   },
   {
-    head: "This is not yet the Article 10 trigger",
-    body: "Our 5% flag is the company-wide mean. The Directive's trigger is an unjustified gap within a category of workers — categories arrive in Wave 2, and the ledger field is named for what it actually measures.",
+    head: "The roster is only as honest as the payroll provider",
+    body: "The provider declares the headcount from its payroll system. A provider colluding with the employer could under-declare it. Separating the two parties is the point — a works-council co-signature on the roster is the next step.",
   },
   {
-    head: "One of Article 9's seven metrics",
-    body: "The full return also requires median gaps, variable-pay gaps, the share receiving variable pay, and quartile composition. Wave 1 proves the mean.",
+    head: "It does not decide what is justified",
+    body: "Article 10 triggers a joint pay assessment when a category gap of 5% or more is also unjustified by objective, gender-neutral criteria. The circuit proves the gap and flags ≥ 5%; justification is a human judgement it does not make.",
+  },
+  {
+    head: "Three of Article 9's seven indicators",
+    body: "Proven today: the mean gap, the median gap, and the gap by worker category on basic pay. Still to come: variable-pay gaps (mean and median), the share receiving variable pay, and quartile composition.",
   },
   {
     head: "A sized instance, not a production deployment",
-    body: "This build fixes 32 commitment slots and a 16-record witness — right for a demo company, not a 250-person employer. Sizing is a compile-time parameter per company band.",
+    body: "This build fixes a 16-record witness, 32 commitment slots and 4 worker categories — right for a demo company, not a 250-person employer. Sizing is a compile-time parameter per company band.",
+  },
+  {
+    head: "Not yet on the public testnet",
+    body: "Proven end to end on a local Midnight network. Midnight's current wallet SDK fails while syncing the public preprod chain (a WebAssembly error inside the SDK); deployment follows its fix.",
   },
   {
     head: "Binary gender markers",

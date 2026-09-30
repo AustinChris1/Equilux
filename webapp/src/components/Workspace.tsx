@@ -499,7 +499,7 @@ export function Workspace() {
                             {rep.categories.map((c, i) => (c.headcountWomen + c.headcountMen === 0 ? null : (
                               <tr key={i} className="border-t border-gold/8 text-cream">
                                 <td className="px-3 py-2.5">{categories[i]}</td>
-                                <td className="px-3 py-2.5 text-sage">{c.headcountWomen} / {c.headcountMen}</td>
+                                <td className="whitespace-nowrap px-3 py-2.5 text-sage">{c.headcountWomen} / {c.headcountMen}</td>
                                 {c.disclosed ? (
                                   <>
                                     <td className="px-3 py-2.5">€{c.meanWomen.toLocaleString()} · €{c.meanMen.toLocaleString()}</td>

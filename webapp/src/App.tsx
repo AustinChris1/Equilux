@@ -3,7 +3,6 @@ import { Hero } from "./components/Hero";
 import { Workspace } from "./components/Workspace";
 import { Mandate } from "./components/Mandate";
 import { Protocol } from "./components/Protocol";
-import { Demo } from "./components/Demo";
 import { Guarantees } from "./components/Guarantees";
 import { Scope } from "./components/Scope";
 import { Roles } from "./components/Roles";
@@ -19,7 +18,6 @@ export default function App() {
         <Workspace />
         <Mandate />
         <Protocol />
-        <Demo />
         <Guarantees />
         <Scope />
         <Roles />

@@ -6,7 +6,6 @@ const links = [
   { label: "Workspace", href: "#workspace" },
   { label: "Mandate", href: "#mandate" },
   { label: "Protocol", href: "#protocol" },
-  { label: "Demo", href: "#demo" },
   { label: "Guarantees", href: "#guarantees" },
   { label: "Scope", href: "#scope" },
   { label: "Roadmap", href: "#roadmap" },

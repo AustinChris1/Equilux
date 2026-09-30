@@ -13,14 +13,14 @@ const roles = [
     alt: "Colleagues working together around a laptop",
     who: "For every employee",
     title: "Check you were counted",
-    body: "A wallet holds your inclusion receipt: proof that your record was inside the published numbers, without exposing you or anyone else. The Article 7 question — what does my category earn? — is the Wave 2 build.",
+    body: "A wallet holds your inclusion receipt: proof that your record was inside the published numbers, without exposing you or anyone else. The report also answers the Article 7 question — what does my category earn, by gender? — without exposing anyone.",
   },
   {
     img: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?q=80&w=1200&auto=format&fit=crop",
     alt: "A fountain pen resting on signed documents",
     who: "For the regulator",
     title: "Verify in seconds, not audits",
-    body: "One proof replaces a payroll subpoena. The enforcement body verifies the report on-chain and reads the company-wide mean gap indicator. The per-category Article 10 trigger is Wave 2.",
+    body: "One proof replaces a payroll subpoena. The enforcement body verifies the report on-chain and reads the mean and median gaps plus every worker category's gap, with the categories at 5% or more flagged for assessment.",
   },
 ];
 
