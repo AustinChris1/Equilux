@@ -6,7 +6,7 @@ Text for the AKINDO submission form. Each section maps to a field the rules ask 
 
 - Repository: https://github.com/AustinChris1/Equilux (topic `midnightntwrk`, Apache-2.0)
 - Live site: https://equilux-lac.vercel.app — Workspace → **Run the full flow**
-- Deck: `deck/` in the repository
+- Deck: https://github.com/AustinChris1/Equilux/blob/main/deck/Equilux-Wave2-deck.pdf
 - Demo video: [WAVE 2 VIDEO LINK]
 
 ## What Equilux is

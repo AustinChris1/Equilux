@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Equilux — Midnight Buildathon Wave 1</title>
+<title>Equilux — Midnight Buildathon Wave 2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
@@ -71,9 +71,9 @@
     <span class="wm">Equilux</span>
   </div>
   <h1>Pay, proven equal.<br/><span style="color:var(--gold)">No salary revealed.</span></h1>
-  <p class="sub" style="max-width:1400px">The first employee-verifiable pay-transparency reporting protocol. A company proves its legally required gender pay gap report was computed from its complete, co-signed payroll — while every salary stays sealed in Midnight's private state.</p>
-  <div style="display:flex;gap:16px;margin-top:44px"><span class="chip">Midnight Buildathon · Wave 1</span><span class="chip">Compact · TypeScript · Apache 2.0</span><span class="chip">github.com/AustinChris1/Equilux</span></div>
-  <div class="foot"><span>Equilux</span><span>01 / 11</span></div>
+  <p class="sub" style="max-width:1400px">The first employee-verifiable pay-transparency reporting protocol. A company proves its legally required gender pay gap report was computed from its complete payroll — sealed by each employee, vouched for by the payroll provider — while every salary stays in Midnight's private state.</p>
+  <div style="display:flex;gap:16px;margin-top:44px"><span class="chip">Midnight Buildathon · Wave 2</span><span class="chip">Compact · TypeScript · Apache 2.0</span><span class="chip">github.com/AustinChris1/Equilux</span></div>
+  <div class="foot"><span>Equilux</span><span>01 / 12</span></div>
 </section>
 
 <!-- 2 · Mandate -->
@@ -86,7 +86,7 @@
     <div class="card"><div class="stat">≥ 5%<small>unjustified gap in a category → joint pay assessment</small></div></div>
   </div>
   <p class="sub" style="margin-top:52px">Article 9 requires seven indicators. Article 7 gives every employee the right to ask what their category earns. And today every one of those reports is <strong>self-declared</strong>: nobody can verify the numbers without seeing everyone's salary.</p>
-  <div class="foot"><span>Equilux</span><span>02 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>02 / 12</span></div>
 </section>
 
 <!-- 3 · Problem -->
@@ -100,11 +100,28 @@
     </div>
     <div class="card" style="background:var(--night);color:var(--cream);border-color:transparent">
       <h3 style="color:var(--gold)">With Equilux</h3>
-      <p style="color:var(--sage)">Every employee seals their record. The employer co-signs it. A zero-knowledge circuit computes the gap over the sealed set and publishes only the figure plus a proof that it came from all of it. Verification takes seconds. No salary ever leaves the company.</p>
+      <p style="color:var(--sage)">Every employee seals their record. The payroll provider — not the employer — vouches for it. A zero-knowledge circuit verifies the gaps over the sealed set and publishes only the figures plus a proof that they came from all of it. Verification takes seconds. No salary ever leaves the company.</p>
     </div>
   </div>
   <p class="sub">Equilux does not replace the HRIS. Payroll stays in Personio, DATEV or Workday. Equilux is the <strong>notary on top</strong>: it proves the set was complete and the published figure matches it.</p>
-  <div class="foot"><span>Equilux</span><span>03 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>03 / 12</span></div>
+</section>
+
+<!-- W2 · What changed -->
+<section class="slide paper">
+  <div class="overline">Since Wave 1 · what the judge asked for</div>
+  <h2 style="font-size:76px">Payroll-provider attestation. A plugin, not an app. Both built.</h2>
+  <table style="font-size:24px;margin-top:36px">
+    <tr><th></th><th>Wave 1</th><th>Wave 2</th></tr>
+    <tr><td>Who vouches for records</td><td>the employer, for its own data</td><td><strong>the payroll provider</strong> — the employer cannot</td></tr>
+    <tr><td>Leaving someone out</td><td>blocked only if they enrolled</td><td><strong>blocked outright</strong> — roster declared before enrollment</td></tr>
+    <tr><td>Statistics proven</td><td>mean gap</td><td>mean · <strong>median</strong> · <strong>per worker category</strong></td></tr>
+    <tr><td>Article 7 category pay</td><td>designed</td><td><strong>published at k = 3</strong>, small groups suppressed</td></tr>
+    <tr><td>The public site</td><td>a replica of the rules</td><td><strong>the compiled contract, in the browser</strong></td></tr>
+    <tr><td>HRIS integration</td><td>—</td><td><strong>Personio / DATEV CSV import</strong> + party API</td></tr>
+    <tr><td>Circuits · tests</td><td>4 · 21</td><td><strong>5 · 41</strong></td></tr>
+  </table>
+  <div class="foot"><span>Equilux</span><span>04 / 12</span></div>
 </section>
 
 <!-- 4 · What the circuit proves -->
@@ -112,26 +129,27 @@
   <div class="overline">What the circuit proves</div>
   <h2>Trust neither side. <span style="color:var(--gold)">Verify both.</span></h2>
   <div class="grid g2" style="margin-top:48px">
-    <div class="card"><h3>Completeness</h3><p>The report must cover every enrolled record. A payroll witness with fewer records than were enrolled is rejected — dropping an employee is cryptographically impossible.</p></div>
-    <div class="card"><h3>No invented records</h3><p>Every record carries an employee-held secret and an employer attestation. The circuit re-derives each commitment; a forged row fails.</p></div>
-    <div class="card"><h3>No double counting</h3><p>Enrollment nullifiers make counting anyone twice unprovable.</p></div>
-    <div class="card"><h3>An exact figure</h3><p>The claimed gap is verified in-circuit without division, by cross-multiplied bounds. The circuit accepts one value and rejects every other — one basis point off fails.</p></div>
+    <div class="card"><h3>Completeness</h3><p>The payroll provider declares the headcount before anyone enrolls; the report must cover exactly that many sealed records. Leaving someone out — even by never enrolling them — is rejected.</p></div>
+    <div class="card"><h3>No invented records</h3><p>Every record carries an employee-held secret and a payroll-provider attestation. The circuit re-derives each commitment; a forged row fails.</p></div>
+    <div class="card"><h3>No small-group leaks</h3><p>A category's pay is published only when both groups have at least three people. Smaller groups show headcounts only.</p></div>
+    <div class="card"><h3>Exact figures</h3><p>Mean gap, median gap and every category's pay and gap are verified in-circuit — no division, no sort. One basis point off fails.</p></div>
   </div>
   <p class="sub" style="margin-top:44px">Plus an <strong style="color:var(--cream)">inclusion receipt</strong> for every employee: a Merkle path proving their record is inside the numbers, revealing nothing about anyone.</p>
-  <div class="foot"><span>Equilux</span><span>04 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>05 / 12</span></div>
 </section>
 
 <!-- 5 · How it works -->
 <section class="slide paper">
-  <div class="overline">The protocol · four circuits</div>
-  <h2>Both sides sign. The circuit does the math. Everyone can check.</h2>
-  <div class="grid g4" style="margin-top:56px">
-    <div class="card"><span class="chip">01 · enroll</span><h3 style="margin-top:22px">Seal</h3><p>Employee seals salary + gender marker as a commitment and a nullifier. Nothing else touches the chain.</p></div>
-    <div class="card"><span class="chip">02 · attest</span><h3 style="margin-top:22px">Co-sign</h3><p>The employer, gated by its secret key, attests each commitment it recognizes from payroll.</p></div>
-    <div class="card"><span class="chip">03 · publishReport</span><h3 style="margin-top:22px">Prove</h3><p>Over the full witness: every record enrolled and attested, pairwise distinct, count equals enrolled, gap claim verified. Discloses only the report.</p></div>
-    <div class="card"><span class="chip">04 · checkReceipt</span><h3 style="margin-top:22px">Verify</h3><p>Any employee proves their leaf is in the commitment tree against the on-chain root.</p></div>
+  <div class="overline">The protocol · five circuits · three parties</div>
+  <h2 style="font-size:80px">The provider vouches. The employee seals. The circuit checks everything.</h2>
+  <div class="grid g4" style="margin-top:48px;grid-template-columns:repeat(5,1fr);gap:20px">
+    <div class="card" style="padding:30px"><span class="chip">01 · declareRoster</span><h3 style="margin-top:22px">Roster</h3><p>The payroll provider commits the headcount before enrollment opens.</p></div>
+    <div class="card" style="padding:30px"><span class="chip">02 · enroll</span><h3 style="margin-top:22px">Seal</h3><p>Employee seals salary, gender marker and category as a commitment and a nullifier.</p></div>
+    <div class="card" style="padding:30px"><span class="chip">03 · attest</span><h3 style="margin-top:22px">Vouch</h3><p>The payroll provider attests each record it recognises. The employer cannot.</p></div>
+    <div class="card" style="padding:30px"><span class="chip">04 · publishReport</span><h3 style="margin-top:22px">Prove</h3><p>Full roster, attested, distinct; mean, median and category gaps verified.</p></div>
+    <div class="card" style="padding:30px"><span class="chip">05 · checkReceipt</span><h3 style="margin-top:22px">Verify</h3><p>An employee proves their record is in the tree against the on-chain root.</p></div>
   </div>
-  <div class="foot"><span>Equilux</span><span>05 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>06 / 12</span></div>
 </section>
 
 <!-- 6 · Dual ledger -->
@@ -141,49 +159,50 @@
   <div class="grid g2" style="margin-top:56px">
     <div class="card"><h3>Private state · witnesses</h3>
       <ul class="clean" style="font-size:27px">
-        <li>salary, gender marker per employee</li>
+        <li>salary, gender marker, worker category</li>
         <li>employee enrollment secret</li>
-        <li>employer secret key</li>
+        <li>employer and payroll-provider secret keys</li>
         <li>the full 16-slot payroll witness</li>
-        <li>the claimed gap (verified, never trusted)</li>
+        <li>every claimed figure (verified, never trusted)</li>
       </ul></div>
     <div class="card"><h3 style="color:var(--gold)">Public ledger</h3>
       <ul class="clean" style="font-size:27px">
         <li>commitments — a depth-5 Merkle tree</li>
         <li>nullifier set, attested set, enrolled counter</li>
-        <li>employer public key (sealed)</li>
-        <li><span class="mono">PayReport</span>: headcounts, mean gap in bps, direction, <span class="mono">meanGapAtOrAbove5pct</span></li>
+        <li>employer + provider keys (sealed), declared headcount</li>
+        <li><span class="mono">PayReport</span>: headcounts, mean + median gaps, 4 category rows (k = 3)</li>
         <li>the zero-knowledge proof for every transition</li>
       </ul></div>
   </div>
   <p class="sub" style="margin-top:40px">Every witness value that reaches the ledger passes an explicit <span class="mono" style="color:var(--gold)">disclose()</span>. The compiler refuses anything else.</p>
-  <div class="foot"><span>Equilux</span><span>06 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>07 / 12</span></div>
 </section>
 
 <!-- 7 · Evidence -->
 <section class="slide night">
-  <div class="overline">Wave 1 evidence</div>
-  <h2>Compiled. Tested. Run end-to-end on a Midnight network.</h2>
-  <div class="grid g3" style="margin-top:44px">
-    <div class="card"><div class="stat">4<small>circuits compiling · prover + verifier keys</small></div></div>
-    <div class="card"><div class="stat">21<small>tests passing · circuit-level via compact-runtime</small></div></div>
+  <div class="overline">Wave 2 evidence · real proofs on a Midnight network</div>
+  <h2 style="font-size:80px">Three parties. Four cheats. All rejected. One proven report.</h2>
+  <div class="grid g3" style="margin-top:36px">
+    <div class="card"><div class="stat">5<small>circuits · prover + verifier keys</small></div></div>
+    <div class="card"><div class="stat">41<small>tests · compiled circuits via compact-runtime</small></div></div>
     <div class="card"><div class="stat">0<small>salaries on chain · ever</small></div></div>
   </div>
-  <div class="code" style="margin-top:36px">deployed at <b>a42b898d…44c8</b>                                   (block 11)
-enrolled alice — commitment 727fd19c…  tx 004fd009…           (block 15)
-enrolled bob · carol · dan — each with a proof from the proof server
-attested alice · bob · carol · dan                        (4 txs)
-publishReport <b>proven &amp; finalized</b>  tx 00826901…            (block 54)
-on-chain PayReport: women 2 · men 2 · mean gap <b>23.52%</b> · salaries on chain: <b>NONE</b></div>
-  <div class="foot"><span>pnpm network:up &amp;&amp; pnpm demo:standalone · midnight-node 0.22.3 · proof-server 8.0.3</span><span>07 / 11</span></div>
+  <div class="code" style="margin-top:30px;font-size:21px">deployed at <b>518587d2…2821</b> · employer + payroll-provider keys      (block 55)
+enroll before roster              → <b>rejected</b>: roster not yet declared by the payroll provider
+provider declares roster of 8                                   (block 59)
+8 enrollments · 9th              → <b>rejected</b>: roster is full          (blocks 63–91)
+8 provider attestations                                         (blocks 95–123)
+omit · fake mean · fake median · hidden category gap  → <b>all 4 rejected by the circuit</b>
+publishReport <b>proven &amp; finalized</b> · Engineering 13.88% flagged      (block 140)</div>
+  <div class="foot"><span>pnpm network:up &amp;&amp; pnpm app:server · midnight-node 0.22.3 · proof-server 8.0.3</span><span>08 / 12</span></div>
 </section>
 
 <!-- 8 · Demo -->
 <section class="slide paper">
-  <div class="overline">The demo · file a proven report, then try to cheat</div>
-  <h2 style="font-size:72px">Omit an employee. Claim a zero gap. The same assertions reject both.</h2>
-  <img class="shot" src="assets/demo-rejected.png" alt="Equilux demo: the circuit rejects a payroll witness that omits an employee" style="margin-top:40px;max-height:640px;object-fit:contain;object-position:top;background:var(--night)" />
-  <div class="foot"><span>Browser panel runs the protocol rules · on Midnight, publish additionally produces a ZK proof</span><span>08 / 11</span></div>
+  <div class="overline">The live site · the compiled contract, running in the browser</div>
+  <h2 style="font-size:72px">No Docker. No install. The real circuits, on the public URL.</h2>
+  <img class="shot" src="assets/regulator-v2.png" alt="Equilux Workspace regulator view: mean gap, median gap and per-category table with a suppressed small group" style="margin-top:40px;max-height:640px;object-fit:contain;object-position:top;background:var(--night)" />
+  <div class="foot"><span>equilux-lac.vercel.app → Run the full flow · same circuits as on-chain, without proof generation</span><span>09 / 12</span></div>
 </section>
 
 <!-- 9 · Scope -->
@@ -192,13 +211,14 @@ on-chain PayReport: women 2 · men 2 · mean gap <b>23.52%</b> · salaries on ch
   <h2>Honest about what a proof can prove.</h2>
   <table>
     <tr><th>It does not claim</th><th>What is true instead</th></tr>
-    <tr><td>Salaries hidden from HR</td><td>HR already holds payroll. Hidden from the public, colleagues, the regulator and Equilux. Wave 3: payroll provider attests.</td></tr>
-    <tr><td>The Article 10 trigger</td><td>Our flag is the company-wide mean ≥ 5%, named for what it measures. Article 10 is per worker category — Wave 2.</td></tr>
-    <tr><td>The full Article 9 return</td><td>One of seven metrics: the mean. Median, variable pay, quartiles follow.</td></tr>
-    <tr><td>Production scale</td><td>A sized instance: 32 commitment slots, 16-record witness. Sizing is a compile-time parameter.</td></tr>
+    <tr><td>Salaries hidden from HR</td><td>HR still holds payroll. Hidden from the public, colleagues, the regulator and Equilux — and the employer can no longer vouch for its own data.</td></tr>
+    <tr><td>An honest roster by itself</td><td>The provider declares the headcount; a colluding provider could under-declare. A works-council co-signature is next.</td></tr>
+    <tr><td>Judging what is justified</td><td>Category gaps ≥ 5% are proven and flagged. Whether a gap is justified is a human judgement.</td></tr>
+    <tr><td>The full Article 9 return</td><td>Three of seven indicators: mean, median, category gap. Variable pay and quartiles follow.</td></tr>
+    <tr><td>Production scale · public testnet</td><td>16 records, 4 categories. Local Midnight network — preprod waits on a wallet-SDK fix.</td></tr>
     <tr><td>A model of identity</td><td>Binary gender markers, as the Directive's reporting annex is written today.</td></tr>
   </table>
-  <div class="foot"><span>Equilux</span><span>09 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>10 / 12</span></div>
 </section>
 
 <!-- 10 · Roadmap -->
@@ -206,15 +226,15 @@ on-chain PayReport: women 2 · men 2 · mean gap <b>23.52%</b> · salaries on ch
   <div class="overline">Three waves</div>
   <h2>Built in the open, wave by wave.</h2>
   <div class="grid g3" style="margin-top:52px">
+    <div class="card"><span class="chip">Wave 1 · delivered</span><h3 style="margin-top:22px">Prove it works</h3><p>Contract with private state · proven end to end on a Midnight network · employer / employee / regulator workspace · honest scope.</p></div>
     <div class="card" style="background:var(--gold);color:var(--night);border-color:transparent">
-      <span class="chip" style="background:rgba(32,43,34,.14);color:var(--night)">Wave 1 · delivered</span>
-      <h3 style="margin-top:22px">Prove it works</h3>
-      <p style="color:rgba(32,43,34,.78)">Compact contract, 4 circuits with keys · 21 tests on the compiled circuits · end-to-end run on a Midnight network with real proofs · interactive demo with adversarial toggles · honest scope.</p>
+      <span class="chip" style="background:rgba(32,43,34,.14);color:var(--night)">Wave 2 · this wave</span>
+      <h3 style="margin-top:22px">The product</h3>
+      <p style="color:rgba(32,43,34,.78)">Payroll provider as a third party · roster · median and category gaps · k = 3 category pay · the compiled contract in the browser · Personio / DATEV import.</p>
     </div>
-    <div class="card"><span class="chip">Wave 2</span><h3 style="margin-top:22px">The product</h3><p>Public testnet deployment with the site reading live state · Article 7 cohort-safe category query (k-anonymity) · worker categories · median · employer / employee / regulator screens · Lace wallet writes.</p></div>
-    <div class="card"><span class="chip">Wave 3</span><h3 style="margin-top:22px">Fundable</h3><p>Payroll-provider attestation (Personio / DATEV mock) · per-category Article 10 trigger · Article 9-shaped filing pack with proof hash + verify URL · instance sized past 250 · one named pilot.</p></div>
+    <div class="card"><span class="chip">Wave 3</span><h3 style="margin-top:22px">Fundable</h3><p>Public testnet + Lace writes · variable pay and quartiles (all of Article 9) · filing pack with proof hash + verify URL · works-council co-signature · one named pilot.</p></div>
   </div>
-  <div class="foot"><span>Equilux</span><span>10 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>11 / 12</span></div>
 </section>
 
 <!-- 11 · Market + ask -->
@@ -224,7 +244,7 @@ on-chain PayReport: women 2 · men 2 · mean gap <b>23.52%</b> · salaries on ch
     <h2>The notary for Directive 2023/970.</h2>
     <div class="grid g3" style="margin-top:48px">
       <div class="card"><h3>Buyers</h3><p>Works councils that don't trust the numbers. GDPR-sensitive employers. Regulators who want completeness without holding payroll.</p></div>
-      <div class="card"><h3>Not competing with</h3><p>Workday, SAP, Sysarb, Figures. They compute pay. We prove the set was complete and the figure matches — next to them, not instead of them.</p></div>
+      <div class="card"><h3>A plugin, not a rival</h3><p>Workday, Personio, DATEV compute pay. Equilux imports their export, the provider attests, and the report is proven — next to them, not instead of them.</p></div>
       <div class="card"><h3>Why Midnight</h3><p>A forced legal deadline plus a problem only dual-ledger selective disclosure solves honestly. Incumbents can copy a dashboard; they cannot copy the proof.</p></div>
     </div>
   </div>
@@ -232,7 +252,7 @@ on-chain PayReport: women 2 · men 2 · mean gap <b>23.52%</b> · salaries on ch
     <div class="lockup"><svg width="56" height="56" viewBox="0 0 64 64" fill="none"><rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/></svg><span class="wm" style="font-size:56px">Equilux</span></div>
     <div class="mono" style="font-size:22px;color:var(--sage);text-align:right;line-height:1.8">github.com/AustinChris1/Equilux<br/>Apache License 2.0 · #midnightntwrk<br/>Prove everything · Reveal no one</div>
   </div>
-  <div class="foot"><span>Equilux</span><span>11 / 11</span></div>
+  <div class="foot"><span>Equilux</span><span>12 / 12</span></div>
 </section>
 
 </body>

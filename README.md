@@ -3,7 +3,7 @@
 **The first employee-verifiable pay-transparency reporting protocol. Built on Midnight.**
 
 **Live site:** https://equilux-lac.vercel.app — open the Workspace and press **Run the full flow** ·
-**Deck:** [`deck/Equilux-Wave1-deck.pdf`](deck/Equilux-Wave1-deck.pdf) · **Demo video:** [WAVE 2 VIDEO LINK]
+**Deck:** [`deck/Equilux-Wave2-deck.pdf`](deck/Equilux-Wave2-deck.pdf) · **Demo video:** [WAVE 2 VIDEO LINK]
 
 Equilux lets a company prove that its legally required gender pay gap report was computed from its
 complete, real payroll — every record sealed by the employee and vouched for by the payroll
