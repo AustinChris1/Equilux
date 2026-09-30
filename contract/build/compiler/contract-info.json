@@ -22,6 +22,25 @@
       }
     },
     {
+      "name": "declareRoster",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
+          "name": "headcount",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 65535
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
       "name": "enroll",
       "pure": false,
       "proof": true,
@@ -132,14 +151,14 @@
             "name": "headcountWomen",
             "type": {
               "type-name": "Uint",
-              "maxval": 65535
+              "maxval": 255
             }
           },
           {
             "name": "headcountMen",
             "type": {
               "type-name": "Uint",
-              "maxval": 65535
+              "maxval": 255
             }
           },
           {
@@ -159,6 +178,85 @@
             "name": "meanGapAtOrAbove5pct",
             "type": {
               "type-name": "Boolean"
+            }
+          },
+          {
+            "name": "medianGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "medianFavorsMen",
+            "type": {
+              "type-name": "Boolean"
+            }
+          },
+          {
+            "name": "categories",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Struct",
+                "name": "CategoryStats",
+                "elements": [
+                  {
+                    "name": "headcountWomen",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 255
+                    }
+                  },
+                  {
+                    "name": "headcountMen",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 255
+                    }
+                  },
+                  {
+                    "name": "disclosed",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  },
+                  {
+                    "name": "meanWomen",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 4294967295
+                    }
+                  },
+                  {
+                    "name": "meanMen",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 4294967295
+                    }
+                  },
+                  {
+                    "name": "meanGapBps",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "gapFavorsMen",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  },
+                  {
+                    "name": "gapAtOrAbove5pct",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  }
+                ]
+              }
             }
           }
         ]
@@ -189,12 +287,25 @@
           {
             "type-name": "Uint",
             "maxval": 1
+          },
+          {
+            "type-name": "Uint",
+            "maxval": 3
           }
         ]
       }
     },
     {
       "name": "employerSecret",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
+      "name": "providerSecret",
       "arguments": [
       ],
       "result type": {
@@ -228,6 +339,13 @@
               }
             },
             {
+              "name": "category",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 3
+              }
+            },
+            {
               "name": "sk",
               "type": {
                 "type-name": "Bytes",
@@ -245,12 +363,75 @@
       }
     },
     {
-      "name": "claimedGapBps",
+      "name": "reportClaim",
       "arguments": [
       ],
       "result type": {
-        "type-name": "Uint",
-        "maxval": 65535
+        "type-name": "Struct",
+        "name": "ReportClaim",
+        "elements": [
+          {
+            "name": "meanGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "medianWomen",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 4294967295
+            }
+          },
+          {
+            "name": "medianMen",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 4294967295
+            }
+          },
+          {
+            "name": "medianGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "catMeanWomen",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Uint",
+                "maxval": 4294967295
+              }
+            }
+          },
+          {
+            "name": "catMeanMen",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Uint",
+                "maxval": 4294967295
+              }
+            }
+          },
+          {
+            "name": "catGapBps",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Uint",
+                "maxval": 65535
+              }
+            }
+          }
+        ]
       }
     }
   ],

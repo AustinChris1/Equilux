@@ -1,18 +1,30 @@
 /**
- * Equilux local API — exposes the deployed contract on a Midnight network to
- * the web workspace. Every write goes through the real circuits and the proof
- * server; every read comes from the indexer. Circuit assertions (an omitted
- * employee, a false gap claim, a duplicate enrollment) surface as HTTP 400
- * with the circuit's own message.
+ * Equilux API — exposes the deployed v2 contract on a Midnight network to the
+ * web workspace and to HRIS / payroll integrations. Every write goes through
+ * the real circuits and the proof server; every read comes from the indexer.
+ * Circuit assertions surface with the circuit's own message.
  *
  *   pnpm network:up && pnpm app:server      → http://127.0.0.1:8787
+ *
+ * Integration surface (what a Personio / DATEV / Workday plugin calls):
+ *   POST /api/deploy        { employerSecret, providerSecret }
+ *   POST /api/roster        { headcount }                        — provider
+ *   POST /api/enroll        { salary, gender, category, secret } — employee
+ *   POST /api/attest        { commitment }                       — provider
+ *   POST /api/publish       { payroll: [...], tamper? }          — employer
+ *   POST /api/receipt       { commitment }                       — employee
+ *   POST /api/import/csv    { csv }        → parsed payroll rows (no chain write)
+ *   GET  /api/status · /api/ledger · /api/jobs/:id
+ * Writes return 202 { jobId }; poll /api/jobs/:id for the proof + finality log.
  */
 import http from "node:http";
 import { Buffer } from "node:buffer";
 import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
 import { Contract, pureCircuits } from "../build/contract/index.js";
 import { connectMidnight, initialPrivateState } from "./client.js";
-import { bytes32, padPayroll, witnesses, type EquiluxPrivateState } from "./witnesses.js";
+import { buildClaim, padRecords, type PayRecord, type ReportClaim } from "./claims.js";
+import { bytes32, witnesses, type EquiluxPrivateState } from "./witnesses.js";
+import { parsePayrollCsv } from "./payroll-csv.js";
 
 /**
  * Execute a circuit locally against the LIVE on-chain state before handing it
@@ -21,12 +33,12 @@ import { bytes32, padPayroll, witnesses, type EquiluxPrivateState } from "./witn
  * balancing pipeline (which does not recover cleanly from a mid-flight throw).
  */
 const localContract = new Contract<EquiluxPrivateState, typeof witnesses>(witnesses);
-async function dryRun(circuit: "enroll" | "attest" | "publishReport" | "checkReceipt", ps: EquiluxPrivateState, ...args: unknown[]) {
+type CircuitName = "declareRoster" | "enroll" | "attest" | "publishReport" | "checkReceipt";
+async function dryRun(circuit: CircuitName, ps: EquiluxPrivateState, ...args: unknown[]) {
   const cs = await mn!.providers.publicDataProvider.queryContractState(contractAddress!);
   if (!cs) throw new Error("contract state not found via indexer");
   const ctx = createCircuitContext(contractAddress!, mn!.providers.walletProvider.getCoinPublicKey(), cs as any, ps);
-  const fn = (localContract.impureCircuits as any)[circuit];
-  return fn(ctx, ...args); // throws `failed assert: …` on a rejected witness
+  return (localContract.impureCircuits as any)[circuit](ctx, ...args); // throws `failed assert: …`
 }
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -42,24 +54,18 @@ let mn: Awaited<ReturnType<typeof connectMidnight>> | null = null;
 let deployed: any = null;
 let contractAddress: string | null = null;
 let employerSk: Uint8Array | null = null;
+let providerSk: Uint8Array | null = null;
 let ready = false;
 
-const trueGapBps = (rows: { salary: bigint; gender: bigint }[]) => {
-  const w = rows.filter((r) => r.gender === 0n), m = rows.filter((r) => r.gender === 1n);
-  const sumW = w.reduce((a, r) => a + r.salary, 0n), sumM = m.reduce((a, r) => a + r.salary, 0n);
-  const cntW = BigInt(w.length), cntM = BigInt(m.length);
-  const favorsMen = sumM * cntW >= sumW * cntM;
-  const diff = favorsMen ? sumM * cntW - sumW * cntM : sumW * cntM - sumM * cntW;
-  const base = favorsMen ? sumM * cntW : sumW * cntM;
-  return base === 0n ? 0n : (diff * 10000n) / base;
-};
+const baseState = () => initialPrivateState(employerSk!, providerSk!);
 
 const circuitMessage = (e: unknown): string => {
   const m = e instanceof Error ? e.message : String(e);
-  // compact-runtime wraps assertion failures; surface the human part
   const idx = m.indexOf("failed assert:");
   return idx >= 0 ? m.slice(idx + "failed assert:".length).trim() : m;
 };
+
+const n = (x: unknown) => Number(x);
 
 async function readLedger() {
   if (!mn || !contractAddress) return null;
@@ -68,31 +74,46 @@ async function readLedger() {
   const rep = l.latestReport;
   return {
     contractAddress,
-    enrolled: Number(l.enrolled),
-    nullifiers: Number(l.nullifiers.size()),
-    attested: Number(l.attested.size()),
-    round: Number(l.round),
+    rosterDeclared: Boolean(l.rosterDeclared),
+    declaredHeadcount: n(l.declaredHeadcount),
+    enrolled: n(l.enrolled),
+    nullifiers: n(l.nullifiers.size()),
+    attested: n(l.attested.size()),
+    round: n(l.round),
     employerPk: hex(l.employerPk),
+    providerPk: hex(l.providerPk),
     latestReport: rep.is_some
       ? {
-          round: Number(rep.value.round),
-          headcountWomen: Number(rep.value.headcountWomen),
-          headcountMen: Number(rep.value.headcountMen),
-          meanGapBps: Number(rep.value.meanGapBps),
+          round: n(rep.value.round),
+          headcountWomen: n(rep.value.headcountWomen),
+          headcountMen: n(rep.value.headcountMen),
+          meanGapBps: n(rep.value.meanGapBps),
           gapFavorsMen: Boolean(rep.value.gapFavorsMen),
           meanGapAtOrAbove5pct: Boolean(rep.value.meanGapAtOrAbove5pct),
+          medianGapBps: n(rep.value.medianGapBps),
+          medianFavorsMen: Boolean(rep.value.medianFavorsMen),
+          categories: (rep.value.categories as any[]).map((c) => ({
+            headcountWomen: n(c.headcountWomen),
+            headcountMen: n(c.headcountMen),
+            disclosed: Boolean(c.disclosed),
+            meanWomen: n(c.meanWomen),
+            meanMen: n(c.meanMen),
+            meanGapBps: n(c.meanGapBps),
+            gapFavorsMen: Boolean(c.gapFavorsMen),
+            gapAtOrAbove5pct: Boolean(c.gapAtOrAbove5pct),
+          })),
         }
       : null,
   };
 }
 
-function runJob(kind: string, fn: (j: Job) => Promise<unknown>): Job {
+function runJob(kind: string, fn: (j: Job & { jlog: (m: string) => void }) => Promise<unknown>): Job {
   const job: Job = { id: Math.random().toString(36).slice(2, 10), kind, status: "running", startedAt: Date.now(), log: [] };
   jobs.set(job.id, job);
   const jlog = (m: string) => { job.log.push(m); log(`[${kind} ${job.id}] ${m}`); };
   (async () => {
     try {
-      job.result = await fn(Object.assign(job, { jlog }) as Job & { jlog: typeof jlog });
+      job.result = await fn(Object.assign(job, { jlog }));
       job.status = "done";
       jlog("done");
     } catch (e) {
@@ -105,7 +126,23 @@ function runJob(kind: string, fn: (j: Job) => Promise<unknown>): Job {
 }
 
 const requireReady = () => { if (!ready || !mn) throw new Error("Midnight connection not ready yet"); };
-const requireDeployed = () => { requireReady(); if (!deployed || !employerSk) throw new Error("No contract deployed yet — deploy from the Employer tab"); };
+const requireDeployed = () => { requireReady(); if (!deployed) throw new Error("No contract deployed yet — deploy from the Employer tab"); };
+const isHex32 = (s: string) => /^[0-9a-f]{64}$/.test(s);
+
+type Row = { salary: number | string; gender: number; category?: number; secret: string };
+const toRecord = (r: Row): PayRecord => ({
+  salary: BigInt(r.salary), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), sk: bytes32(String(r.secret)),
+});
+
+/** Adversarial edits used by the workspace's "try to cheat" toggles. */
+function applyTamper(claim: ReportClaim, tamper: any): ReportClaim {
+  if (!tamper) return claim;
+  const c = { ...claim, catMeanWomen: [...claim.catMeanWomen], catMeanMen: [...claim.catMeanMen], catGapBps: [...claim.catGapBps] };
+  if (tamper.meanGapBps != null) c.meanGapBps = BigInt(tamper.meanGapBps);
+  if (tamper.medianWomen != null) c.medianWomen = BigInt(tamper.medianWomen);
+  if (tamper.categoryGap != null) c.catGapBps[Number(tamper.categoryGap.category)] = BigInt(tamper.categoryGap.bps);
+  return c;
+}
 
 async function handle(method: string, url: URL, body: any): Promise<{ status: number; data: unknown }> {
   const p = url.pathname;
@@ -113,47 +150,63 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
   if (method === "GET" && p === "/api/status") {
     return { status: 200, data: { ready, network: "undeployed (local Midnight standalone)", contractAddress, startupLog: startupLog.slice(-8), ledger: ready && contractAddress ? await readLedger() : null } };
   }
-  if (method === "GET" && p === "/api/ledger") {
-    requireDeployed();
-    return { status: 200, data: await readLedger() };
-  }
+  if (method === "GET" && p === "/api/ledger") { requireDeployed(); return { status: 200, data: await readLedger() }; }
   if (method === "GET" && p.startsWith("/api/jobs/")) {
     const j = jobs.get(p.slice("/api/jobs/".length));
     return j ? { status: 200, data: j } : { status: 404, data: { error: "no such job" } };
   }
 
+  // HRIS export → payroll rows. Pure parsing; nothing touches the chain.
+  if (method === "POST" && p === "/api/import/csv") {
+    return { status: 200, data: parsePayrollCsv(String(body?.csv ?? "")) };
+  }
+
   if (method === "POST" && p === "/api/deploy") {
     requireReady();
     if (deployed) return { status: 200, data: { contractAddress, alreadyDeployed: true } };
-    const secret = String(body?.employerSecret ?? "acme:employer-root-secret");
-    const job = runJob("deploy", async (j: any) => {
-      const sk = bytes32(secret);
-      const pk = pureCircuits.publicKey(sk);
-      j.jlog(`deploying with employerPk ${hex(pk).slice(0, 12)}… (proving)`);
-      const d: any = await mn!.deploy(pk, initialPrivateState(sk));
-      deployed = d; employerSk = sk;
+    const eSecret = String(body?.employerSecret ?? "acme:employer-root-secret");
+    const pSecret = String(body?.providerSecret ?? "payroll-provider:personio");
+    const job = runJob("deploy", async (j) => {
+      const eSk = bytes32(eSecret), pSk = bytes32(pSecret);
+      const ePk = pureCircuits.publicKey(eSk), pPk = pureCircuits.publicKey(pSk);
+      j.jlog(`deploying — employer ${hex(ePk).slice(0, 10)}…, payroll provider ${hex(pPk).slice(0, 10)}… (proving)`);
+      const d: any = await mn!.deploy(ePk, pPk, initialPrivateState(eSk, pSk));
+      deployed = d; employerSk = eSk; providerSk = pSk;
       contractAddress = d.deployTxData.public.contractAddress;
       j.jlog(`deployed at ${contractAddress} (block ${d.deployTxData.public.blockHeight})`);
-      return { contractAddress, txId: d.deployTxData.public.txId, blockHeight: Number(d.deployTxData.public.blockHeight), employerPk: hex(pk) };
+      return { contractAddress, txId: d.deployTxData.public.txId, blockHeight: n(d.deployTxData.public.blockHeight) };
+    });
+    return { status: 202, data: { jobId: job.id } };
+  }
+
+  if (method === "POST" && p === "/api/roster") {
+    requireDeployed();
+    const headcount = BigInt(body?.headcount ?? 0);
+    const job = runJob("roster", async (j) => {
+      await dryRun("declareRoster", baseState(), headcount);
+      await mn!.setPrivateState(baseState());
+      j.jlog(`local execution ok — proving declareRoster(${headcount})…`);
+      const res: any = await deployed.callTx.declareRoster(headcount);
+      j.jlog(`roster of ${headcount} declared by the payroll provider (block ${res.public.blockHeight})`);
+      return { headcount: n(headcount), txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
   }
 
   if (method === "POST" && p === "/api/enroll") {
     requireDeployed();
-    const salary = BigInt(body?.salary ?? 0), gender = BigInt(body?.gender ?? 0);
     const secret = String(body?.secret ?? "");
     if (!secret) return { status: 400, data: { error: "secret required" } };
-    if (salary <= 0n) return { status: 400, data: { error: "salary must be positive" } };
-    const job = runJob("enroll", async (j: any) => {
-      const ps: EquiluxPrivateState = { ...initialPrivateState(employerSk!), employeeSecret: bytes32(secret), employeeRecord: [salary, gender] };
+    const r = toRecord({ salary: body?.salary ?? 0, gender: body?.gender ?? 0, category: body?.category ?? 0, secret });
+    const job = runJob("enroll", async (j) => {
+      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category] };
       await dryRun("enroll", ps);
       await mn!.setPrivateState(ps);
       j.jlog("local execution ok — proving enroll…");
       const res: any = await deployed.callTx.enroll();
       const cm = hex(res.private.result);
       j.jlog(`enrolled — commitment ${cm.slice(0, 12)}… (block ${res.public.blockHeight})`);
-      return { commitment: cm, txId: res.public.txId, blockHeight: Number(res.public.blockHeight) };
+      return { commitment: cm, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
   }
@@ -161,33 +214,33 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
   if (method === "POST" && p === "/api/attest") {
     requireDeployed();
     const cm = String(body?.commitment ?? "");
-    if (!/^[0-9a-f]{64}$/.test(cm)) return { status: 400, data: { error: "commitment must be 32-byte hex" } };
-    const job = runJob("attest", async (j: any) => {
-      await dryRun("attest", initialPrivateState(employerSk!), fromHex(cm));
-      await mn!.setPrivateState(initialPrivateState(employerSk!));
-      j.jlog("local execution ok — proving attest…");
+    if (!isHex32(cm)) return { status: 400, data: { error: "commitment must be 32-byte hex" } };
+    const job = runJob("attest", async (j) => {
+      await dryRun("attest", baseState(), fromHex(cm));
+      await mn!.setPrivateState(baseState());
+      j.jlog("local execution ok — proving attest (payroll provider)…");
       const res: any = await deployed.callTx.attest(fromHex(cm));
-      j.jlog(`attested (block ${res.public.blockHeight})`);
-      return { commitment: cm, txId: res.public.txId, blockHeight: Number(res.public.blockHeight) };
+      j.jlog(`attested by the payroll provider (block ${res.public.blockHeight})`);
+      return { commitment: cm, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
   }
 
   if (method === "POST" && p === "/api/publish") {
     requireDeployed();
-    const rows = (body?.payroll ?? []) as { salary: number | string; gender: number; secret: string }[];
+    const rows = (body?.payroll ?? []) as Row[];
     if (rows.length === 0 || rows.length > 16) return { status: 400, data: { error: "payroll must have 1–16 records" } };
-    const recs = rows.map((r) => ({ salary: BigInt(r.salary), gender: BigInt(r.gender), sk: bytes32(String(r.secret)), active: true }));
-    const claim = body?.claimedGapBps != null ? BigInt(body.claimedGapBps) : trueGapBps(recs);
-    const job = runJob("publish", async (j: any) => {
-      const ps: EquiluxPrivateState = { ...initialPrivateState(employerSk!), payroll: padPayroll(recs), claimedGapBps: claim };
-      j.jlog(`checking witness against on-chain state (${recs.length} record(s), claim ${Number(claim) / 100}%)…`);
+    const recs = rows.map(toRecord);
+    const claim = applyTamper(buildClaim(recs), body?.tamper);
+    const job = runJob("publish", async (j) => {
+      const ps: EquiluxPrivateState = { ...baseState(), payroll: padRecords(recs), claim };
+      j.jlog(`checking the witness against on-chain state (${recs.length} record(s), mean gap claim ${n(claim.meanGapBps) / 100}%)…`);
       await dryRun("publishReport", ps);
       await mn!.setPrivateState(ps);
       j.jlog("local execution ok — proving publishReport…");
       const res: any = await deployed.callTx.publishReport();
       j.jlog(`published (block ${res.public.blockHeight})`);
-      return { txId: res.public.txId, blockHeight: Number(res.public.blockHeight), claimedGapBps: Number(claim), ledger: await readLedger() };
+      return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
     });
     return { status: 202, data: { jobId: job.id } };
   }
@@ -195,18 +248,18 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
   if (method === "POST" && p === "/api/receipt") {
     requireDeployed();
     const cm = String(body?.commitment ?? "");
-    if (!/^[0-9a-f]{64}$/.test(cm)) return { status: 400, data: { error: "commitment must be 32-byte hex" } };
-    const job = runJob("receipt", async (j: any) => {
+    if (!isHex32(cm)) return { status: 400, data: { error: "commitment must be 32-byte hex" } };
+    const job = runJob("receipt", async (j) => {
       const l: any = await mn!.readLedger(contractAddress!);
       const path = l?.commitments.findPathForLeaf(fromHex(cm));
       if (!path) throw new Error("commitment is not in the on-chain tree");
-      await dryRun("checkReceipt", initialPrivateState(employerSk!), path);
-      await mn!.setPrivateState(initialPrivateState(employerSk!));
+      await dryRun("checkReceipt", baseState(), path);
+      await mn!.setPrivateState(baseState());
       j.jlog("local execution ok — proving checkReceipt (Merkle inclusion)…");
       const res: any = await deployed.callTx.checkReceipt(path);
       const ok = Boolean(res.private.result);
       j.jlog(`receipt verified on-chain: ${ok} (block ${res.public.blockHeight})`);
-      return { included: ok, txId: res.public.txId, blockHeight: Number(res.public.blockHeight) };
+      return { included: ok, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
   }

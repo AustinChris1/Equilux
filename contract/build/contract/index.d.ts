@@ -1,27 +1,56 @@
 import type * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
 
+export type CategoryStats = { headcountWomen: bigint;
+                              headcountMen: bigint;
+                              disclosed: boolean;
+                              meanWomen: bigint;
+                              meanMen: bigint;
+                              meanGapBps: bigint;
+                              gapFavorsMen: boolean;
+                              gapAtOrAbove5pct: boolean
+                            };
+
 export type PayReport = { round: bigint;
                           headcountWomen: bigint;
                           headcountMen: bigint;
                           meanGapBps: bigint;
                           gapFavorsMen: boolean;
-                          meanGapAtOrAbove5pct: boolean
+                          meanGapAtOrAbove5pct: boolean;
+                          medianGapBps: bigint;
+                          medianFavorsMen: boolean;
+                          categories: CategoryStats[]
                         };
+
+export type EnrolledRecord = { salary: bigint;
+                               gender: bigint;
+                               category: bigint;
+                               sk: Uint8Array;
+                               active: boolean
+                             };
+
+export type ReportClaim = { meanGapBps: bigint;
+                            medianWomen: bigint;
+                            medianMen: bigint;
+                            medianGapBps: bigint;
+                            catMeanWomen: bigint[];
+                            catMeanMen: bigint[];
+                            catGapBps: bigint[]
+                          };
 
 export type Witnesses<PS> = {
   employeeSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   employeeRecord(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, [bigint,
+                                                                              bigint,
                                                                               bigint]];
   employerSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
-  payrollRecords(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, { salary: bigint,
-                                                                               gender: bigint,
-                                                                               sk: Uint8Array,
-                                                                               active: boolean
-                                                                             }[]];
-  claimedGapBps(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, bigint];
+  providerSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
+  payrollRecords(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, EnrolledRecord[]];
+  reportClaim(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, ReportClaim];
 }
 
 export type ImpureCircuits<PS> = {
+  declareRoster(context: __compactRuntime.CircuitContext<PS>,
+                headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   enroll(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, Uint8Array>;
   attest(context: __compactRuntime.CircuitContext<PS>, cm_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkReceipt(context: __compactRuntime.CircuitContext<PS>,
@@ -33,6 +62,8 @@ export type ImpureCircuits<PS> = {
 }
 
 export type ProvableCircuits<PS> = {
+  declareRoster(context: __compactRuntime.CircuitContext<PS>,
+                headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   enroll(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, Uint8Array>;
   attest(context: __compactRuntime.CircuitContext<PS>, cm_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkReceipt(context: __compactRuntime.CircuitContext<PS>,
@@ -49,6 +80,8 @@ export type PureCircuits = {
 
 export type Circuits<PS> = {
   publicKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  declareRoster(context: __compactRuntime.CircuitContext<PS>,
+                headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   enroll(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, Uint8Array>;
   attest(context: __compactRuntime.CircuitContext<PS>, cm_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkReceipt(context: __compactRuntime.CircuitContext<PS>,
@@ -61,7 +94,10 @@ export type Circuits<PS> = {
 
 export type Ledger = {
   readonly employerPk: Uint8Array;
+  readonly providerPk: Uint8Array;
   readonly round: bigint;
+  readonly rosterDeclared: boolean;
+  readonly declaredHeadcount: bigint;
   readonly enrolled: bigint;
   commitments: {
     isFull(): boolean;
@@ -97,7 +133,8 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>,
-               employerPkInit_0: Uint8Array): __compactRuntime.ConstructorResult<PS>;
+               employerPkInit_0: Uint8Array,
+               providerPkInit_0: Uint8Array): __compactRuntime.ConstructorResult<PS>;
 }
 
 export declare function ledger(state: __compactRuntime.StateValue | __compactRuntime.ChargedState): Ledger;

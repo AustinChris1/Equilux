@@ -1,18 +1,25 @@
 /**
- * Private-state container and witness implementations for the Equilux
- * contract, shared by the deployment CLI. Everything in here stays local:
- * witnesses feed circuit executions and never touch the public ledger.
+ * Private-state container and witness implementations for Equilux v2, shared
+ * by the API server and the CLI demo. Everything in here stays local: witnesses
+ * feed circuit executions and never touch the public ledger.
+ *
+ * In production each party runs its own prover with only its own secret — the
+ * employee holds `employeeSecret`, the payroll provider `providerSecret`, the
+ * employer `employerSecret` and the payroll. The local demo API plays all three
+ * roles from one process, so one container holds every field.
  */
 import type { Witnesses } from "../build/contract/index.js";
+import { buildClaim, padRecords, type ReportClaim } from "./claims.js";
 
-export type PayrollEntry = { salary: bigint; gender: bigint; sk: Uint8Array; active: boolean };
+export type PayrollSlot = ReturnType<typeof padRecords>[number];
 
 export interface EquiluxPrivateState {
   employeeSecret: Uint8Array;
-  employeeRecord: [bigint, bigint]; // salary, gender (0 = woman, 1 = man)
+  employeeRecord: [bigint, bigint, bigint]; // salary, gender (0 = woman, 1 = man), category 0..3
   employerSecret: Uint8Array;
-  payroll: PayrollEntry[]; // exactly 16 slots (Vector<16>)
-  claimedGapBps: bigint;
+  providerSecret: Uint8Array;
+  payroll: PayrollSlot[]; // exactly 16 slots (Vector<16>)
+  claim: ReportClaim;
 }
 
 export const bytes32 = (seed: string): Uint8Array => {
@@ -21,30 +28,22 @@ export const bytes32 = (seed: string): Uint8Array => {
   return b;
 };
 
-export const EMPTY_SLOT: PayrollEntry = {
-  salary: 0n,
-  gender: 0n,
-  sk: new Uint8Array(32),
-  active: false,
-};
-
-export const padPayroll = (records: PayrollEntry[]): PayrollEntry[] => [
-  ...records,
-  ...Array(16 - records.length).fill(EMPTY_SLOT),
-];
-
-export const initialPrivateState = (employerSecret: Uint8Array): EquiluxPrivateState => ({
+export const initialPrivateState = (employerSecret: Uint8Array, providerSecret: Uint8Array): EquiluxPrivateState => ({
   employeeSecret: new Uint8Array(32),
-  employeeRecord: [0n, 0n],
+  employeeRecord: [0n, 0n, 0n],
   employerSecret,
-  payroll: padPayroll([]),
-  claimedGapBps: 0n,
+  providerSecret,
+  payroll: padRecords([]),
+  claim: buildClaim([]),
 });
 
 export const witnesses: Witnesses<EquiluxPrivateState> = {
   employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
   employeeRecord: ({ privateState }) => [privateState, privateState.employeeRecord],
   employerSecret: ({ privateState }) => [privateState, privateState.employerSecret],
+  providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
   payrollRecords: ({ privateState }) => [privateState, privateState.payroll],
-  claimedGapBps: ({ privateState }) => [privateState, privateState.claimedGapBps],
+  reportClaim: ({ privateState }) => [privateState, privateState.claim],
 };
+
+export { padRecords, buildClaim };

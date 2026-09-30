@@ -3,66 +3,111 @@ pragma language_version >= 0.16;
 import CompactStandardLibrary;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Equilux — employee-verifiable pay-equity reporting.
+// Equilux v2 — employee-verifiable pay-equity reporting.
+//
+// Three parties, three keys:
+//   EMPLOYEE  — seals their own pay record (salary, gender marker, worker
+//               category) as a commitment + nullifier. Holds a private secret.
+//   PROVIDER  — the payroll provider / HRIS (Personio, DATEV, Workday …).
+//               Declares the roster headcount from payroll BEFORE enrollment
+//               and attests each record it recognises. The employer can no
+//               longer self-attest its own data.
+//   EMPLOYER  — publishes the mandated report, proven over the full set.
 //
 // Dual-ledger layout:
-//   PUBLIC  — employer key hash, enrollment commitments (Merkle tree),
-//             nullifier set, attested set, and the published PayReport.
-//   PRIVATE — every salary, gender marker and employee secret. They enter
-//             circuits only as witness data and never reach the ledger.
+//   PUBLIC  — the two role keys (hashes), the declared headcount, commitment
+//             Merkle tree, nullifiers, attestations, and the proven PayReport.
+//   PRIVATE — every salary, gender marker, category and secret. They enter
+//             circuits only as witnesses and never reach the ledger.
 //
-// v0 scope (Wave 1): single worker category, mean-gap statistic verified
-// without division via cross-multiplied bounds. Median/quartiles and
-// category partitions land in Wave 2.
+// What publishReport proves (Directive (EU) 2023/970, Art. 9 subset):
+//   • company-wide MEAN gap        — cross-multiplied bounds, no division
+//   • company-wide MEDIAN gap      — lower median verified by rank counting
+//   • per-worker-category mean gap — Art. 10's unit of assessment
+//   • per-category, per-gender mean pay — Art. 7's employee right, published
+//     ONLY when both cohorts hold ≥ 3 people (k-anonymity), else suppressed.
+//
+// Sized instance: 16-record witness, 32 commitment slots, 4 categories.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Maximum payroll size this circuit instance supports (tree depth 5 = 32 leaves).
-// A production deployment parameterizes this per company size band.
+export struct CategoryStats {
+  headcountWomen: Uint<8>;
+  headcountMen: Uint<8>;
+  // true only when BOTH cohorts have ≥ 3 people; otherwise every pay figure
+  // below is 0 so no individual salary can be inferred from a small group.
+  disclosed: Boolean;
+  meanWomen: Uint<32>;
+  meanMen: Uint<32>;
+  meanGapBps: Uint<16>;
+  gapFavorsMen: Boolean;
+  // Category mean gap ≥ 5%. Article 10 triggers a joint pay assessment when
+  // such a gap is ALSO unjustified by objective, gender-neutral criteria —
+  // justification is a human judgement the circuit does not make.
+  gapAtOrAbove5pct: Boolean;
+}
 
 export struct PayReport {
   round: Uint<32>;
-  headcountWomen: Uint<16>;
-  headcountMen: Uint<16>;
-  meanGapBps: Uint<16>;        // verified basis points, |gap| relative to men's mean
+  headcountWomen: Uint<8>;
+  headcountMen: Uint<8>;
+  meanGapBps: Uint<16>;
   gapFavorsMen: Boolean;
-  // True when the COMPANY-WIDE MEAN gap is >= 500 bps. NOTE: this is not yet the
-  // Directive art. 10 trigger, which requires an *unjustified* gap >= 5% within a
-  // *category of workers*. Worker categories land in Wave 2; until then this is a
-  // headline indicator only, deliberately named for what it actually measures.
   meanGapAtOrAbove5pct: Boolean;
+  medianGapBps: Uint<16>;
+  medianFavorsMen: Boolean;
+  categories: Vector<4, CategoryStats>;
 }
 
 // One private payroll record as supplied by the reporting witness.
-struct EnrolledRecord {
-  salary: Uint<32>;   // annualized, minor units
-  gender: Uint<1>;    // 0 = woman, 1 = man (v0: binary reporting categories per directive annex)
+export struct EnrolledRecord {
+  salary: Uint<32>;   // annualized, whole currency units
+  gender: Uint<1>;    // 0 = woman, 1 = man (reporting categories per the Directive's annex)
+  category: Uint<2>;  // worker category 0..3 (work of equal value)
   sk: Bytes<32>;      // employee enrollment secret
   active: Boolean;    // padding flag — inactive slots are ignored
+}
+
+// The figures the employer claims. Every one is verified, none is trusted.
+export struct ReportClaim {
+  meanGapBps: Uint<16>;
+  medianWomen: Uint<32>;
+  medianMen: Uint<32>;
+  medianGapBps: Uint<16>;
+  catMeanWomen: Vector<4, Uint<32>>;
+  catMeanMen: Vector<4, Uint<32>>;
+  catGapBps: Vector<4, Uint<16>>;
 }
 
 // ── public state ─────────────────────────────────────────────────────────────
 
 export sealed ledger employerPk: Bytes<32>;
+export sealed ledger providerPk: Bytes<32>;
 export ledger round: Counter;
+export ledger rosterDeclared: Boolean;
+export ledger declaredHeadcount: Uint<16>;
 export ledger enrolled: Counter;
 export ledger commitments: MerkleTree<5, Bytes<32>>;
 export ledger nullifiers: Set<Bytes<32>>;
 export ledger attested: Set<Bytes<32>>;
 export ledger latestReport: Maybe<PayReport>;
 
-constructor(employerPkInit: Bytes<32>) {
+constructor(employerPkInit: Bytes<32>, providerPkInit: Bytes<32>) {
   employerPk = disclose(employerPkInit);
+  providerPk = disclose(providerPkInit);
   round.increment(1);
+  rosterDeclared = false;
+  declaredHeadcount = 0;
   latestReport = none<PayReport>();
 }
 
 // ── witnesses (private state, provided by the local TypeScript driver) ───────
 
 witness employeeSecret(): Bytes<32>;
-witness employeeRecord(): [Uint<32>, Uint<1>];          // salary, gender
+witness employeeRecord(): [Uint<32>, Uint<1>, Uint<2>];   // salary, gender, category
 witness employerSecret(): Bytes<32>;
+witness providerSecret(): Bytes<32>;
 witness payrollRecords(): Vector<16, EnrolledRecord>;
-witness claimedGapBps(): Uint<16>;
+witness reportClaim(): ReportClaim;
 
 // ── hashing helpers ──────────────────────────────────────────────────────────
 
@@ -70,11 +115,11 @@ export circuit publicKey(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "equilux:pk:"), sk]);
 }
 
-circuit recordCommitment(salary: Uint<32>, gender: Uint<1>, sk: Bytes<32>, r: Field): Bytes<32> {
+circuit recordCommitment(salary: Uint<32>, gender: Uint<1>, category: Uint<2>, sk: Bytes<32>, r: Field): Bytes<32> {
   return persistentHash<Vector<4, Bytes<32>>>(
-    [pad(32, "equilux:rec:"),
+    [pad(32, "equilux:rec:v2:"),
      r as Bytes<32>,
-     ((salary as Field) * 2 + (gender as Field)) as Bytes<32>,
+     ((salary as Field) * 8 + (category as Field) * 2 + (gender as Field)) as Bytes<32>,
      sk]);
 }
 
@@ -82,38 +127,56 @@ circuit enrollmentNullifier(sk: Bytes<32>, r: Field): Bytes<32> {
   return persistentHash<Vector<3, Bytes<32>>>([pad(32, "equilux:nul:"), r as Bytes<32>, sk]);
 }
 
-// ── circuits ─────────────────────────────────────────────────────────────────
+// ── roster, enrollment, attestation ──────────────────────────────────────────
+
+// The payroll provider declares, from its own payroll system, how many people
+// are in scope — before anyone enrolls. The report must later cover exactly
+// this many records, so nobody can be left out by simply never enrolling.
+export circuit declareRoster(headcount: Uint<16>): [] {
+  assert(publicKey(providerSecret()) == providerPk, "not the payroll provider");
+  assert(!rosterDeclared, "roster already declared this round");
+  assert(headcount > 0, "roster must not be empty");
+  assert(headcount <= 16, "roster exceeds this instance's 16-record size");
+  rosterDeclared = true;
+  declaredHeadcount = disclose(headcount);
+}
 
 // An employee seals their pay record into the reporting set.
 // Public effects: one opaque commitment, one opaque nullifier. Nothing else.
 export circuit enroll(): Bytes<32> {
+  assert(rosterDeclared, "roster not yet declared by the payroll provider");
+  assert(((enrolled as Field) as Uint<16>) < declaredHeadcount, "roster is full — every declared employee has enrolled");
+
   const sk = employeeSecret();
-  const [salary, gender] = employeeRecord();
+  const [salary, gender, category] = employeeRecord();
+  assert(salary > 0, "salary must be positive");
   const r = round as Field;
 
   const nul = enrollmentNullifier(sk, r);
   assert(!nullifiers.member(disclose(nul)), "already enrolled this round");
 
-  const cm = recordCommitment(salary, gender, sk, r);
+  const cm = recordCommitment(salary, gender, category, sk, r);
   nullifiers.insert(disclose(nul));
   commitments.insert(disclose(cm));
   enrolled.increment(1);
   return disclose(cm);
 }
 
-// The employer co-signs a commitment it recognizes from payroll.
-// Only attested records may be counted by publishReport.
+// The payroll provider co-signs a commitment it recognises from payroll.
+// Only provider-attested records may be counted by publishReport.
 export circuit attest(cm: Bytes<32>): [] {
-  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(publicKey(providerSecret()) == providerPk, "not the payroll provider");
   assert(!attested.member(disclose(cm)), "already attested");
   attested.insert(disclose(cm));
 }
 
-// An employee (or auditor they delegate to) proves a commitment is inside
+// An employee (or an auditor they delegate to) proves a commitment is inside
 // the reporting set without revealing which leaf it is.
 export circuit checkReceipt(path: MerkleTreePath<5, Bytes<32>>): Boolean {
   return commitments.checkRoot(disclose(merkleTreePathRoot<5, Bytes<32>>(path)));
 }
+
+// ── per-record selectors ─────────────────────────────────────────────────────
 
 circuit womenSalary(rec: EnrolledRecord): Uint<32> {
   if (rec.active && rec.gender == 0) return rec.salary; else return 0;
@@ -130,18 +193,88 @@ circuit menCount(rec: EnrolledRecord): Uint<1> {
 circuit activeCount(rec: EnrolledRecord): Uint<1> {
   if (rec.active) return 1; else return 0;
 }
+circuit inCategory(rec: EnrolledRecord, c: Uint<2>, g: Uint<1>): Uint<1> {
+  if (rec.active && rec.category == c && rec.gender == g) return 1; else return 0;
+}
+circuit salaryInCategory(rec: EnrolledRecord, c: Uint<2>, g: Uint<1>): Uint<32> {
+  if (rec.active && rec.category == c && rec.gender == g) return rec.salary; else return 0;
+}
+circuit strictlyBelow(rec: EnrolledRecord, g: Uint<1>, m: Uint<32>): Uint<1> {
+  if (rec.active && rec.gender == g && rec.salary < m) return 1; else return 0;
+}
+circuit atOrBelow(rec: EnrolledRecord, g: Uint<1>, m: Uint<32>): Uint<1> {
+  if (rec.active && rec.gender == g && rec.salary <= m) return 1; else return 0;
+}
+
+// ── verified statistics ──────────────────────────────────────────────────────
+
+// Verifies that `m` is the LOWER median of gender `g`'s salaries:
+//   fewer than half the cohort is strictly below m, and at least half is ≤ m.
+// For a sorted cohort x[0..n-1] this pins m = x[(n-1)/2] exactly — no sort
+// needed in-circuit, and a wrong value fails one of the two counts.
+circuit verifyMedian(recs: Vector<16, EnrolledRecord>, g: Uint<1>, m: Uint<32>, n: Uint<8>): [] {
+  const below = fold((acc, rec) => (acc + strictlyBelow(rec, g, m)) as Uint<8>, 0 as Uint<8>, recs);
+  const upTo = fold((acc, rec) => (acc + atOrBelow(rec, g, m)) as Uint<8>, 0 as Uint<8>, recs);
+  assert(below * 2 < n, "claimed median is too high");
+  assert(upTo * 2 >= n, "claimed median is too low");
+}
+
+// Verifies a claimed gap in basis points between two group figures given as
+// (sum, count) pairs, without division:  gap = |a/na − b/nb| / max-side mean.
+// Returns whether the gap favors the men's side (m).
+circuit verifyGap(sumW: Uint<40>, nW: Uint<8>, sumM: Uint<40>, nM: Uint<8>, g: Uint<16>): Boolean {
+  const favorsMen = sumM * nW >= sumW * nM;
+  const diff = (favorsMen ? sumM * nW - sumW * nM : sumW * nM - sumM * nW) as Uint<48>;
+  const base = (favorsMen ? sumM * nW : sumW * nM) as Uint<48>;
+  assert(g * base <= diff * 10000, "claimed gap too high");
+  assert(diff * 10000 < (g + 1) * base, "claimed gap too low");
+  return favorsMen;
+}
+
+// Verifies a claimed integer mean: mean·n ≤ sum < (mean+1)·n.
+circuit verifyMean(sum: Uint<40>, n: Uint<8>, mean: Uint<32>): [] {
+  assert(mean * n <= sum, "claimed category mean too high");
+  assert(sum < (mean + 1) * n, "claimed category mean too low");
+}
+
+circuit categoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, meanW: Uint<32>, meanM: Uint<32>, g: Uint<16>): CategoryStats {
+  const nW = fold((acc, rec) => (acc + inCategory(rec, c, 0)) as Uint<8>, 0 as Uint<8>, recs);
+  const nM = fold((acc, rec) => (acc + inCategory(rec, c, 1)) as Uint<8>, 0 as Uint<8>, recs);
+  const sW = fold((acc, rec) => (acc + salaryInCategory(rec, c, 0)) as Uint<40>, 0 as Uint<40>, recs);
+  const sM = fold((acc, rec) => (acc + salaryInCategory(rec, c, 1)) as Uint<40>, 0 as Uint<40>, recs);
+
+  if (nW >= 3 && nM >= 3) {
+    verifyMean(sW, nW, meanW);
+    verifyMean(sM, nM, meanM);
+    const favorsMen = verifyGap(sW, nW, sM, nM, g);
+    return CategoryStats {
+      headcountWomen: nW, headcountMen: nM, disclosed: true,
+      meanWomen: meanW, meanMen: meanM,
+      meanGapBps: g, gapFavorsMen: favorsMen, gapAtOrAbove5pct: g >= 500
+    };
+  } else {
+    // suppressed: small cohort — publish headcounts only, no pay figures
+    return CategoryStats {
+      headcountWomen: nW, headcountMen: nM, disclosed: false,
+      meanWomen: 0, meanMen: 0, meanGapBps: 0, gapFavorsMen: false, gapAtOrAbove5pct: false
+    };
+  }
+}
+
+// ── the report ───────────────────────────────────────────────────────────────
 
 // The employer publishes the mandated report. The circuit proves:
-//   completeness — the witness payroll is exactly the enrolled+attested set;
-//   integrity    — every record re-derives a commitment in both sets;
-//   distinctness — no record is counted twice;
-//   correctness  — the disclosed gap figure is the true mean gap, verified
-//                  by cross-multiplication so no division happens in-circuit.
-// Disclosed: headcounts, gap in basis points, direction, threshold flag.
+//   roster        — the set matches the payroll provider's declared headcount;
+//   completeness  — the witness is exactly the enrolled + provider-attested set;
+//   integrity     — every record re-derives a commitment in both sets;
+//   distinctness  — no record is counted twice;
+//   correctness   — every disclosed figure is verified, none is trusted.
 export circuit publishReport(): PayReport {
   assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(rosterDeclared, "roster not yet declared by the payroll provider");
 
   const recs = payrollRecords();
+  const claim = reportClaim();
   const r = round as Field;
 
   // integrity + completeness: every active record is enrolled and attested.
@@ -149,8 +282,8 @@ export circuit publishReport(): PayReport {
   // to the prover and the active count is already public via `enrolled`.
   for (const i of 0..16) {
     if (disclose(recs[i].active)) {
-      const cm = recordCommitment(recs[i].salary, recs[i].gender, recs[i].sk, r);
-      assert(attested.member(disclose(cm)), "record not attested by employer");
+      const cm = recordCommitment(recs[i].salary, recs[i].gender, recs[i].category, recs[i].sk, r);
+      assert(attested.member(disclose(cm)), "record not attested by the payroll provider");
       assert(nullifiers.member(disclose(enrollmentNullifier(recs[i].sk, r))), "record not enrolled");
     }
   }
@@ -166,6 +299,7 @@ export circuit publishReport(): PayReport {
 
   const nActive = fold((acc, rec) => (acc + activeCount(rec)) as Uint<16>, 0 as Uint<16>, recs);
   assert(nActive as Field == enrolled as Field, "payroll witness must cover every enrolled employee");
+  assert(nActive == declaredHeadcount, "reporting set does not match the payroll provider's roster");
 
   const cntW = fold((acc, rec) => (acc + womenCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
   const cntM = fold((acc, rec) => (acc + menCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
@@ -175,24 +309,32 @@ export circuit publishReport(): PayReport {
   const sumW = fold((acc, rec) => (acc + womenSalary(rec)) as Uint<40>, 0 as Uint<40>, recs);
   const sumM = fold((acc, rec) => (acc + menSalary(rec)) as Uint<40>, 0 as Uint<40>, recs);
 
-  // mean gap in bps, relative to men's mean:  gap = (sumM/cntM - sumW/cntW) / (sumM/cntM)
-  // cross-multiplied:  diff = sumM*cntW - sumW*cntM  (or its negation)
-  // claimed g verifies iff  g*sumM*cntW <= diff*10000 < (g+1)*sumM*cntW
-  const favorsMen = sumM * cntW >= sumW * cntM;
-  const diff = (favorsMen ? sumM * cntW - sumW * cntM : sumW * cntM - sumM * cntW) as Uint<48>;
-  const base = (favorsMen ? sumM * cntW : sumW * cntM) as Uint<48>;
+  // company-wide mean gap
+  const favorsMen = verifyGap(sumW, cntW, sumM, cntM, claim.meanGapBps);
 
-  const g = claimedGapBps();
-  assert(g * base <= diff * 10000, "claimed gap too high");
-  assert(diff * 10000 < (g + 1) * base, "claimed gap too low");
+  // company-wide median gap: verify each median, then the gap between them
+  verifyMedian(recs, 0, claim.medianWomen, cntW);
+  verifyMedian(recs, 1, claim.medianMen, cntM);
+  const medianFavorsMen = verifyGap(claim.medianWomen as Uint<40>, 1, claim.medianMen as Uint<40>, 1, claim.medianGapBps);
+
+  // per worker category (Art. 10 unit; Art. 7 figures under k-anonymity)
+  const categories = [
+    categoryStats(recs, 0, claim.catMeanWomen[0], claim.catMeanMen[0], claim.catGapBps[0]),
+    categoryStats(recs, 1, claim.catMeanWomen[1], claim.catMeanMen[1], claim.catGapBps[1]),
+    categoryStats(recs, 2, claim.catMeanWomen[2], claim.catMeanMen[2], claim.catGapBps[2]),
+    categoryStats(recs, 3, claim.catMeanWomen[3], claim.catMeanMen[3], claim.catGapBps[3])
+  ];
 
   const report = PayReport {
     round: (round as Field) as Uint<32>,
     headcountWomen: cntW,
     headcountMen: cntM,
-    meanGapBps: g,
+    meanGapBps: claim.meanGapBps,
     gapFavorsMen: favorsMen,
-    meanGapAtOrAbove5pct: g >= 500
+    meanGapAtOrAbove5pct: claim.meanGapBps >= 500,
+    medianGapBps: claim.medianGapBps,
+    medianFavorsMen: medianFavorsMen,
+    categories: categories
   };
 
   latestReport = disclose(some<PayReport>(report));
