@@ -20,13 +20,13 @@ export function Footer() {
             </div>
             <div className="flex flex-col items-start gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em] md:items-end">
               <a
-                href="https://github.com/midnightntwrk"
+                href="https://github.com/AustinChris1/Equilux"
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-2 text-cream/80 transition-colors hover:text-gold"
               >
                 <ExternalLink size={12} />
-                GitHub · midnightntwrk
+                GitHub · AustinChris1/Equilux
               </a>
               <span className="text-cream/45">Apache License 2.0</span>
               <span className="text-cream/45">Compact · TypeScript · Midnight</span>

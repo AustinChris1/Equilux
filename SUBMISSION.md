@@ -5,7 +5,7 @@ Text for the AKINDO submission form. Each section maps to a field the rules ask 
 ## Links
 
 - Repository: https://github.com/AustinChris1/Equilux (topic `midnightntwrk`, Apache-2.0)
-- Live site: https://equilux-lac.vercel.app — Workspace → **Run the full flow**
+- Live site: https://equilux-lac.vercel.app — the app is at https://equilux-lac.vercel.app/app → **Run the full flow**
 - Deck: https://github.com/AustinChris1/Equilux/blob/main/deck/Equilux-Wave2-deck.pdf
 - Demo video: [WAVE 2 VIDEO LINK]
 
@@ -95,10 +95,10 @@ the proven report. Every witness value that reaches the ledger passes an explici
 
 ## How judges can evaluate it
 
-- Live site → Workspace → **Run the full flow**, then Regulator tab; then Employer tab → pick a
+- https://equilux-lac.vercel.app/app → **Run the full flow**, then Regulator tab; then Employer tab → pick a
   cheat → Publish; Employee tab → try to claim €5,000 more.
 - `cd contract && pnpm install && pnpm test` — 36 tests.
-- `pnpm network:up && pnpm app:server`, then the Workspace on localhost — real proofs.
+- `pnpm network:up && pnpm app:server`, then http://localhost:5173/app — real proofs.
 - `contract/src/equilux.compact` is the contract.
 
 ## Wave 3 plan

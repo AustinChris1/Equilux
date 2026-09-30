@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
-import { ArrowDown, ShieldCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck } from "lucide-react";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -42,11 +42,11 @@ export function Hero() {
 
           <motion.div {...fadeUp(0.45)} className="mt-10 flex flex-wrap items-center gap-5">
             <a
-              href="#workspace"
+              href="/app"
               className="inline-flex items-center gap-2 rounded-lg bg-gold px-6 py-3.5 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-night transition-transform hover:-translate-y-0.5"
             >
-              Open the workspace
-              <ArrowDown size={15} />
+              Open the app
+              <ArrowRight size={15} />
             </a>
             <a
               href="#mandate"

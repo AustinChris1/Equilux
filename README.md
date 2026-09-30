@@ -2,7 +2,7 @@
 
 **The first employee-verifiable pay-transparency reporting protocol. Built on Midnight.**
 
-**Live site:** https://equilux-lac.vercel.app — open the Workspace and press **Run the full flow** ·
+**Live site:** https://equilux-lac.vercel.app · **App:** https://equilux-lac.vercel.app/app — press **Run the full flow** ·
 **Deck:** [`deck/Equilux-Wave2-deck.pdf`](deck/Equilux-Wave2-deck.pdf) · **Demo video:** [WAVE 2 VIDEO LINK]
 
 Equilux lets a company prove that its legally required gender pay gap report was computed from its
@@ -103,7 +103,7 @@ A compliance tool that overstates itself is worse than none, so the boundary is 
 
 ## Try it
 
-**On the live site (no install):** https://equilux-lac.vercel.app → Workspace → **Run the full
+**On the live site (no install):** https://equilux-lac.vercel.app/app → **Run the full
 flow**. The page executes the compiled contract — `contract/build/contract/index.js` — on
 Midnight's WebAssembly runtime: the same circuits, hashes, Merkle tree and assertions as on-chain,
 without proof generation. Then open the Employer tab, pick a cheat, and publish: the circuit
@@ -118,7 +118,7 @@ pnpm network:up      # Midnight node + indexer + proof server (Docker)
 pnpm app:server      # API on http://127.0.0.1:8787 — syncs the genesis wallet first
 ```
 
-Then `cd webapp && pnpm install && pnpm dev` and open http://localhost:5173. The Workspace detects
+Then `cd webapp && pnpm install && pnpm dev` and open http://localhost:5173/app. The workspace detects
 the API and switches to live mode: each action is proven by the proof server and finalized on the
 node (20–90 s each). Add `?mode=browser` to force the in-browser contract. The same three-party
 flow runs as one script with `pnpm demo:standalone`.
@@ -161,7 +161,7 @@ own prover with only its own secret; the demo API plays all three from one proce
   `@midnight-ntwrk/compact-runtime` (roster, binding, roles, receipts, every statistic, every
   rejection); `payroll-csv.test.ts` covers the importer and claim arithmetic.
 - `webapp/` — the product. `src/lib/browser-contract.ts` runs the compiled contract in the page;
-  `src/components/Workspace.tsx` is the four-party workspace. Vite + React + TypeScript,
+  `src/components/Workspace.tsx` is the four-party workspace, served at `/app`. Vite + React + TypeScript,
   Tailwind v4, Framer Motion.
 - `deck/` — pitch deck. `brand/` — logo artboards.
 

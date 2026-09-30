@@ -1,6 +1,6 @@
 import { Nav } from "./components/Nav";
 import { Hero } from "./components/Hero";
-import { Workspace } from "./components/Workspace";
+import { TryIt } from "./components/TryIt";
 import { Mandate } from "./components/Mandate";
 import { Protocol } from "./components/Protocol";
 import { Guarantees } from "./components/Guarantees";
@@ -15,7 +15,7 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
-        <Workspace />
+        <TryIt />
         <Mandate />
         <Protocol />
         <Guarantees />

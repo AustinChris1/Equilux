@@ -4,7 +4,6 @@ import {
   BadgeCheck, Building2, CircleAlert, Cpu, FileSpreadsheet, Landmark, Loader2, Play, RefreshCw,
   RotateCcw, ShieldCheck, Upload, UserRound, Wifi,
 } from "lucide-react";
-import { Reveal } from "./Reveal";
 import { fmtPct, getStatus, resolveApiBase, runJob, short, type LedgerView, type Status, type Tamper } from "../lib/api";
 import { BrowserContract, newNonce, payrollRowHash, type Row } from "../lib/browser-contract";
 import { parsePayrollCsv } from "../../../contract/deploy/payroll-csv";
@@ -280,63 +279,66 @@ export function Workspace() {
   const rep = ledger?.latestReport ?? null;
 
   return (
-    <section id="workspace" className="grain relative mx-2 mt-2 rounded-[28px] bg-night md:mx-3 md:mt-3">
-      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
-        <Reveal><div className="overline text-gold">Workspace · four parties, one contract</div></Reveal>
-        <Reveal delay={0.1}>
-          <h2 className="display mt-5 max-w-3xl text-4xl leading-[1.05] text-cream md:text-6xl">Run it for real.</h2>
-        </Reveal>
-        <Reveal delay={0.18}>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-sage">
-            The payroll provider commits every payroll row, hashed. Each employee seals their own pay and proves it matches
-            their row. The employer publishes the Directive's figures — mean, median and per worker category — and the
-            circuit checks every one. Then try to cheat.
+    <div id="workspace" className="mx-auto max-w-7xl px-4 pb-20 pt-6 md:px-6 md:pt-8">
+      <div className="flex flex-col gap-5 border-b border-gold/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-cream">Pay-gap report workspace</h1>
+          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-sage">
+            The payroll provider commits every payroll row, hashed. Each employee seals their pay and proves it matches their
+            row. The employer publishes the Directive's figures, and the circuit checks every one. Then try to cheat.
           </p>
-        </Reveal>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+          <Btn onClick={reset} ghost disabled={mode !== "browser" || !!busy}><RotateCcw size={12} /> Reset</Btn>
+          <Btn onClick={autopilot} disabled={mode === "checking" || !ready || !!busy}>
+            {busy ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} Run the full flow
+          </Btn>
+        </div>
+      </div>
 
-        <Reveal delay={0.22}>
-          <div className="mt-8 flex flex-wrap items-center gap-3 rounded-xl border border-gold/15 bg-night-deep/50 px-4 py-3 font-mono text-[11px] text-sage">
-            {mode === "checking" ? <Loader2 size={14} className="animate-spin" /> : mode === "live" ? <Wifi size={14} className="text-gold" /> : <Cpu size={14} className="text-gold" />}
-            <span className="text-cream">
-              {mode === "checking" ? "checking…" : mode === "live"
-                ? (status?.ready ? `live · ${status.network} · real proofs` : "connecting to the local Midnight node…")
-                : "compiled contract running in this browser · real circuits, no proofs"}
-            </span>
-            {deployed && <span className="chip bg-gold/12 text-gold" title={deployed}>contract {short(deployed, 8)}</span>}
-            {ledger && (
-              <span className="chip bg-cream/6">
-                payroll rows {ledger.rosterDeclared ? ledger.payrollRows : "—"} · enrolled {ledger.enrolled} · bound {ledger.bound}
-              </span>
-            )}
-            <button onClick={refresh} className="ml-auto inline-flex items-center gap-1.5 text-sage hover:text-gold"><RefreshCw size={12} /> refresh</button>
-          </div>
-        </Reveal>
-
-        {mode !== "checking" && (
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Btn onClick={autopilot} disabled={!ready || !!busy}>
-              {busy ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} Run the full flow
-            </Btn>
-            <Btn onClick={reset} ghost disabled={!!busy || mode === "live"}><RotateCcw size={12} /> Reset</Btn>
-            <span className="font-mono text-[11px] text-sage/70">
-              {mode === "browser"
-                ? "Deploy → payroll rows → everyone enrolls against their row → publish, in about a second."
-                : "Each step is proven and finalized — expect 20–90 s per action."}
-            </span>
-          </div>
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[11px] text-sage" aria-live="polite">
+        <span className="inline-flex items-start gap-2 text-cream">
+          <span className="mt-px shrink-0">{mode === "checking" ? <Loader2 size={13} className="animate-spin" /> : mode === "live" ? <Wifi size={13} className="text-gold" /> : <Cpu size={13} className="text-gold" />}</span>
+          {mode === "checking" ? "Looking for a local Midnight node…" : mode === "live"
+            ? (status?.ready ? `Live · ${status.network} · real proofs` : "Connecting to the local Midnight node…")
+            : "Compiled contract running in this browser · real circuits, no proofs"}
+        </span>
+        {deployed && <span className="chip bg-gold/12 text-gold" title={deployed}>contract {short(deployed, 8)}</span>}
+        {ledger && (
+          <span className="chip bg-cream/6">
+            payroll rows {ledger.rosterDeclared ? ledger.payrollRows : "—"} · enrolled {ledger.enrolled} · bound {ledger.bound}
+          </span>
         )}
+        {busy && <span className="text-gold">{busy}…</span>}
+        {mode === "live" && <button onClick={refresh} className="ml-auto inline-flex items-center gap-1.5 rounded text-sage hover:text-gold focus-visible:outline-2 focus-visible:outline-gold"><RefreshCw size={12} /> Refresh</button>}
+      </div>
 
-        {mode !== "checking" && (
-          <div className="mt-6 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
-            <div className="rounded-2xl border border-gold/15 bg-night-deep/40 p-6">
-              <div className="flex flex-wrap gap-2">
+        {mode === "checking" ? (
+          <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]" aria-hidden="true">
+            <div className="h-[520px] animate-pulse rounded-2xl bg-night-soft/40" />
+            <div className="h-[520px] animate-pulse rounded-2xl bg-night-soft/30" />
+          </div>
+        ) : (
+          <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="rounded-2xl bg-night p-5 ring-1 ring-gold/12 md:p-6">
+              <div role="tablist" aria-label="Party" className="flex flex-wrap gap-2">
                 {tabs.map((t) => (
-                  <button key={t.id} onClick={() => setRole(t.id)}
-                    className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.14em] ${role === t.id ? "bg-gold text-night" : "bg-cream/6 text-sage hover:text-cream"}`}>
+                  <button key={t.id} role="tab" aria-selected={role === t.id} onClick={() => setRole(t.id)}
+                    className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${role === t.id ? "bg-gold text-night" : "bg-cream/6 text-sage hover:text-cream"}`}>
                     <t.icon size={13} /> {t.label}
                   </button>
                 ))}
               </div>
+
+              <AnimatePresence mode="wait">
+                {lastError && (
+                  <motion.div key={lastError} role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                    className="mt-5 flex items-start gap-2.5 rounded-lg bg-red-950/30 p-3.5 text-[13px] leading-relaxed text-red-200 ring-1 ring-red-400/30">
+                    <CircleAlert size={16} className="mt-0.5 shrink-0" />
+                    <span><span className="font-mono text-[11px] uppercase tracking-[0.14em]">Circuit rejected · </span>{lastError}</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* ── EMPLOYER ─────────────────────────────────────────── */}
               {role === "employer" && (
@@ -549,31 +551,21 @@ export function Workspace() {
             </div>
 
             {/* ── ACTIVITY ───────────────────────────────────────────── */}
-            <div className="flex flex-col rounded-2xl border border-gold/15 bg-night-deep/40 p-6">
-              <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-sage">Activity</span>
-              <div ref={logRef} className="mt-3 h-72 overflow-auto rounded-lg bg-night p-3 font-mono text-[11px] leading-relaxed text-sage">
+            <aside className="flex flex-col rounded-2xl bg-night-deep/60 p-5 ring-1 ring-gold/10 lg:sticky lg:top-20">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-sage">Activity</h2>
+              <div ref={logRef} className="mt-3 h-72 overflow-auto rounded-lg bg-night p-3 font-mono text-[11px] leading-relaxed text-sage lg:h-[26rem]">
                 {log.length === 0
-                  ? <span className="text-sage/50">{mode === "live" ? status?.startupLog?.slice(-3).join("\n") || "waiting for the first action…" : "waiting for the first action…"}</span>
+                  ? <span className="text-sage/60">{mode === "live" ? status?.startupLog?.slice(-3).join("\n") || "Every circuit call appears here. Start with Run the full flow, or deploy from the Employer tab." : "Every circuit call appears here. Start with Run the full flow, or deploy from the Employer tab."}</span>
                   : log.map((l, i) => <div key={i} className={l.startsWith("▶") ? "text-cream" : l.startsWith("✗") || l.startsWith("rejected") ? "text-red-300" : ""}>{l}</div>)}
               </div>
-              <AnimatePresence mode="wait">
-                {lastError && (
-                  <motion.div key={lastError} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                    className="mt-4 flex items-start gap-2.5 rounded-lg border border-red-400/30 bg-red-950/30 p-3.5 text-[13px] leading-relaxed text-red-200">
-                    <CircleAlert size={16} className="mt-0.5 shrink-0" />
-                    <span><span className="font-mono text-[11px] uppercase tracking-[0.14em]">circuit rejected · </span>{lastError}</span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <p className="mt-4 font-mono text-[10px] leading-relaxed text-sage/60">
+              <p className="mt-4 text-[12px] leading-relaxed text-sage/75">
                 {mode === "live"
-                  ? "Each write: local circuit execution → proof from the proof server → finalized on the node → read back from the indexer."
-                  : "This page runs the compiled Compact contract on Midnight's WebAssembly runtime — the same circuits and assertions as on-chain. Proofs and consensus need a node: run pnpm network:up && pnpm app:server locally and this page switches to live mode."}
+                  ? "Each write: local circuit execution, a proof from the proof server, finality on the node, then a read back from the indexer."
+                  : <>This page runs the compiled Compact contract on Midnight's WebAssembly runtime: the same circuits and assertions as on-chain, without proof generation. For real proofs, run <code className="font-mono text-[11px] text-cream/80">pnpm network:up &amp;&amp; pnpm app:server</code> locally and this page switches to live mode.</>}
               </p>
-            </div>
+            </aside>
           </div>
         )}
-      </div>
-    </section>
+    </div>
   );
 }
