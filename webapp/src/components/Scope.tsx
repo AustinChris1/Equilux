@@ -3,9 +3,10 @@ import { Reveal } from "./Reveal";
 
 const proves = [
   "The report covers exactly the payroll rows the provider committed before anyone enrolled — no one can be left out, not even by never enrolling.",
+  "The works council opened every committed payroll row before enrollment began, so the provider cannot slip in a row the council has not seen.",
   "Every counted salary is the payroll provider's own figure, confirmed by the employee it belongs to: the employer cannot invent a person or change anyone's pay, and no employee can inflate their own.",
   "Nobody was counted twice — enrollment nullifiers make duplicates unprovable.",
-  "Every disclosed figure — mean gap, median gap, each category's pay and gap — is exact. The circuit accepts one value and rejects every other, including one basis point off.",
+  "All seven Article 9 indicators are exact: mean and median gaps on basic and on variable pay, who receives variable pay, the gender mix of each pay quartile, and every category's gap. The circuit accepts one value and rejects every other, including one basis point off.",
   "No category's pay is published unless both groups have at least three people, so no colleague's salary can be worked out.",
   "Each employee can verify their own record was inside the numbers, without seeing anyone else's.",
 ];
@@ -16,16 +17,16 @@ const doesNot = [
     body: "It must, to run payroll at all. Equilux hides salaries from the public, from colleagues, from the regulator and from us — not from HR. What changed in Wave 2: every counted salary is bound to the payroll provider's row, so the employer can no longer supply its own figures.",
   },
   {
-    head: "The payroll is only as honest as the payroll provider",
-    body: "A provider colluding with the employer could commit false rows or leave someone off payroll. Each employee enrolls against their own row, so a wrong salary is visible to the person it belongs to — and a works-council co-signature on the roster is the next step.",
+    head: "The payroll is only as honest as the provider and the council",
+    body: "A payroll provider and works council both colluding with the employer could commit false rows or leave someone off payroll. The two are separate parties with separate keys, and each employee enrolls against their own row, so a wrong salary is visible to the person it belongs to.",
   },
   {
     head: "It does not decide what is justified",
     body: "Article 10 triggers a joint pay assessment when a category gap of 5% or more is also unjustified by objective, gender-neutral criteria. The circuit proves the gap and flags ≥ 5%; justification is a human judgement it does not make.",
   },
   {
-    head: "Three of Article 9's seven indicators",
-    body: "Proven today: the mean gap, the median gap, and the gap by worker category on basic pay. Still to come: variable-pay gaps (mean and median), the share receiving variable pay, and quartile composition.",
+    head: "Annual pay, and one reading of the quartiles",
+    body: "All seven Article 9 indicators are proven, on annual basic and variable pay. Variable-pay gaps are measured among the people who receive it. National transpositions may define pay (hourly rates, allowances) or tied earners at a quartile boundary differently; the circuit uses annual figures and lets the employer place ties.",
   },
   {
     head: "A sized instance, not a production deployment",

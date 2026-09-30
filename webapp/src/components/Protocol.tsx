@@ -5,7 +5,7 @@ const steps = [
   {
     icon: Users,
     title: "Seal every record",
-    body: "The payroll provider commits every payroll row as a hiding hash, in one transaction. Then each employee seals their own record — salary, gender marker, worker category — as one opaque commitment and one nullifier. Nothing else touches the chain.",
+    body: "The payroll provider commits every payroll row as a hiding hash, in one transaction, and the works council opens each one to confirm it. Then each employee seals their own record — basic and variable pay, gender marker, worker category — as one opaque commitment and one nullifier. Nothing else touches the chain.",
     tag: "Public state · commitments + nullifiers",
   },
   {
@@ -17,7 +17,7 @@ const steps = [
   {
     icon: Sigma,
     title: "Prove the report in-circuit",
-    body: "A Compact circuit verifies the mean gap, the median gap and every worker category's gap over the committed set — no division, no sort, just bounds the prover cannot fake. Categories with fewer than three per group are suppressed.",
+    body: "Two Compact circuits verify all seven Article 9 indicators over the committed set: mean and median gaps on basic and variable pay, who receives variable pay, pay quartiles, and every worker category's gap — no division, no sort, just bounds the prover cannot fake. Groups smaller than three are suppressed.",
     tag: "Compact contract · ZK circuit",
   },
   {
