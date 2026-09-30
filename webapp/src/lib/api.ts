@@ -45,9 +45,33 @@ export interface PayReportOnChain {
   categories: CategoryStats[];
 }
 
+export interface VariableCategoryStats {
+  recipientsWomen: number;
+  recipientsMen: number;
+  disclosed: boolean;
+  meanGapBps: number;
+  gapFavorsMen: boolean;
+}
+
+export interface VariablePayReportOnChain {
+  round: number;
+  headcountWomen: number;
+  headcountMen: number;
+  recipientsWomen: number;
+  recipientsMen: number;
+  gapDefined: boolean;
+  meanGapBps: number;
+  meanFavorsMen: boolean;
+  medianGapBps: number;
+  medianFavorsMen: boolean;
+  quartiles: { women: number; men: number }[];
+  categories: VariableCategoryStats[];
+}
+
 export interface LedgerView {
   contractAddress: string;
   rosterDeclared: boolean;
+  payrollConfirmed: boolean;
   declaredHeadcount: number;
   enrolled: number;
   nullifiers: number;
@@ -56,7 +80,9 @@ export interface LedgerView {
   round: number;
   employerPk: string;
   providerPk: string;
+  councilPk: string;
   latestReport: PayReportOnChain | null;
+  latestVariableReport: VariablePayReportOnChain | null;
 }
 
 /** Adversarial edits for the "try to cheat" toggles. */
@@ -64,6 +90,13 @@ export interface Tamper {
   meanGapBps?: number;
   medianWomen?: number;
   categoryGap?: { category: number; bps: number };
+}
+
+/** Adversarial edits for the variable-pay report. */
+export interface VariableTamper {
+  meanGapBps?: number;
+  medianWomen?: number;
+  swapBands?: boolean;
 }
 
 export interface Status {
