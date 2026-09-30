@@ -22,10 +22,60 @@
       }
     },
     {
+      "name": "payrollRow",
+      "pure": true,
+      "proof": false,
+      "arguments": [
+        {
+          "name": "salary",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 4294967295
+          }
+        },
+        {
+          "name": "gender",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 1
+          }
+        },
+        {
+          "name": "category",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 3
+          }
+        },
+        {
+          "name": "nonce",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Bytes",
+        "length": 32
+      }
+    },
+    {
       "name": "declareRoster",
       "pure": false,
       "proof": true,
       "arguments": [
+        {
+          "name": "rows",
+          "type": {
+            "type-name": "Vector",
+            "length": 16,
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        },
         {
           "name": "headcount",
           "type": {
@@ -49,25 +99,6 @@
       "result-type": {
         "type-name": "Bytes",
         "length": 32
-      }
-    },
-    {
-      "name": "attest",
-      "pure": false,
-      "proof": true,
-      "arguments": [
-        {
-          "name": "cm",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
-        }
-      ],
-      "result-type": {
-        "type-name": "Tuple",
-        "types": [
-        ]
       }
     },
     {
@@ -293,6 +324,15 @@
             "maxval": 3
           }
         ]
+      }
+    },
+    {
+      "name": "payrollRowNonce",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
       }
     },
     {

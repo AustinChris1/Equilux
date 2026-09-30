@@ -42,6 +42,7 @@ export type Witnesses<PS> = {
   employeeRecord(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, [bigint,
                                                                               bigint,
                                                                               bigint]];
+  payrollRowNonce(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   employerSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   providerSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   payrollRecords(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, EnrolledRecord[]];
@@ -50,9 +51,9 @@ export type Witnesses<PS> = {
 
 export type ImpureCircuits<PS> = {
   declareRoster(context: __compactRuntime.CircuitContext<PS>,
+                rows_0: Uint8Array[],
                 headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   enroll(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  attest(context: __compactRuntime.CircuitContext<PS>, cm_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkReceipt(context: __compactRuntime.CircuitContext<PS>,
                path_0: { leaf: Uint8Array,
                          path: { sibling: { field: bigint }, goes_left: boolean
@@ -63,9 +64,9 @@ export type ImpureCircuits<PS> = {
 
 export type ProvableCircuits<PS> = {
   declareRoster(context: __compactRuntime.CircuitContext<PS>,
+                rows_0: Uint8Array[],
                 headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   enroll(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  attest(context: __compactRuntime.CircuitContext<PS>, cm_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkReceipt(context: __compactRuntime.CircuitContext<PS>,
                path_0: { leaf: Uint8Array,
                          path: { sibling: { field: bigint }, goes_left: boolean
@@ -76,14 +77,23 @@ export type ProvableCircuits<PS> = {
 
 export type PureCircuits = {
   publicKey(sk_0: Uint8Array): Uint8Array;
+  payrollRow(salary_0: bigint,
+             gender_0: bigint,
+             category_0: bigint,
+             nonce_0: Uint8Array): Uint8Array;
 }
 
 export type Circuits<PS> = {
   publicKey(context: __compactRuntime.CircuitContext<PS>, sk_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  payrollRow(context: __compactRuntime.CircuitContext<PS>,
+             salary_0: bigint,
+             gender_0: bigint,
+             category_0: bigint,
+             nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   declareRoster(context: __compactRuntime.CircuitContext<PS>,
+                rows_0: Uint8Array[],
                 headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   enroll(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  attest(context: __compactRuntime.CircuitContext<PS>, cm_0: Uint8Array): __compactRuntime.CircuitResults<PS, []>;
   checkReceipt(context: __compactRuntime.CircuitContext<PS>,
                path_0: { leaf: Uint8Array,
                          path: { sibling: { field: bigint }, goes_left: boolean
@@ -113,7 +123,19 @@ export type Ledger = {
     member(elem_0: Uint8Array): boolean;
     [Symbol.iterator](): Iterator<Uint8Array>
   };
-  attested: {
+  payrollRows: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  claimedRows: {
+    isEmpty(): boolean;
+    size(): bigint;
+    member(elem_0: Uint8Array): boolean;
+    [Symbol.iterator](): Iterator<Uint8Array>
+  };
+  bound: {
     isEmpty(): boolean;
     size(): bigint;
     member(elem_0: Uint8Array): boolean;

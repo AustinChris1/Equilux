@@ -9,14 +9,19 @@ import CompactStandardLibrary;
 //   EMPLOYEE  — seals their own pay record (salary, gender marker, worker
 //               category) as a commitment + nullifier. Holds a private secret.
 //   PROVIDER  — the payroll provider / HRIS (Personio, DATEV, Workday …).
-//               Declares the roster headcount from payroll BEFORE enrollment
-//               and attests each record it recognises. The employer can no
-//               longer self-attest its own data.
+//               Before anyone enrolls, commits one hiding hash per payroll
+//               row — hash(salary, gender, category, rowNonce) — and hands
+//               each employee their row's nonce with their payslip.
+//
+// Binding: an employee can only enroll a record that opens to an unclaimed
+// payroll row. So every counted salary is the provider's figure, confirmed by
+// the employee it belongs to — the employer cannot invent people or pay, an
+// employee cannot inflate their own, and no salary reaches the ledger.
 //   EMPLOYER  — publishes the mandated report, proven over the full set.
 //
 // Dual-ledger layout:
-//   PUBLIC  — the two role keys (hashes), the declared headcount, commitment
-//             Merkle tree, nullifiers, attestations, and the proven PayReport.
+//   PUBLIC  — the two role keys (hashes), the declared headcount, payroll-row
+//             hashes, commitment Merkle tree, nullifiers, and the PayReport.
 //   PRIVATE — every salary, gender marker, category and secret. They enter
 //             circuits only as witnesses and never reach the ledger.
 //
@@ -88,7 +93,9 @@ export ledger declaredHeadcount: Uint<16>;
 export ledger enrolled: Counter;
 export ledger commitments: MerkleTree<5, Bytes<32>>;
 export ledger nullifiers: Set<Bytes<32>>;
-export ledger attested: Set<Bytes<32>>;
+export ledger payrollRows: Set<Bytes<32>>;   // provider's hiding hash per payroll row
+export ledger claimedRows: Set<Bytes<32>>;   // rows an employee has enrolled against
+export ledger bound: Set<Bytes<32>>;         // record commitments bound to a payroll row
 export ledger latestReport: Maybe<PayReport>;
 
 constructor(employerPkInit: Bytes<32>, providerPkInit: Bytes<32>) {
@@ -104,6 +111,7 @@ constructor(employerPkInit: Bytes<32>, providerPkInit: Bytes<32>) {
 
 witness employeeSecret(): Bytes<32>;
 witness employeeRecord(): [Uint<32>, Uint<1>, Uint<2>];   // salary, gender, category
+witness payrollRowNonce(): Bytes<32>;                      // from the employee's payslip
 witness employerSecret(): Bytes<32>;
 witness providerSecret(): Bytes<32>;
 witness payrollRecords(): Vector<16, EnrolledRecord>;
@@ -123,29 +131,49 @@ circuit recordCommitment(salary: Uint<32>, gender: Uint<1>, category: Uint<2>, s
      sk]);
 }
 
+// The provider's hiding hash of one payroll row. The nonce blinds it: salaries
+// span a small range, so an unblinded hash could be brute-forced.
+export circuit payrollRow(salary: Uint<32>, gender: Uint<1>, category: Uint<2>, nonce: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<3, Bytes<32>>>(
+    [pad(32, "equilux:row:v2:"),
+     ((salary as Field) * 8 + (category as Field) * 2 + (gender as Field)) as Bytes<32>,
+     nonce]);
+}
+
 circuit enrollmentNullifier(sk: Bytes<32>, r: Field): Bytes<32> {
   return persistentHash<Vector<3, Bytes<32>>>([pad(32, "equilux:nul:"), r as Bytes<32>, sk]);
 }
 
-// ── roster, enrollment, attestation ──────────────────────────────────────────
+// ── roster and enrollment ────────────────────────────────────────────────────
 
-// The payroll provider declares, from its own payroll system, how many people
-// are in scope — before anyone enrolls. The report must later cover exactly
-// this many records, so nobody can be left out by simply never enrolling.
-export circuit declareRoster(headcount: Uint<16>): [] {
+// The payroll provider commits its payroll, one hiding hash per row, in one
+// transaction — before anyone enrolls. The report must later cover exactly
+// `headcount` records, each bound to one of these rows, so nobody can be left
+// out, invented, or have their pay changed. Slots at or past `headcount` are
+// padding and ignored.
+export circuit declareRoster(rows: Vector<16, Bytes<32>>, headcount: Uint<16>): [] {
   assert(publicKey(providerSecret()) == providerPk, "not the payroll provider");
   assert(!rosterDeclared, "roster already declared this round");
-  assert(headcount > 0, "roster must not be empty");
-  assert(headcount <= 16, "roster exceeds this instance's 16-record size");
+  const n = disclose(headcount);
+  assert(n > 0, "roster must not be empty");
+  assert(n <= 16, "roster exceeds this instance's 16-record size");
+  for (const i of 0..16) {
+    if (i < n) {
+      assert(!payrollRows.member(disclose(rows[i])), "duplicate payroll row");
+      payrollRows.insert(disclose(rows[i]));
+    }
+  }
   rosterDeclared = true;
-  declaredHeadcount = disclose(headcount);
+  declaredHeadcount = n;
 }
 
 // An employee seals their pay record into the reporting set.
-// Public effects: one opaque commitment, one opaque nullifier. Nothing else.
+// Public effects: one opaque commitment, one opaque nullifier, and the
+// (already public, hiding) payroll row it claims. Nothing else.
 export circuit enroll(): Bytes<32> {
   assert(rosterDeclared, "roster not yet declared by the payroll provider");
-  assert(((enrolled as Field) as Uint<16>) < declaredHeadcount, "roster is full — every declared employee has enrolled");
+  // No separate headcount cap: each enrollment claims a distinct payroll row,
+  // so at most `declaredHeadcount` enrollments can ever succeed.
 
   const sk = employeeSecret();
   const [salary, gender, category] = employeeRecord();
@@ -155,19 +183,18 @@ export circuit enroll(): Bytes<32> {
   const nul = enrollmentNullifier(sk, r);
   assert(!nullifiers.member(disclose(nul)), "already enrolled this round");
 
+  // binding: the sealed record must open to an unclaimed provider payroll row
+  const row = payrollRow(salary, gender, category, payrollRowNonce());
+  assert(payrollRows.member(disclose(row)), "record does not match any payroll row from the provider");
+  assert(!claimedRows.member(disclose(row)), "this payroll row is already enrolled");
+
   const cm = recordCommitment(salary, gender, category, sk, r);
+  claimedRows.insert(disclose(row));
+  bound.insert(disclose(cm));
   nullifiers.insert(disclose(nul));
   commitments.insert(disclose(cm));
   enrolled.increment(1);
   return disclose(cm);
-}
-
-// The payroll provider co-signs a commitment it recognises from payroll.
-// Only provider-attested records may be counted by publishReport.
-export circuit attest(cm: Bytes<32>): [] {
-  assert(publicKey(providerSecret()) == providerPk, "not the payroll provider");
-  assert(!attested.member(disclose(cm)), "already attested");
-  attested.insert(disclose(cm));
 }
 
 // An employee (or an auditor they delegate to) proves a commitment is inside
@@ -265,8 +292,8 @@ circuit categoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, meanW: Uint<
 
 // The employer publishes the mandated report. The circuit proves:
 //   roster        — the set matches the payroll provider's declared headcount;
-//   completeness  — the witness is exactly the enrolled + provider-attested set;
-//   integrity     — every record re-derives a commitment in both sets;
+//   completeness  — the witness is exactly the enrolled set;
+//   integrity     — every record re-derives a commitment bound to a payroll row;
 //   distinctness  — no record is counted twice;
 //   correctness   — every disclosed figure is verified, none is trusted.
 export circuit publishReport(): PayReport {
@@ -277,13 +304,13 @@ export circuit publishReport(): PayReport {
   const claim = reportClaim();
   const r = round as Field;
 
-  // integrity + completeness: every active record is enrolled and attested.
+  // integrity + completeness: every active record is enrolled and bound.
   // Disclosing the per-slot activity flag is deliberate: slot order is local
   // to the prover and the active count is already public via `enrolled`.
   for (const i of 0..16) {
     if (disclose(recs[i].active)) {
       const cm = recordCommitment(recs[i].salary, recs[i].gender, recs[i].category, recs[i].sk, r);
-      assert(attested.member(disclose(cm)), "record not attested by the payroll provider");
+      assert(bound.member(disclose(cm)), "record does not match what its employee enrolled");
       assert(nullifiers.member(disclose(enrollmentNullifier(recs[i].sk, r))), "record not enrolled");
     }
   }

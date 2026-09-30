@@ -8,9 +8,8 @@
  *
  * Integration surface (what a Personio / DATEV / Workday plugin calls):
  *   POST /api/deploy        { employerSecret, providerSecret }
- *   POST /api/roster        { headcount }                        — provider
- *   POST /api/enroll        { salary, gender, category, secret } — employee
- *   POST /api/attest        { commitment }                       — provider
+ *   POST /api/roster        { rows: [hex32…] }  — provider: one hiding hash per payroll row
+ *   POST /api/enroll        { salary, gender, category, secret, rowNonce } — employee
  *   POST /api/publish       { payroll: [...], tamper? }          — employer
  *   POST /api/receipt       { commitment }                       — employee
  *   POST /api/import/csv    { csv }        → parsed payroll rows (no chain write)
@@ -22,7 +21,7 @@ import { Buffer } from "node:buffer";
 import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
 import { Contract, pureCircuits } from "../build/contract/index.js";
 import { connectMidnight, initialPrivateState } from "./client.js";
-import { buildClaim, padRecords, type PayRecord, type ReportClaim } from "./claims.js";
+import { buildClaim, padRecords, padRows, type PayRecord, type ReportClaim } from "./claims.js";
 import { bytes32, witnesses, type EquiluxPrivateState } from "./witnesses.js";
 import { parsePayrollCsv } from "./payroll-csv.js";
 
@@ -33,7 +32,7 @@ import { parsePayrollCsv } from "./payroll-csv.js";
  * balancing pipeline (which does not recover cleanly from a mid-flight throw).
  */
 const localContract = new Contract<EquiluxPrivateState, typeof witnesses>(witnesses);
-type CircuitName = "declareRoster" | "enroll" | "attest" | "publishReport" | "checkReceipt";
+type CircuitName = "declareRoster" | "enroll" | "publishReport" | "checkReceipt";
 async function dryRun(circuit: CircuitName, ps: EquiluxPrivateState, ...args: unknown[]) {
   const cs = await mn!.providers.publicDataProvider.queryContractState(contractAddress!);
   if (!cs) throw new Error("contract state not found via indexer");
@@ -78,7 +77,8 @@ async function readLedger() {
     declaredHeadcount: n(l.declaredHeadcount),
     enrolled: n(l.enrolled),
     nullifiers: n(l.nullifiers.size()),
-    attested: n(l.attested.size()),
+    payrollRows: n(l.payrollRows.size()),
+    bound: n(l.bound.size()),
     round: n(l.round),
     employerPk: hex(l.employerPk),
     providerPk: hex(l.providerPk),
@@ -181,13 +181,19 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
 
   if (method === "POST" && p === "/api/roster") {
     requireDeployed();
-    const headcount = BigInt(body?.headcount ?? 0);
+    // The provider hashes its payroll rows locally; only the hashes arrive here.
+    const hashes = ((body?.rows ?? []) as string[]).map(String);
+    if (hashes.length === 0 || hashes.length > 16 || !hashes.every(isHex32)) {
+      return { status: 400, data: { error: "rows must be 1–16 payroll-row hashes (32-byte hex)" } };
+    }
+    const rows = padRows(hashes.map(fromHex));
+    const headcount = BigInt(hashes.length);
     const job = runJob("roster", async (j) => {
-      await dryRun("declareRoster", baseState(), headcount);
+      await dryRun("declareRoster", baseState(), rows, headcount);
       await mn!.setPrivateState(baseState());
-      j.jlog(`local execution ok — proving declareRoster(${headcount})…`);
-      const res: any = await deployed.callTx.declareRoster(headcount);
-      j.jlog(`roster of ${headcount} declared by the payroll provider (block ${res.public.blockHeight})`);
+      j.jlog(`local execution ok — proving declareRoster (${headcount} payroll rows)…`);
+      const res: any = await deployed.callTx.declareRoster(rows, headcount);
+      j.jlog(`${headcount} payroll rows committed by the payroll provider (block ${res.public.blockHeight})`);
       return { headcount: n(headcount), txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
@@ -196,31 +202,18 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
   if (method === "POST" && p === "/api/enroll") {
     requireDeployed();
     const secret = String(body?.secret ?? "");
+    const rowNonce = String(body?.rowNonce ?? "");
     if (!secret) return { status: 400, data: { error: "secret required" } };
+    if (!isHex32(rowNonce)) return { status: 400, data: { error: "rowNonce (from the payslip) must be 32-byte hex" } };
     const r = toRecord({ salary: body?.salary ?? 0, gender: body?.gender ?? 0, category: body?.category ?? 0, secret });
     const job = runJob("enroll", async (j) => {
-      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category] };
+      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category], rowNonce: fromHex(rowNonce) };
       await dryRun("enroll", ps);
       await mn!.setPrivateState(ps);
       j.jlog("local execution ok — proving enroll…");
       const res: any = await deployed.callTx.enroll();
       const cm = hex(res.private.result);
       j.jlog(`enrolled — commitment ${cm.slice(0, 12)}… (block ${res.public.blockHeight})`);
-      return { commitment: cm, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
-    });
-    return { status: 202, data: { jobId: job.id } };
-  }
-
-  if (method === "POST" && p === "/api/attest") {
-    requireDeployed();
-    const cm = String(body?.commitment ?? "");
-    if (!isHex32(cm)) return { status: 400, data: { error: "commitment must be 32-byte hex" } };
-    const job = runJob("attest", async (j) => {
-      await dryRun("attest", baseState(), fromHex(cm));
-      await mn!.setPrivateState(baseState());
-      j.jlog("local execution ok — proving attest (payroll provider)…");
-      const res: any = await deployed.callTx.attest(fromHex(cm));
-      j.jlog(`attested by the payroll provider (block ${res.public.blockHeight})`);
       return { commitment: cm, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };

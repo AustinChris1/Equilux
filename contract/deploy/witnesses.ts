@@ -4,7 +4,7 @@
  * feed circuit executions and never touch the public ledger.
  *
  * In production each party runs its own prover with only its own secret — the
- * employee holds `employeeSecret`, the payroll provider `providerSecret`, the
+ * employee holds `employeeSecret` and the `rowNonce` from their payslip, the payroll provider `providerSecret`, the
  * employer `employerSecret` and the payroll. The local demo API plays all three
  * roles from one process, so one container holds every field.
  */
@@ -16,6 +16,7 @@ export type PayrollSlot = ReturnType<typeof padRecords>[number];
 export interface EquiluxPrivateState {
   employeeSecret: Uint8Array;
   employeeRecord: [bigint, bigint, bigint]; // salary, gender (0 = woman, 1 = man), category 0..3
+  rowNonce: Uint8Array; // blinds the employee's payroll row; delivered with the payslip
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
   payroll: PayrollSlot[]; // exactly 16 slots (Vector<16>)
@@ -31,6 +32,7 @@ export const bytes32 = (seed: string): Uint8Array => {
 export const initialPrivateState = (employerSecret: Uint8Array, providerSecret: Uint8Array): EquiluxPrivateState => ({
   employeeSecret: new Uint8Array(32),
   employeeRecord: [0n, 0n, 0n],
+  rowNonce: new Uint8Array(32),
   employerSecret,
   providerSecret,
   payroll: padRecords([]),
@@ -40,6 +42,7 @@ export const initialPrivateState = (employerSecret: Uint8Array, providerSecret: 
 export const witnesses: Witnesses<EquiluxPrivateState> = {
   employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
   employeeRecord: ({ privateState }) => [privateState, privateState.employeeRecord],
+  payrollRowNonce: ({ privateState }) => [privateState, privateState.rowNonce],
   employerSecret: ({ privateState }) => [privateState, privateState.employerSecret],
   providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
   payrollRecords: ({ privateState }) => [privateState, privateState.payroll],

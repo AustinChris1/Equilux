@@ -12,13 +12,14 @@ import {
   type CircuitContext,
 } from "@midnight-ntwrk/compact-runtime";
 import { Contract, ledger, pureCircuits, type Ledger, type Witnesses } from "../build/contract/index.js";
-import { buildClaim, padRecords, type PayRecord, type ReportClaim } from "../deploy/claims.js";
+import { buildClaim, padRecords, padRows, type PayRecord, type ReportClaim } from "../deploy/claims.js";
 
 type Slot = ReturnType<typeof padRecords>[number];
 
 interface PrivateState {
   employeeSecret: Uint8Array;
   employeeRecord: [bigint, bigint, bigint];
+  rowNonce: Uint8Array;
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
   payroll: Slot[];
@@ -49,9 +50,19 @@ const TEAM: PayRecord[] = [
   rec("mia", 40_000, 0, 2), rec("ned", 45_000, 1, 2),
 ];
 
+// The nonce the provider prints on each employee's payslip.
+const nonceOf = (r: PayRecord) => {
+  const n = new Uint8Array(32);
+  n.set(r.sk.slice(0, 28), 4);
+  n.set([0x72, 0x6f, 0x77, 0x3a]); // "row:"
+  return n;
+};
+const row = (r: PayRecord, nonce = nonceOf(r)) => pureCircuits.payrollRow(r.salary, r.gender, r.category, nonce);
+
 const witnesses: Witnesses<PrivateState> = {
   employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
   employeeRecord: ({ privateState }) => [privateState, privateState.employeeRecord],
+  payrollRowNonce: ({ privateState }) => [privateState, privateState.rowNonce],
   employerSecret: ({ privateState }) => [privateState, privateState.employerSecret],
   providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
   payrollRecords: ({ privateState }) => [privateState, privateState.payroll],
@@ -66,6 +77,7 @@ class Harness {
     const initialPS: PrivateState = {
       employeeSecret: new Uint8Array(32),
       employeeRecord: [0n, 0n, 0n],
+      rowNonce: new Uint8Array(32),
       employerSecret: EMPLOYER_SK,
       providerSecret: PROVIDER_SK,
       payroll: padRecords([]),
@@ -87,21 +99,18 @@ class Harness {
     this.ctx = { ...this.ctx, currentPrivateState: { ...this.ctx.currentPrivateState, ...patch } };
   }
 
-  declareRoster(n: number, providerSk = PROVIDER_SK) {
+  /** The provider commits one hiding hash per payroll row. */
+  declareRoster(team: PayRecord[], providerSk = PROVIDER_SK, headcount = team.length) {
     this.setPS({ providerSecret: providerSk });
-    this.ctx = this.contract.impureCircuits.declareRoster(this.ctx, BigInt(n)).context;
+    this.ctx = this.contract.impureCircuits.declareRoster(this.ctx, padRows(team.map((r) => row(r))), BigInt(headcount)).context;
   }
 
-  enroll(r: PayRecord): Uint8Array {
-    this.setPS({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category] });
+  /** The employee seals their record, opening it against their payroll row. */
+  enroll(r: PayRecord, nonce: Uint8Array = nonceOf(r)): Uint8Array {
+    this.setPS({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category], rowNonce: nonce });
     const res = this.contract.impureCircuits.enroll(this.ctx);
     this.ctx = res.context;
     return res.result;
-  }
-
-  attest(cm: Uint8Array, providerSk = PROVIDER_SK) {
-    this.setPS({ providerSecret: providerSk });
-    this.ctx = this.contract.impureCircuits.attest(this.ctx, cm).context;
   }
 
   publish(records: PayRecord[], claim: ReportClaim = buildClaim(records), employerSk = EMPLOYER_SK) {
@@ -119,10 +128,10 @@ class Harness {
     return res.result;
   }
 
-  /** Full honest setup: roster declared, everyone enrolled and attested. */
+  /** Full honest setup: payroll rows committed, everyone enrolled. */
   onboard(team: PayRecord[]) {
-    this.declareRoster(team.length);
-    for (const r of team) this.attest(this.enroll(r));
+    this.declareRoster(team);
+    for (const r of team) this.enroll(r);
   }
 }
 
@@ -138,40 +147,81 @@ describe("roster and roles", () => {
     expect(h.ledger.latestReport.is_some).toBe(false);
   });
 
-  it("only the payroll provider can declare the roster", () => {
-    expect(() => h.declareRoster(4, bytes32("intruder"))).toThrow(/not the payroll provider/);
-    expect(() => h.declareRoster(4, EMPLOYER_SK)).toThrow(/not the payroll provider/);
-    h.declareRoster(4);
+  it("only the payroll provider can commit the payroll — not the employer", () => {
+    const four = TEAM.slice(0, 4);
+    expect(() => h.declareRoster(four, bytes32("intruder"))).toThrow(/not the payroll provider/);
+    expect(() => h.declareRoster(four, EMPLOYER_SK)).toThrow(/not the payroll provider/);
+    h.declareRoster(four);
     expect(h.ledger.declaredHeadcount).toBe(4n);
+    expect(h.ledger.payrollRows.size()).toBe(4n);
+    expect(h.ledger.payrollRows.member(row(TEAM[0]))).toBe(true);
   });
 
   it("the roster is declared once and must fit the instance", () => {
-    expect(() => h.declareRoster(0)).toThrow(/must not be empty/);
-    expect(() => h.declareRoster(17)).toThrow(/16-record/);
-    h.declareRoster(3);
-    expect(() => h.declareRoster(3)).toThrow(/already declared/);
+    expect(() => h.declareRoster([])).toThrow(/must not be empty/);
+    expect(() => h.declareRoster(TEAM, PROVIDER_SK, 17)).toThrow(/16-record/);
+    h.declareRoster(TEAM.slice(0, 3));
+    expect(() => h.declareRoster(TEAM.slice(0, 3))).toThrow(/already declared/);
+  });
+
+  it("rejects a payroll with the same row twice", () => {
+    expect(() => h.declareRoster([TEAM[0], TEAM[0]])).toThrow(/duplicate payroll row/);
+  });
+
+  it("padding past the headcount is ignored", () => {
+    h.declareRoster(TEAM.slice(0, 2));
+    expect(h.ledger.payrollRows.size()).toBe(2n);
   });
 
   it("enrollment needs a declared roster and stops at its headcount", () => {
     expect(() => h.enroll(TEAM[0])).toThrow(/roster not yet declared/);
-    h.declareRoster(2);
+    h.declareRoster(TEAM.slice(0, 2));
     h.enroll(TEAM[0]);
     h.enroll(TEAM[1]);
-    expect(() => h.enroll(TEAM[2])).toThrow(/roster is full/);
+    // a third person matches no payroll row — the rows are the cap
+    expect(() => h.enroll(TEAM[2])).toThrow(/does not match any payroll row/);
+    expect(h.ledger.enrolled).toBe(2n);
+  });
+});
+
+describe("binding — every counted record is a provider payroll row", () => {
+  let h: Harness;
+  beforeEach(() => { h = new Harness(); h.declareRoster(TEAM); });
+
+  it("an employee's record opens to their payroll row and claims it", () => {
+    const cm = h.enroll(TEAM[0]);
+    expect(h.ledger.claimedRows.member(row(TEAM[0]))).toBe(true);
+    expect(h.ledger.bound.member(cm)).toBe(true);
   });
 
-  it("the employer cannot attest its own data — only the provider can", () => {
-    h.declareRoster(1);
-    const cm = h.enroll(TEAM[0]);
-    expect(() => h.attest(cm, EMPLOYER_SK)).toThrow(/not the payroll provider/);
-    h.attest(cm);
-    expect(h.ledger.attested.member(cm)).toBe(true);
+  it("an employee cannot enroll a higher salary than payroll says", () => {
+    expect(() => h.enroll({ ...TEAM[0], salary: 65_000n })).toThrow(/does not match any payroll row/);
+  });
+
+  it("gender and category are bound too", () => {
+    expect(() => h.enroll({ ...TEAM[0], category: 1n })).toThrow(/does not match any payroll row/);
+    expect(() => h.enroll({ ...TEAM[0], gender: 1n })).toThrow(/does not match any payroll row/);
+  });
+
+  it("the right salary without the payslip nonce does not open the row", () => {
+    expect(() => h.enroll(TEAM[0], bytes32("guessed-nonce"))).toThrow(/does not match any payroll row/);
+  });
+
+  it("the employer cannot enroll an invented employee", () => {
+    expect(() => h.enroll(rec("ghost", 60_000, 0, 0))).toThrow(/does not match any payroll row/);
+  });
+
+  it("a payroll row can be claimed only once", () => {
+    // Whoever holds Ada's payslip nonce could claim her row, once. Ada then
+    // cannot enroll and sees it at once; the counted figure is still payroll's.
+    h.enroll({ ...TEAM[0], sk: bytes32("impostor") }, nonceOf(TEAM[0]));
+    expect(() => h.enroll(TEAM[0])).toThrow(/payroll row is already enrolled/);
   });
 });
 
 describe("enrollment and receipts", () => {
   let h: Harness;
-  beforeEach(() => { h = new Harness(); h.declareRoster(TEAM.length); });
+  beforeEach(() => { h = new Harness(); h.declareRoster(TEAM); });
 
   it("enroll inserts one commitment and one nullifier; the receipt verifies", () => {
     const cm = h.enroll(TEAM[0]);
@@ -186,14 +236,21 @@ describe("enrollment and receipts", () => {
   });
 
   it("rejects a zero salary", () => {
-    expect(() => h.enroll(rec("zed", 0, 0, 0))).toThrow(/salary must be positive/);
+    const h2 = new Harness();
+    const zed = rec("zed", 0, 0, 0);
+    h2.declareRoster([zed]);
+    expect(() => h2.enroll(zed)).toThrow(/salary must be positive/);
   });
 
   it("the category is part of the commitment", () => {
-    const a = h.enroll(rec("same", 50_000, 0, 0));
+    const a1 = rec("same", 50_000, 0, 0);
+    const b1 = rec("same", 50_000, 0, 1);
+    const h1 = new Harness();
+    h1.declareRoster([a1]);
+    const a = h1.enroll(a1);
     const h2 = new Harness();
-    h2.declareRoster(1);
-    const b = h2.enroll(rec("same", 50_000, 0, 1));
+    h2.declareRoster([b1]);
+    const b = h2.enroll(b1);
     expect(Buffer.from(a).equals(Buffer.from(b))).toBe(false);
   });
 });
@@ -278,11 +335,9 @@ describe("publishReport — every lie is rejected", () => {
     expect(() => h.publish(TEAM, { ...claim, catGapBps: bad })).toThrow(/claimed gap too low/);
   });
 
-  it("rejects records the provider never attested", () => {
-    const h2 = new Harness();
-    h2.declareRoster(TEAM.length);
-    for (const r of TEAM) h2.enroll(r);
-    expect(() => h2.publish(TEAM)).toThrow(/not attested by the payroll provider/);
+  it("rejects a payroll witness that changes anyone's pay", () => {
+    const lowered = [{ ...TEAM[3], salary: 60_000n }, ...TEAM.filter((_, i) => i !== 3)];
+    expect(() => h.publish(lowered, buildClaim(lowered))).toThrow(/does not match what its employee enrolled/);
   });
 
   it("rejects duplicate records in the witness", () => {
@@ -292,9 +347,9 @@ describe("publishReport — every lie is rejected", () => {
 
   it("rejects a report when not everyone on the declared roster has enrolled", () => {
     const h2 = new Harness();
-    h2.declareRoster(TEAM.length); // payroll says 14 people
+    h2.declareRoster(TEAM); // payroll says 14 people
     const present = TEAM.slice(0, 12); // only 12 enrolled — 2 stayed silent
-    for (const r of present) h2.attest(h2.enroll(r));
+    for (const r of present) h2.enroll(r);
     expect(() => h2.publish(present)).toThrow(/does not match the payroll provider's roster/);
   });
 });

@@ -81,3 +81,9 @@ export const padRecords = (records: PayRecord[]) => [
   ...records.map((r) => ({ ...r, active: true })),
   ...Array(SLOTS - records.length).fill(EMPTY_SLOT),
 ];
+
+/** The provider's payroll-row hashes, padded to the circuit's Vector<16>. */
+export const padRows = (rows: Uint8Array[]): Uint8Array[] => [
+  ...rows,
+  ...Array.from({ length: SLOTS - rows.length }, () => new Uint8Array(32)),
+];
