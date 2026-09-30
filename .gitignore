@@ -5,3 +5,7 @@ dist/
 
 # published design-canvas payload (tool output, 2 MB) — keep local only
 brand/equilux-logo-directions.html
+
+# preprod deploy wallet: seed and synced wallet state stay local
+contract/preprod/.seed
+contract/preprod/.state/

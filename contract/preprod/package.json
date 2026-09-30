@@ -1,0 +1,23 @@
+{
+  "name": "equilux-preprod",
+  "private": true,
+  "type": "module",
+  "description": "Equilux on Midnight's public preprod testnet. Pinned to the release-candidate wallet SDK, the first line that syncs preprod.",
+  "scripts": {
+    "postinstall": "node patch-sdk.mjs",
+    "address": "tsx address.ts",
+    "sync": "node --max-old-space-size=8192 --import tsx sync.ts"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/wallet-sdk-abstractions": "3.0.0-rc.0",
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "5.0.0-rc.0",
+    "@midnight-ntwrk/wallet-sdk-facade": "5.0.0-rc.0",
+    "@midnight-ntwrk/wallet-sdk-hd": "3.1.0-rc.0",
+    "@midnight-ntwrk/wallet-sdk-shielded": "4.0.0-rc.0",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "4.0.0-rc.0",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5",
+    "rxjs": "^7.8.2",
+    "tsx": "^4.20.0",
+    "ws": "^8.18.0"
+  }
+}
