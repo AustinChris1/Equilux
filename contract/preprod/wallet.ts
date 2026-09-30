@@ -68,7 +68,14 @@ export async function openWallet(log: (m: string) => void = console.log) {
     unshielded: (c: any) => (un ? UnshieldedWallet(c).restore(un) : UnshieldedWallet(c).startWithPublicKey(PublicKey.fromKeyStore(keystore))),
     dust: (c: any) => (du ? DustWallet(c).restore(du) : DustWallet(c).startWithSeed(seeds.dust)),
   } as never);
-  await facade.start(seeds);
+  if (sh && un && du) {
+    // A restored wallet may still be on the ledger-v8 variant, which facade.start's
+    // v9-only key objects cannot serve; the seed answers for either side.
+    const f = facade as any;
+    await Promise.all([f.shielded.startWithSeed(seeds.shielded), f.unshielded.start(), f.dust.startWithSeed(seeds.dust), f.pendingTransactionsService.start()]);
+  } else {
+    await facade.start(seeds);
+  }
 
   const persist = async () => {
     mkdirSync(STATE_DIR, { recursive: true });
