@@ -6,7 +6,7 @@ const guarantees = [
     icon: LockKeyhole,
     n: "01",
     title: "Completeness",
-    body: "The payroll provider declares the headcount before anyone enrolls, and the report must cover exactly that many sealed records. Leaving someone out — even by never enrolling them — is cryptographically impossible, not just against the rules.",
+    body: "The payroll provider commits every payroll row before anyone enrolls, and the report must cover exactly those rows. Leaving someone out — even by never enrolling them — or inventing someone is cryptographically impossible, not just against the rules.",
   },
   {
     icon: Receipt,
@@ -18,7 +18,7 @@ const guarantees = [
     icon: ShieldCheck,
     n: "03",
     title: "Proven statistics",
-    body: "Mean gap, median gap, and the gap in every worker category carry one zero-knowledge proof that they were computed correctly from the complete, provider-attested payroll. A regulator verifies instead of auditing.",
+    body: "Mean gap, median gap, and the gap in every worker category carry one zero-knowledge proof that they were computed correctly from the complete payroll, each salary bound to the provider's row. A regulator verifies instead of auditing.",
   },
   {
     icon: EyeOff,

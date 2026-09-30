@@ -51,7 +51,8 @@ export interface LedgerView {
   declaredHeadcount: number;
   enrolled: number;
   nullifiers: number;
-  attested: number;
+  payrollRows: number;
+  bound: number;
   round: number;
   employerPk: string;
   providerPk: string;

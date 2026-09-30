@@ -5,13 +5,13 @@ const steps = [
   {
     icon: Users,
     title: "Seal every record",
-    body: "The payroll provider declares the headcount from payroll. Then each employee seals their own record — salary, gender marker, worker category — as one opaque commitment and one nullifier. Nothing else touches the chain.",
+    body: "The payroll provider commits every payroll row as a hiding hash, in one transaction. Then each employee seals their own record — salary, gender marker, worker category — as one opaque commitment and one nullifier. Nothing else touches the chain.",
     tag: "Public state · commitments + nullifiers",
   },
   {
     icon: PenLine,
-    title: "The provider attests",
-    body: "The payroll provider — not the employer — attests each record it recognises from payroll. No invented records, no cherry-picking; nullifiers stop anyone being counted twice.",
+    title: "Bound to payroll",
+    body: "A sealed record counts only if it opens to an unclaimed payroll row, so every salary is the provider's figure, confirmed by the employee it belongs to. The employer cannot invent people or change anyone's pay; an employee cannot inflate their own.",
     tag: "Private state · sealed records",
   },
   {

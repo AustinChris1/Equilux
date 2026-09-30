@@ -11,7 +11,7 @@ const waves = [
     wave: "Wave 2",
     dates: "Sep 27 — Oct 17",
     status: "Building",
-    items: ["Payroll provider as a third party: roster + attestation", "Median gap and per-category gaps, all proven", "k = 3 category pay (Article 7), small groups suppressed", "The compiled contract runs in the browser — no Docker", "Personio / DATEV CSV import"],
+    items: ["Payroll provider as a third party: every salary bound to its payroll row", "Median gap and per-category gaps, all proven", "k = 3 category pay (Article 7), small groups suppressed", "The compiled contract runs in the browser — no Docker", "Personio / DATEV CSV import"],
   },
   {
     wave: "Wave 3",

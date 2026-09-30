@@ -18,28 +18,29 @@ import {
   type CircuitContext,
 } from "@midnight-ntwrk/compact-runtime";
 import { Contract, ledger, pureCircuits, type Witnesses } from "../../../contract/build/contract/index.js";
-import { buildClaim, padRecords, type PayRecord, type ReportClaim } from "../../../contract/deploy/claims";
+import { buildClaim, padRecords, padRows, type PayRecord, type ReportClaim } from "../../../contract/deploy/claims";
 import type { LedgerView, Tamper } from "./api";
 
 interface PS {
   employeeSecret: Uint8Array;
   employeeRecord: [bigint, bigint, bigint];
+  rowNonce: Uint8Array;
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
   payroll: ReturnType<typeof padRecords>;
   claim: ReportClaim;
 }
 
-export interface Row { salary: number; gender: 0 | 1; category: number; secret: string }
+/** One employee's record. `nonce` (hex) is the payslip nonce blinding their payroll row. */
+export interface Row { salary: number; gender: 0 | 1; category: number; secret: string; nonce: string }
 
 export type Action =
   | { k: "deploy"; employerSecret: string; providerSecret: string }
-  | { k: "roster"; headcount: number }
+  | { k: "roster"; rows: string[] } // the provider's payroll-row hashes (hex)
   | { k: "enroll"; row: Row }
-  | { k: "attest"; commitment: string }
   | { k: "publish"; rows: Row[] };
 
-const KEY = "equilux.browser-contract.v2";
+const KEY = "equilux.browser-contract.v3";
 
 export const bytes32 = (seed: string): Uint8Array => {
   const b = new Uint8Array(32);
@@ -53,6 +54,7 @@ const fromHex = (h: string) => new Uint8Array(h.match(/../g)!.map((x) => parseIn
 const witnesses: Witnesses<PS> = {
   employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
   employeeRecord: ({ privateState }) => [privateState, privateState.employeeRecord],
+  payrollRowNonce: ({ privateState }) => [privateState, privateState.rowNonce],
   employerSecret: ({ privateState }) => [privateState, privateState.employerSecret],
   providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
   payrollRecords: ({ privateState }) => [privateState, privateState.payroll],
@@ -62,6 +64,12 @@ const witnesses: Witnesses<PS> = {
 const toRecord = (r: Row): PayRecord => ({
   salary: BigInt(r.salary), gender: BigInt(r.gender), category: BigInt(r.category), sk: bytes32(r.secret),
 });
+
+/** The payroll provider's hiding hash of one row — computed where the payroll lives. */
+export const payrollRowHash = (r: Row): string =>
+  toHex(pureCircuits.payrollRow(BigInt(r.salary), BigInt(r.gender), BigInt(r.category), fromHex(r.nonce)));
+
+export const newNonce = (): string => toHex(crypto.getRandomValues(new Uint8Array(32)));
 
 /** Turns a thrown circuit assertion into its human message. */
 export function circuitMessage(e: unknown): string {
@@ -128,7 +136,7 @@ export class BrowserContract {
       if (this.ctx) throw new Error("contract already deployed");
       const eSk = bytes32(a.employerSecret), pSk = bytes32(a.providerSecret);
       this.base = {
-        employeeSecret: new Uint8Array(32), employeeRecord: [0n, 0n, 0n],
+        employeeSecret: new Uint8Array(32), employeeRecord: [0n, 0n, 0n], rowNonce: new Uint8Array(32),
         employerSecret: eSk, providerSecret: pSk, payroll: padRecords([]), claim: buildClaim([]),
       };
       const init = this.contract.initialState(
@@ -145,20 +153,15 @@ export class BrowserContract {
     switch (a.k) {
       case "roster": {
         this.set({});
-        this.ctx = c.declareRoster(this.ctx, BigInt(a.headcount)).context;
-        return a.headcount;
+        this.ctx = c.declareRoster(this.ctx, padRows(a.rows.map(fromHex)), BigInt(a.rows.length)).context;
+        return a.rows.length;
       }
       case "enroll": {
         const r = toRecord(a.row);
-        this.set({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category] });
+        this.set({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category], rowNonce: fromHex(a.row.nonce) });
         const res = c.enroll(this.ctx);
         this.ctx = res.context;
         return toHex(res.result);
-      }
-      case "attest": {
-        this.set({});
-        this.ctx = c.attest(this.ctx, fromHex(a.commitment)).context;
-        return a.commitment;
       }
       case "publish": {
         const recs = a.rows.map(toRecord);
@@ -181,6 +184,19 @@ export class BrowserContract {
       throw new Error(circuitMessage(e));
     }
     throw new Error("the circuit accepted this report — it was not actually a cheat");
+  }
+
+  /** A cheating enrollment: runs the real enroll circuit, never recorded. */
+  tryEnroll(row: Row): never {
+    if (!this.ctx) throw new Error("No contract deployed yet");
+    const r = toRecord(row);
+    this.set({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category], rowNonce: fromHex(row.nonce) });
+    try {
+      this.contract.impureCircuits.enroll(this.ctx);
+    } catch (e) {
+      throw new Error(circuitMessage(e));
+    }
+    throw new Error("the circuit accepted this enrollment — it was not actually a cheat");
   }
 
   /** Real checkReceipt circuit over the Merkle path from the current tree. */
@@ -206,7 +222,8 @@ export class BrowserContract {
       declaredHeadcount: n(l.declaredHeadcount),
       enrolled: n(l.enrolled),
       nullifiers: n(l.nullifiers.size()),
-      attested: n(l.attested.size()),
+      payrollRows: n(l.payrollRows.size()),
+      bound: n(l.bound.size()),
       round: n(l.round),
       employerPk: toHex(l.employerPk),
       providerPk: toHex(l.providerPk),

@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { Reveal } from "./Reveal";
 import { fmtPct, getStatus, resolveApiBase, runJob, short, type LedgerView, type Status, type Tamper } from "../lib/api";
-import { BrowserContract, type Row } from "../lib/browser-contract";
+import { BrowserContract, newNonce, payrollRowHash, type Row } from "../lib/browser-contract";
 import { parsePayrollCsv } from "../../../contract/deploy/payroll-csv";
 
 type Role = "employer" | "provider" | "employee" | "regulator";
@@ -19,13 +19,13 @@ interface Person {
   gender: 0 | 1;
   category: number;
   secret: string;
+  nonce: string; // payslip nonce from the provider — blinds this person's payroll row
   commitment?: string;
   enrollBlock?: number;
-  attested?: boolean;
   receipt?: boolean;
 }
 
-const STORAGE = "equilux.workspace.v2";
+const STORAGE = "equilux.workspace.v3";
 const newSecret = () => (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 24);
 
 const DEFAULT_CATEGORIES = ["Engineering", "Sales", "Operations", "Design"];
@@ -57,7 +57,7 @@ Mia,Costa,female,Operations,40000
 Ned,Fischer,male,Operations,45000`;
 
 const seedPeople = (): Person[] =>
-  SEED.map(([name, salary, gender, category]) => ({ id: newSecret().slice(0, 8), name, salary, gender, category, secret: newSecret() }));
+  SEED.map(([name, salary, gender, category]) => ({ id: newSecret().slice(0, 8), name, salary, gender, category, secret: newSecret(), nonce: newNonce() }));
 
 interface Saved { people: Person[]; categories: string[] }
 function load(): Saved {
@@ -67,7 +67,7 @@ function load(): Saved {
   } catch { /* ignore */ }
   return { people: seedPeople(), categories: DEFAULT_CATEGORIES };
 }
-const stripProgress = (ps: Person[]) => ps.map(({ id, name, salary, gender, category, secret }) => ({ id, name, salary, gender, category, secret }));
+const stripProgress = (ps: Person[]) => ps.map(({ id, name, salary, gender, category, secret, nonce }) => ({ id, name, salary, gender, category, secret, nonce }));
 
 function Btn({ onClick, disabled, children, ghost }: { onClick: () => void; disabled?: boolean; children: React.ReactNode; ghost?: boolean }) {
   return (
@@ -91,7 +91,8 @@ const Step = ({ n, children }: { n: string; children: React.ReactNode }) => (
   </div>
 );
 
-const toRow = (p: Person): Row => ({ salary: p.salary, gender: p.gender, category: p.category, secret: p.secret });
+const toRow = (p: Person): Row => ({ salary: p.salary, gender: p.gender, category: p.category, secret: p.secret, nonce: p.nonce });
+const enrollBody = (r: Row) => ({ ...r, rowNonce: r.nonce });
 
 export function Workspace() {
   const initial = useMemo(load, []);
@@ -106,7 +107,7 @@ export function Workspace() {
   const [liveLedger, setLiveLedger] = useState<LedgerView | null>(null);
   const [employerSecret, setEmployerSecret] = useState("acme:employer-root-secret");
   const [providerSecret, setProviderSecret] = useState("payroll-provider:personio");
-  const [cheat, setCheat] = useState<"none" | "omit" | "mean" | "median" | "category">("none");
+  const [cheat, setCheat] = useState<"none" | "omit" | "pay" | "mean" | "median" | "category">("none");
   const [csvNote, setCsvNote] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const bcRef = useRef<BrowserContract | null>(null);
@@ -184,21 +185,29 @@ export function Workspace() {
   const deploy = () =>
     step("Deploy contract", () => bc.apply({ k: "deploy", employerSecret, providerSecret }), { path: "/api/deploy", body: { employerSecret, providerSecret } });
 
-  const declareRoster = () =>
-    step(`Declare roster of ${people.length}`, () => bc.apply({ k: "roster", headcount: people.length }), { path: "/api/roster", body: { headcount: people.length } });
+  /** The provider hashes each payroll row where the payroll lives; only the hashes go on-chain. */
+  const declareRoster = () => {
+    const rows = people.map((p) => payrollRowHash(toRow(p)));
+    return step(`Commit ${rows.length} payroll rows`, () => bc.apply({ k: "roster", rows }), { path: "/api/roster", body: { rows } });
+  };
 
   const enroll = async (p: Person) => {
     const r = await step<string | { commitment: string; blockHeight: number }>(
-      `Enroll ${p.name}`, () => bc.apply({ k: "enroll", row: toRow(p) }) as string, { path: "/api/enroll", body: toRow(p) });
+      `Enroll ${p.name}`, () => bc.apply({ k: "enroll", row: toRow(p) }) as string, { path: "/api/enroll", body: enrollBody(toRow(p)) });
     if (r) patch(p.id, typeof r === "string" ? { commitment: r } : { commitment: r.commitment, enrollBlock: r.blockHeight });
     return !!r;
   };
 
-  const attest = async (p: Person) => {
-    if (!p.commitment) return false;
-    const r = await step(`Attest ${p.name}`, () => bc.apply({ k: "attest", commitment: p.commitment! }), { path: "/api/attest", body: { commitment: p.commitment } });
-    if (r !== undefined) patch(p.id, { attested: true });
-    return r !== undefined;
+  /** Enrollment cheats: the binding to the provider's payroll rows rejects both. */
+  const cheatEnroll = async (kind: "inflate" | "ghost") => {
+    const who = people[0];
+    const row: Row = kind === "inflate"
+      ? { ...toRow(who), salary: who.salary + 5_000, secret: newSecret() }
+      : { salary: 58_000, gender: 1, category: 0, secret: newSecret(), nonce: newNonce() };
+    const label = kind === "inflate"
+      ? `${who.name} enrolls €${(who.salary + 5_000).toLocaleString()} — payroll says €${who.salary.toLocaleString()}`
+      : "The employer enrolls an invented employee";
+    await step(label, () => bc.tryEnroll(row), { path: "/api/enroll", body: enrollBody(row) });
   };
 
   const receipt = async (p: Person) => {
@@ -208,12 +217,16 @@ export function Workspace() {
   };
 
   const publish = async () => {
-    const attested = people.filter((p) => p.attested);
-    let rows = attested.map(toRow);
+    const enrolledPeople = people.filter((p) => p.commitment);
+    let rows = enrolledPeople.map(toRow);
     let tamper: Tamper | undefined;
     if (cheat === "omit") rows = rows.slice(1);
+    if (cheat === "pay") {
+      const i = rows.findIndex((r) => r.gender === 1);
+      rows = rows.map((r, j) => (j === i ? { ...r, salary: r.salary - 8_000 } : r));
+    }
     if (cheat === "mean") tamper = { meanGapBps: 0 };
-    if (cheat === "median") tamper = { medianWomen: Math.max(...attested.filter((p) => p.gender === 0).map((p) => p.salary)) };
+    if (cheat === "median") tamper = { medianWomen: Math.max(...enrolledPeople.filter((p) => p.gender === 0).map((p) => p.salary)) };
     if (cheat === "category") tamper = { categoryGap: { category: 0, bps: 0 } };
     const label = cheat === "none" ? "Publish the report" : `Publish with a cheat (${cheat})`;
     await step(label, () => (cheat === "none" ? bc.apply({ k: "publish", rows }) : bc.tryCheat(rows, tamper)), { path: "/api/publish", body: { payroll: rows, tamper } });
@@ -226,8 +239,6 @@ export function Workspace() {
     let current = people;
     for (const p of current.filter((x) => !x.commitment)) if (!(await enroll(p))) return;
     setPeople((ps) => { current = ps; return ps; });
-    await new Promise((r) => setTimeout(r, 0));
-    for (const p of current.filter((x) => x.commitment && !x.attested)) if (!(await attest(p))) return;
     setCheat("none");
     await new Promise((r) => setTimeout(r, 0));
     await step("Publish the report", () => bc.apply({ k: "publish", rows: current.filter((p) => p.commitment).map(toRow) }),
@@ -239,10 +250,10 @@ export function Workspace() {
     const { rows, categories: cats, errors } = parsePayrollCsv(text);
     if (rows.length === 0) { setCsvNote(`Nothing imported — ${errors.join("; ")}`); return; }
     const capped = rows.slice(0, 16);
-    setPeople(capped.map((r) => ({ id: newSecret().slice(0, 8), name: r.name, salary: r.salary, gender: r.gender, category: r.category, secret: newSecret() })));
+    setPeople(capped.map((r) => ({ id: newSecret().slice(0, 8), name: r.name, salary: r.salary, gender: r.gender, category: r.category, secret: newSecret(), nonce: newNonce() })));
     setCategories([...cats, ...DEFAULT_CATEGORIES.slice(cats.length)].slice(0, 4));
     setCsvNote(`${capped.length} employees imported from ${source}${rows.length > 16 ? " (capped at 16 for this instance)" : ""}${errors.length ? ` · ${errors.length} row(s) skipped: ${errors[0]}` : ""}`);
-    push([`imported ${capped.length} payroll rows from ${source} — parsed locally, nothing sent anywhere`]);
+    push([`imported ${capped.length} payroll rows from ${source} — parsed locally, nothing sent anywhere`, "a payslip nonce generated for each row — it goes to that employee only"]);
   };
 
   const onFile = (f: File | undefined) => { if (f) f.text().then((t) => importCsv(t, f.name)); };
@@ -256,10 +267,7 @@ export function Workspace() {
     setCheat("none");
   };
 
-  const counts = {
-    enrolled: people.filter((p) => p.commitment).length,
-    attested: people.filter((p) => p.attested).length,
-  };
+  const counts = { enrolled: people.filter((p) => p.commitment).length };
   const locked = !!deployed && rosterDeclared; // the roster is fixed once declared
 
   const tabs: { id: Role; label: string; icon: typeof Building2 }[] = [
@@ -280,9 +288,9 @@ export function Workspace() {
         </Reveal>
         <Reveal delay={0.18}>
           <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-sage">
-            The payroll provider fixes the roster and vouches for each record. Employees seal their own pay. The employer
-            publishes the Directive's figures — mean, median and per worker category — and the circuit checks every one.
-            Then try to cheat.
+            The payroll provider commits every payroll row, hashed. Each employee seals their own pay and proves it matches
+            their row. The employer publishes the Directive's figures — mean, median and per worker category — and the
+            circuit checks every one. Then try to cheat.
           </p>
         </Reveal>
 
@@ -297,7 +305,7 @@ export function Workspace() {
             {deployed && <span className="chip bg-gold/12 text-gold" title={deployed}>contract {short(deployed, 8)}</span>}
             {ledger && (
               <span className="chip bg-cream/6">
-                roster {ledger.rosterDeclared ? ledger.declaredHeadcount : "—"} · enrolled {ledger.enrolled} · attested {ledger.attested}
+                payroll rows {ledger.rosterDeclared ? ledger.payrollRows : "—"} · enrolled {ledger.enrolled} · bound {ledger.bound}
               </span>
             )}
             <button onClick={refresh} className="ml-auto inline-flex items-center gap-1.5 text-sage hover:text-gold"><RefreshCw size={12} /> refresh</button>
@@ -312,7 +320,7 @@ export function Workspace() {
             <Btn onClick={reset} ghost disabled={!!busy || mode === "live"}><RotateCcw size={12} /> Reset</Btn>
             <span className="font-mono text-[11px] text-sage/70">
               {mode === "browser"
-                ? "Deploy → roster → enroll everyone → attest → publish, in about a second."
+                ? "Deploy → payroll rows → everyone enrolls against their row → publish, in about a second."
                 : "Each step is proven and finalized — expect 20–90 s per action."}
             </span>
           </div>
@@ -335,7 +343,7 @@ export function Workspace() {
                 <div className="mt-6 flex flex-col gap-7">
                   <div>
                     <Step n="1">Deploy the reporting contract</Step>
-                    <p className="mt-2 text-[14px] text-sage">Two keys go on-chain as hashes: the employer's, and the payroll provider's. The employer cannot attest its own data.</p>
+                    <p className="mt-2 text-[14px] text-sage">Two keys go on-chain as hashes: the employer's, and the payroll provider's. Only the provider can commit payroll.</p>
                     {deployed ? (
                       <p className="mt-3 font-mono text-[12px] text-gold"><BadgeCheck size={13} className="mr-1.5 inline" />deployed · {short(deployed, 10)}</p>
                     ) : (
@@ -352,7 +360,7 @@ export function Workspace() {
                   <div>
                     <Step n="4">Publish the report</Step>
                     <p className="mt-2 text-[14px] text-sage">
-                      Witness: {counts.attested} provider-attested record(s) of {ledger?.declaredHeadcount ?? people.length} on the roster.
+                      Witness: {counts.enrolled} enrolled record(s), each bound to a payroll row, of {ledger?.declaredHeadcount ?? people.length} on the roster.
                       The circuit recomputes every figure and rejects anything that doesn't match.
                     </p>
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
@@ -360,7 +368,8 @@ export function Workspace() {
                       <div className="mt-2.5 grid gap-1.5 text-[13px] text-cream/85">
                         {([
                           ["none", "Publish honestly"],
-                          ["omit", "Leave one attested employee out of the report"],
+                          ["omit", "Leave one employee out of the report"],
+                          ["pay", "Report one man's salary €8,000 lower"],
                           ["mean", "Claim the mean gap is 0.00%"],
                           ["median", "Inflate the women's median salary"],
                           ["category", `Hide the ${categories[0]} gap (claim 0%)`],
@@ -373,7 +382,7 @@ export function Workspace() {
                       </div>
                     </div>
                     <div className="mt-3">
-                      <Btn onClick={publish} disabled={!deployed || !!busy || counts.attested === 0}>
+                      <Btn onClick={publish} disabled={!deployed || !!busy || counts.enrolled === 0}>
                         <ShieldCheck size={13} /> {cheat === "none" ? "Publish" : "Publish (cheating)"}{mode === "live" ? " + prove" : ""}
                       </Btn>
                     </div>
@@ -395,36 +404,38 @@ export function Workspace() {
                       <Btn onClick={() => fileRef.current?.click()} ghost disabled={locked || !!busy}><Upload size={12} /> Upload CSV</Btn>
                       <Btn onClick={() => importCsv(SAMPLE_CSV, "a sample Personio export")} ghost disabled={locked || !!busy}><FileSpreadsheet size={12} /> Load sample export</Btn>
                     </div>
-                    {locked && <p className="mt-2 font-mono text-[11px] text-sage/70">The roster is declared — the payroll is fixed for this round.</p>}
+                    {locked && <p className="mt-2 font-mono text-[11px] text-sage/70">The payroll is committed — fixed for this round.</p>}
                     {csvNote && <p className="mt-2 font-mono text-[11px] text-gold/90">{csvNote}</p>}
                   </div>
 
                   <div>
-                    <Step n="2b">Declare the roster</Step>
+                    <Step n="2b">Commit the payroll</Step>
                     <p className="mt-2 text-[14px] text-sage">
-                      Commits the headcount from payroll <em>before</em> anyone enrolls. The report must cover exactly this many people,
-                      so nobody can be quietly left out.
+                      One transaction, <em>before</em> anyone enrolls: a hiding hash of each row — salary, gender marker, category and a
+                      payslip nonce. The salaries stay here; each employee gets their nonce with their payslip. The report must then
+                      cover exactly these rows, so nobody can be left out, invented, or have their pay changed.
                     </p>
                     <div className="mt-3">
                       {rosterDeclared
-                        ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> roster of {ledger?.declaredHeadcount} declared</span>
-                        : <Btn onClick={declareRoster} disabled={!deployed || !!busy}><ShieldCheck size={13} /> Declare roster of {people.length}</Btn>}
+                        ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> {ledger?.payrollRows} payroll rows committed</span>
+                        : <Btn onClick={declareRoster} disabled={!deployed || !!busy}><ShieldCheck size={13} /> Commit {people.length} payroll rows</Btn>}
                     </div>
                   </div>
 
                   <div>
-                    <Step n="3b">Attest enrolled records</Step>
+                    <Step n="2c">What the chain holds</Step>
                     <div className="mt-3 flex max-h-72 flex-col divide-y divide-gold/8 overflow-auto pr-1">
-                      {people.filter((p) => p.commitment).length === 0 && <p className="py-2 text-[14px] text-sage/70">No enrollments yet — employees enroll first.</p>}
-                      {people.filter((p) => p.commitment).map((p) => (
+                      {people.map((p) => (
                         <div key={p.id} className="flex items-center justify-between gap-3 py-2">
                           <div>
                             <div className="text-[14px] text-cream">{p.name}</div>
-                            <div className="font-mono text-[10px] text-sage/70" title={p.commitment}>{short(p.commitment!, 8)}</div>
+                            <div className="font-mono text-[10px] text-sage/70">row {short(payrollRowHash(toRow(p)), 8)}</div>
                           </div>
-                          {p.attested
-                            ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> attested</span>
-                            : <Btn onClick={() => attest(p)} disabled={!!busy} ghost>Attest</Btn>}
+                          {!rosterDeclared
+                            ? <span className="font-mono text-[10px] text-sage/60">not committed</span>
+                            : p.commitment
+                              ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> confirmed by employee</span>
+                              : <span className="font-mono text-[10px] text-sage/70">awaiting employee</span>}
                         </div>
                       ))}
                     </div>
@@ -435,12 +446,22 @@ export function Workspace() {
               {/* ── EMPLOYEE ─────────────────────────────────────────── */}
               {role === "employee" && (
                 <div className="mt-6">
-                  <Step n="3a">Seal your record</Step>
+                  <Step n="3">Seal your record</Step>
                   <p className="mt-2 text-[14px] text-sage">
-                    Salary, gender marker and worker category become one commitment and one nullifier — that is all the chain sees.
-                    Then verify your receipt: a Merkle proof that you were counted.
+                    Enrolling proves your salary, gender marker and category open to your payroll row (with the nonce from your
+                    payslip) — without revealing them. The chain sees one commitment and one nullifier. Then verify your receipt: a
+                    Merkle proof that you were counted.
                   </p>
-                  {!rosterDeclared && <p className="mt-2 text-[13px] text-sage/80">Enrollment opens once the payroll provider declares the roster.</p>}
+                  {!rosterDeclared && <p className="mt-2 text-[13px] text-sage/80">Enrollment opens once the payroll provider commits the payroll.</p>}
+                  {rosterDeclared && people.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
+                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        <Btn onClick={() => cheatEnroll("inflate")} disabled={!!busy} ghost>{people[0].name.split(" ")[0]} claims €5,000 more</Btn>
+                        <Btn onClick={() => cheatEnroll("ghost")} disabled={!!busy} ghost>Enroll an invented employee</Btn>
+                      </div>
+                    </div>
+                  )}
                   <div className="mt-3 flex max-h-96 flex-col divide-y divide-gold/8 overflow-auto pr-1">
                     {people.map((p) => (
                       <div key={p.id} className="grid grid-cols-[1.4fr_0.8fr_auto] items-center gap-3 py-2">
