@@ -6,7 +6,8 @@
   "scripts": {
     "postinstall": "node patch-sdk.mjs",
     "address": "tsx address.ts",
-    "sync": "node --max-old-space-size=8192 --import tsx sync.ts"
+    "sync": "node --max-old-space-size=8192 --import tsx sync.ts",
+    "deploy": "node --max-old-space-size=8192 --import tsx run.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/wallet-sdk-abstractions": "3.0.0-rc.0",

@@ -9,3 +9,4 @@ brand/equilux-logo-directions.html
 # preprod deploy wallet: seed and synced wallet state stay local
 contract/preprod/.seed
 contract/preprod/.state/
+contract/preprod/midnight-level-db/
