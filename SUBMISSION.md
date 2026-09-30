@@ -14,19 +14,22 @@ Text for the AKINDO submission form. Each section maps to a field the rules ask 
 The first employee-verifiable pay-transparency reporting protocol. Under Directive (EU) 2023/970,
 EU employers must publish gender pay gap figures from June 2027, and today those reports are
 self-declared: no employee or regulator can check them without seeing every salary. Equilux lets a
-company prove its report was computed from its complete payroll — each record sealed by the
-employee and vouched for by the payroll provider — while every salary stays in Midnight's private
-state. It sits next to the HRIS as a verification layer, not in place of it.
+company prove its report was computed from its complete payroll — every salary the payroll
+provider's own figure, confirmed by the employee it belongs to — while every salary stays in
+Midnight's private state. It sits next to the HRIS as a verification layer, not in place of it.
 
 ## What changed since Wave 1
 
 The Wave 1 judge asked for payroll-provider attestation and for Equilux to become a plugin for
 Workday / Personio rather than a standalone app. Both are built.
 
-1. **A third party: the payroll provider.** It holds its own key, declares the roster headcount
-   before anyone enrolls, and attests each record. The employer can no longer vouch for its own
-   data — the Wave 1 weakness.
-2. **Nobody can be left out.** The report must cover exactly the declared headcount. In Wave 1 an
+1. **The payroll provider vouches for the figures, not just a hash.** It holds its own key and,
+   before anyone enrolls, commits a hiding hash of every payroll row —
+   `hash(salary, gender, category, payslip nonce)` — in one transaction. An employee can only enroll
+   a record that opens to an unclaimed row. So every counted salary is payroll's own figure,
+   confirmed by the employee it belongs to: the employer cannot invent a person or change anyone's
+   pay, and an employee cannot inflate their own. No salary reaches the ledger.
+2. **Nobody can be left out.** The report must cover exactly the committed rows. In Wave 1 an
    employee who never enrolled could be silently excluded; now the circuit rejects that report.
 3. **More of the Directive, proven.** `publishReport` now verifies the **median gap** (lower median
    by rank counting — no sort in-circuit) and the **mean gap per worker category**, the unit
@@ -41,21 +44,31 @@ Workday / Personio rather than a standalone app. Both are built.
 6. **The plugin surface.** A Personio / DATEV CSV importer (German headers, `62.000,00` amounts)
    and a documented API for each party's actions.
 7. **Four parties in the Workspace**: employer, payroll provider, employee, regulator — with a
-   one-click full flow and four cheats (omit an employee, fake mean gap, inflated median, hidden
-   category gap), each rejected by the circuit with its own message.
+   one-click full flow and seven cheats (inflate your own salary, enroll an invented employee, omit
+   an employee, change someone's pay in the report, fake mean gap, inflated median, hidden category
+   gap), each rejected by the circuit with its own message.
+8. **Honest tests.** The Wave 1 TypeScript simulator and its 12 tests are removed. The suite is 28
+   tests on the compiled circuits (9 in Wave 1) and 8 on the CSV importer.
 
 ## Progress completed during Wave 2
 
-- Contract v2: 5 circuits compile with proving and verifier keys (`declareRoster` new;
-  `publishReport` extended to median and per-category statistics with k = 3 suppression).
-- **Verified on a Midnight network with real proofs:** deploy with two role keys; enrollment
-  rejected before the roster; roster declared; eight enrollments; a ninth rejected past the roster;
-  eight provider attestations; four cheating reports rejected; the honest report proven and
-  finalized; a receipt proven. The on-chain report matches the tests to the basis point.
-- **Verified on the live Vercel site:** the full flow in about two seconds, all four cheats
+- Contract v2: 4 circuits compile with proving and verifier keys. `declareRoster` commits the
+  payroll rows; `enroll` binds each record to one; the blind `attest` circuit of the first Wave 2
+  draft is gone. `publishReport` is extended to median and per-category statistics with k = 3
+  suppression.
+- **Verified on a Midnight network with real proofs:** the same 14-person company as
+  the live site (`pnpm demo:standalone`). Contract `620570fe…6679` deployed (block 27); the
+  provider committed 14 payroll-row hashes in one transaction (block 31); 14 enrollments, each
+  proven to open its own row (blocks 36–91); an employee claiming €65,000 against a €60,000 row
+  rejected by the circuit; `publishReport` proven and finalized (block 109). The on-chain report is
+  identical to the site's: mean 9.69%, median 1.81%, Engineering 13.88% flagged, Sales 3.70%,
+  Operations suppressed. The API path (roster, bound enrollment, both enrollment cheats, two
+  publish cheats, publish, receipt) was verified against a second deployment.
+- **Verified on the live Vercel site:** the full flow in about two seconds, all seven cheats
   rejected, a receipt verified through the real `checkReceipt`, state preserved across reload,
   no page errors, no horizontal overflow on mobile.
-- Tests: 21 → 41, covering roster, roles, every statistic, every rejection, and the CSV importer.
+- Tests: 36 — 28 on the compiled circuits (roster, binding, roles, every statistic, every
+  rejection) and 8 on the CSV importer.
 - Public-testnet probe re-run on Midnight's new stable wallet SDK (facade 4.0.1): the Wave 1
   decode error is fixed upstream, but syncing preprod now fails inside the SDK's WebAssembly
   (`RuntimeError: unreachable` while applying a sync update). Documented; deployment follows
@@ -64,25 +77,27 @@ Workday / Personio rather than a standalone app. Both are built.
 ## How privacy shapes the design
 
 Salaries, gender markers, worker categories and secrets exist only as witnesses. The public ledger
-holds hashed role keys, the declared headcount, commitments (a Merkle tree), nullifiers,
-attestations and the proven report. Every witness value that reaches the ledger passes an explicit
+holds hashed role keys, the headcount, the provider's payroll-row hashes (blinded by payslip
+nonces, so a salary cannot be brute-forced from them), commitments (a Merkle tree), nullifiers and
+the proven report. Every witness value that reaches the ledger passes an explicit
 `disclose()`. The circuit discloses only aggregates, and for small categories not even those.
 
 ## Current state, stated precisely
 
-- 5 circuits, keys generated; proven end to end on a local Midnight network; not yet on the public
+- 4 circuits, keys generated; proven end to end on a local Midnight network; not yet on the public
   testnet (SDK sync failure above).
 - The hosted site runs the compiled contract in the browser without proofs; live proofs need the
   local network and API (`pnpm network:up && pnpm app:server`).
 - 3 of Article 9's 7 indicators: mean gap, median gap, per-category gap on basic pay.
-- HR still holds payroll; the provider's roster is trusted; sized instance of 16 records and
-  4 categories; binary gender markers as the Directive's annex is written.
+- HR still holds payroll; the provider's payroll rows are trusted (each employee sees their own);
+  sized instance of 16 records and 4 categories; binary gender markers as the Directive's annex is
+  written.
 
 ## How judges can evaluate it
 
 - Live site → Workspace → **Run the full flow**, then Regulator tab; then Employer tab → pick a
-  cheat → Publish.
-- `cd contract && pnpm install && pnpm test` — 41 tests.
+  cheat → Publish; Employee tab → try to claim €5,000 more.
+- `cd contract && pnpm install && pnpm test` — 36 tests.
 - `pnpm network:up && pnpm app:server`, then the Workspace on localhost — real proofs.
 - `contract/src/equilux.compact` is the contract.
 
