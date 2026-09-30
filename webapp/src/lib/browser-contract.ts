@@ -274,54 +274,58 @@ export class BrowserContract {
 
   view(): LedgerView | null {
     if (!this.ctx || !this.address) return null;
-    const l = ledger(this.ctx.currentQueryContext.state);
-    const n = (x: bigint) => Number(x);
-    const rep = l.latestReport;
-    return {
-      contractAddress: this.address,
-      rosterDeclared: l.rosterDeclared,
-      payrollConfirmed: l.payrollConfirmed,
-      declaredHeadcount: n(l.declaredHeadcount),
-      enrolled: n(l.enrolled),
-      nullifiers: n(l.nullifiers.size()),
-      payrollRows: n(l.payrollRows.size()),
-      bound: n(l.bound.size()),
-      round: n(l.round),
-      employerPk: toHex(l.employerPk),
-      providerPk: toHex(l.providerPk),
-      councilPk: toHex(l.councilPk),
-      latestVariableReport: l.latestVariableReport.is_some
-        ? (() => {
-            const v = l.latestVariableReport.value;
-            return {
-              round: n(v.round), headcountWomen: n(v.headcountWomen), headcountMen: n(v.headcountMen),
-              recipientsWomen: n(v.recipientsWomen), recipientsMen: n(v.recipientsMen), gapDefined: v.gapDefined,
-              meanGapBps: n(v.meanGapBps), meanFavorsMen: v.meanFavorsMen, medianGapBps: n(v.medianGapBps), medianFavorsMen: v.medianFavorsMen,
-              quartiles: v.quartiles.map((q) => ({ women: n(q.women), men: n(q.men) })),
-              categories: v.categories.map((c) => ({
-                recipientsWomen: n(c.recipientsWomen), recipientsMen: n(c.recipientsMen), disclosed: c.disclosed,
-                meanGapBps: n(c.meanGapBps), gapFavorsMen: c.gapFavorsMen,
-              })),
-            };
-          })()
-        : null,
-      latestReport: rep.is_some
-        ? {
-            round: n(rep.value.round),
-            headcountWomen: n(rep.value.headcountWomen),
-            headcountMen: n(rep.value.headcountMen),
-            meanGapBps: n(rep.value.meanGapBps),
-            gapFavorsMen: rep.value.gapFavorsMen,
-            meanGapAtOrAbove5pct: rep.value.meanGapAtOrAbove5pct,
-            medianGapBps: n(rep.value.medianGapBps),
-            medianFavorsMen: rep.value.medianFavorsMen,
-            categories: rep.value.categories.map((c) => ({
-              headcountWomen: n(c.headcountWomen), headcountMen: n(c.headcountMen), disclosed: c.disclosed,
-              meanWomen: n(c.meanWomen), meanMen: n(c.meanMen), meanGapBps: n(c.meanGapBps),
-              gapFavorsMen: c.gapFavorsMen, gapAtOrAbove5pct: c.gapAtOrAbove5pct,
-            })),
-          }
-        : null,
-    };
+    return ledgerView(ledger(this.ctx.currentQueryContext.state), this.address);
   }
+}
+
+/** Public contract state → the view the workspace and the verify page render. */
+export function ledgerView(l: ReturnType<typeof ledger>, contractAddress: string): LedgerView {
+  const n = (x: bigint) => Number(x);
+  const rep = l.latestReport;
+  return {
+    contractAddress,
+    rosterDeclared: l.rosterDeclared,
+    payrollConfirmed: l.payrollConfirmed,
+    declaredHeadcount: n(l.declaredHeadcount),
+    enrolled: n(l.enrolled),
+    nullifiers: n(l.nullifiers.size()),
+    payrollRows: n(l.payrollRows.size()),
+    bound: n(l.bound.size()),
+    round: n(l.round),
+    employerPk: toHex(l.employerPk),
+    providerPk: toHex(l.providerPk),
+    councilPk: toHex(l.councilPk),
+    latestVariableReport: l.latestVariableReport.is_some
+      ? (() => {
+          const v = l.latestVariableReport.value;
+          return {
+            round: n(v.round), headcountWomen: n(v.headcountWomen), headcountMen: n(v.headcountMen),
+            recipientsWomen: n(v.recipientsWomen), recipientsMen: n(v.recipientsMen), gapDefined: v.gapDefined,
+            meanGapBps: n(v.meanGapBps), meanFavorsMen: v.meanFavorsMen, medianGapBps: n(v.medianGapBps), medianFavorsMen: v.medianFavorsMen,
+            quartiles: v.quartiles.map((q) => ({ women: n(q.women), men: n(q.men) })),
+            categories: v.categories.map((c) => ({
+              recipientsWomen: n(c.recipientsWomen), recipientsMen: n(c.recipientsMen), disclosed: c.disclosed,
+              meanGapBps: n(c.meanGapBps), gapFavorsMen: c.gapFavorsMen,
+            })),
+          };
+        })()
+      : null,
+    latestReport: rep.is_some
+      ? {
+          round: n(rep.value.round),
+          headcountWomen: n(rep.value.headcountWomen),
+          headcountMen: n(rep.value.headcountMen),
+          meanGapBps: n(rep.value.meanGapBps),
+          gapFavorsMen: rep.value.gapFavorsMen,
+          meanGapAtOrAbove5pct: rep.value.meanGapAtOrAbove5pct,
+          medianGapBps: n(rep.value.medianGapBps),
+          medianFavorsMen: rep.value.medianFavorsMen,
+          categories: rep.value.categories.map((c) => ({
+            headcountWomen: n(c.headcountWomen), headcountMen: n(c.headcountMen), disclosed: c.disclosed,
+            meanWomen: n(c.meanWomen), meanMen: n(c.meanMen), meanGapBps: n(c.meanGapBps),
+            gapFavorsMen: c.gapFavorsMen, gapAtOrAbove5pct: c.gapAtOrAbove5pct,
+          })),
+        }
+      : null,
+  };
 }
