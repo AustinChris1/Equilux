@@ -1,5 +1,5 @@
 /**
- * Circuit-level tests for Equilux v2: these drive the COMPILER-GENERATED
+ * Circuit-level tests for Equilux v3: these drive the COMPILER-GENERATED
  * contract module (build/contract/index.js) through @midnight-ntwrk/compact-runtime
  * — real persistentHash, real Merkle tree, real disclose semantics, real ledger
  * state transitions. `pnpm compile` (or `pnpm compile:fast`) must have run first.
@@ -12,18 +12,21 @@ import {
   type CircuitContext,
 } from "@midnight-ntwrk/compact-runtime";
 import { Contract, ledger, pureCircuits, type Ledger, type Witnesses } from "../build/contract/index.js";
-import { buildClaim, padRecords, padRows, type PayRecord, type ReportClaim } from "../deploy/claims.js";
+import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord, type ReportClaim, type RowOpening, type VariableClaim } from "../deploy/claims.js";
 
 type Slot = ReturnType<typeof padRecords>[number];
 
 interface PrivateState {
   employeeSecret: Uint8Array;
-  employeeRecord: [bigint, bigint, bigint];
+  employeeRecord: [bigint, bigint, bigint, bigint];
   rowNonce: Uint8Array;
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
+  councilSecret: Uint8Array;
+  openings: RowOpening[];
   payroll: Slot[];
   claim: ReportClaim;
+  variableClaim: VariableClaim;
 }
 
 const bytes32 = (seed: string): Uint8Array => {
@@ -34,20 +37,23 @@ const bytes32 = (seed: string): Uint8Array => {
 
 const EMPLOYER_SK = bytes32("employer-secret");
 const PROVIDER_SK = bytes32("payroll-provider-secret");
+const COUNCIL_SK = bytes32("works-council-secret");
 const COIN_PK = "0".repeat(64);
 
-const rec = (name: string, salary: number, gender: 0 | 1, category: number): PayRecord => ({
-  salary: BigInt(salary), gender: BigInt(gender), category: BigInt(category), sk: bytes32(name),
+const rec = (name: string, salary: number, gender: 0 | 1, category: number, variable = 0): PayRecord => ({
+  salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), sk: bytes32(name),
 });
 
-// Category 0 (engineering) and 1 (sales) have ≥3 of each gender → disclosed.
-// Category 2 (operations) has one woman and one man → must be suppressed.
+// Basic pay: Engineering (0) and Sales (1) have ≥3 of each gender → disclosed;
+// Operations (2) has one woman and one man → suppressed.
+// Variable pay: 5 women and 7 men receive it. In Sales both groups have 3
+// recipients → disclosed; in Engineering only 2 women do → suppressed.
 const TEAM: PayRecord[] = [
-  rec("ada", 60_000, 0, 0), rec("bea", 62_000, 0, 0), rec("cai", 64_000, 0, 0),
-  rec("dan", 70_000, 1, 0), rec("eli", 72_000, 1, 0), rec("fox", 74_000, 1, 0),
-  rec("gia", 50_000, 0, 1), rec("hal", 52_000, 0, 1), rec("ivy", 54_000, 0, 1),
-  rec("jon", 53_000, 1, 1), rec("kai", 54_000, 1, 1), rec("leo", 55_000, 1, 1),
-  rec("mia", 40_000, 0, 2), rec("ned", 45_000, 1, 2),
+  rec("ada", 60_000, 0, 0, 3_000), rec("bea", 62_000, 0, 0, 4_000), rec("cai", 64_000, 0, 0),
+  rec("dan", 70_000, 1, 0, 6_000), rec("eli", 72_000, 1, 0, 7_000), rec("fox", 74_000, 1, 0, 5_000),
+  rec("gia", 50_000, 0, 1, 2_000), rec("hal", 52_000, 0, 1, 2_500), rec("ivy", 54_000, 0, 1, 3_000),
+  rec("jon", 53_000, 1, 1, 2_500), rec("kai", 54_000, 1, 1, 3_500), rec("leo", 55_000, 1, 1, 3_000),
+  rec("mia", 40_000, 0, 2), rec("ned", 45_000, 1, 2, 1_000),
 ];
 
 // The nonce the provider prints on each employee's payslip.
@@ -57,7 +63,8 @@ const nonceOf = (r: PayRecord) => {
   n.set([0x72, 0x6f, 0x77, 0x3a]); // "row:"
   return n;
 };
-const row = (r: PayRecord, nonce = nonceOf(r)) => pureCircuits.payrollRow(r.salary, r.gender, r.category, nonce);
+const row = (r: PayRecord, nonce = nonceOf(r)) => pureCircuits.payrollRow(r.salary, r.variable, r.gender, r.category, nonce);
+const openingsOf = (team: PayRecord[]) => padOpenings(team.map((r) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, nonce: nonceOf(r) })));
 
 const witnesses: Witnesses<PrivateState> = {
   employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
@@ -65,8 +72,11 @@ const witnesses: Witnesses<PrivateState> = {
   payrollRowNonce: ({ privateState }) => [privateState, privateState.rowNonce],
   employerSecret: ({ privateState }) => [privateState, privateState.employerSecret],
   providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
+  councilSecret: ({ privateState }) => [privateState, privateState.councilSecret],
+  payrollOpenings: ({ privateState }) => [privateState, privateState.openings],
   payrollRecords: ({ privateState }) => [privateState, privateState.payroll],
   reportClaim: ({ privateState }) => [privateState, privateState.claim],
+  variableClaim: ({ privateState }) => [privateState, privateState.variableClaim],
 };
 
 class Harness {
@@ -76,17 +86,21 @@ class Harness {
   constructor() {
     const initialPS: PrivateState = {
       employeeSecret: new Uint8Array(32),
-      employeeRecord: [0n, 0n, 0n],
+      employeeRecord: [0n, 0n, 0n, 0n],
       rowNonce: new Uint8Array(32),
       employerSecret: EMPLOYER_SK,
       providerSecret: PROVIDER_SK,
+      councilSecret: COUNCIL_SK,
+      openings: padOpenings([]),
       payroll: padRecords([]),
       claim: buildClaim([]),
+      variableClaim: buildVariableClaim([]),
     };
     const { currentContractState, currentPrivateState, currentZswapLocalState } = this.contract.initialState(
       createConstructorContext(initialPS, COIN_PK),
       pureCircuits.publicKey(EMPLOYER_SK),
       pureCircuits.publicKey(PROVIDER_SK),
+      pureCircuits.publicKey(COUNCIL_SK),
     );
     this.ctx = createCircuitContext(sampleContractAddress(), currentZswapLocalState, currentContractState, currentPrivateState);
   }
@@ -99,15 +113,22 @@ class Harness {
     this.ctx = { ...this.ctx, currentPrivateState: { ...this.ctx.currentPrivateState, ...patch } };
   }
 
-  /** The provider commits one hiding hash per payroll row. */
-  declareRoster(team: PayRecord[], providerSk = PROVIDER_SK, headcount = team.length) {
+  /** The provider commits one hiding hash per payroll row; by default the council then confirms it. */
+  declareRoster(team: PayRecord[], providerSk = PROVIDER_SK, headcount = team.length, confirm = true) {
     this.setPS({ providerSecret: providerSk });
     this.ctx = this.contract.impureCircuits.declareRoster(this.ctx, padRows(team.map((r) => row(r))), BigInt(headcount)).context;
+    if (confirm && headcount > 0 && headcount <= 16) this.confirm(openingsOf(team));
+  }
+
+  /** The works council opens every committed row. */
+  confirm(openings: RowOpening[], councilSk = COUNCIL_SK) {
+    this.setPS({ councilSecret: councilSk, openings });
+    this.ctx = this.contract.impureCircuits.confirmPayroll(this.ctx).context;
   }
 
   /** The employee seals their record, opening it against their payroll row. */
   enroll(r: PayRecord, nonce: Uint8Array = nonceOf(r)): Uint8Array {
-    this.setPS({ employeeSecret: r.sk, employeeRecord: [r.salary, r.gender, r.category], rowNonce: nonce });
+    this.setPS({ employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: nonce });
     const res = this.contract.impureCircuits.enroll(this.ctx);
     this.ctx = res.context;
     return res.result;
@@ -116,6 +137,13 @@ class Harness {
   publish(records: PayRecord[], claim: ReportClaim = buildClaim(records), employerSk = EMPLOYER_SK) {
     this.setPS({ payroll: padRecords(records), claim, employerSecret: employerSk });
     const res = this.contract.impureCircuits.publishReport(this.ctx);
+    this.ctx = res.context;
+    return res.result;
+  }
+
+  publishVariable(records: PayRecord[], claim: VariableClaim = buildVariableClaim(records), bands = assignBands(records), employerSk = EMPLOYER_SK) {
+    this.setPS({ payroll: padRecords(records, bands), variableClaim: claim, employerSecret: employerSk });
+    const res = this.contract.impureCircuits.publishVariablePay(this.ctx);
     this.ctx = res.context;
     return res.result;
   }
@@ -139,12 +167,15 @@ describe("roster and roles", () => {
   let h: Harness;
   beforeEach(() => { h = new Harness(); });
 
-  it("initializes public state with two role keys and no roster", () => {
+  it("initializes public state with three role keys and no roster", () => {
     expect(h.ledger.round).toBe(1n);
     expect(h.ledger.rosterDeclared).toBe(false);
     expect(h.ledger.employerPk).toEqual(pureCircuits.publicKey(EMPLOYER_SK));
     expect(h.ledger.providerPk).toEqual(pureCircuits.publicKey(PROVIDER_SK));
+    expect(h.ledger.councilPk).toEqual(pureCircuits.publicKey(COUNCIL_SK));
+    expect(h.ledger.payrollConfirmed).toBe(false);
     expect(h.ledger.latestReport.is_some).toBe(false);
+    expect(h.ledger.latestVariableReport.is_some).toBe(false);
   });
 
   it("only the payroll provider can commit the payroll — not the employer", () => {
@@ -240,6 +271,10 @@ describe("enrollment and receipts", () => {
     const zed = rec("zed", 0, 0, 0);
     h2.declareRoster([zed]);
     expect(() => h2.enroll(zed)).toThrow(/salary must be positive/);
+  });
+
+  it("variable pay is bound too", () => {
+    expect(() => h.enroll({ ...TEAM[0], variable: 9_000n })).toThrow(/does not match any payroll row/);
   });
 
   it("the category is part of the commitment", () => {
@@ -351,5 +386,121 @@ describe("publishReport — every lie is rejected", () => {
     const present = TEAM.slice(0, 12); // only 12 enrolled — 2 stayed silent
     for (const r of present) h2.enroll(r);
     expect(() => h2.publish(present)).toThrow(/does not match the payroll provider's roster/);
+  });
+});
+
+describe("works council — confirms every committed payroll row", () => {
+  let h: Harness;
+  beforeEach(() => { h = new Harness(); h.declareRoster(TEAM, PROVIDER_SK, TEAM.length, false); });
+
+  it("enrollment stays closed until the council confirms", () => {
+    expect(() => h.enroll(TEAM[0])).toThrow(/not yet confirmed by the works council/);
+    h.confirm(openingsOf(TEAM));
+    expect(h.ledger.payrollConfirmed).toBe(true);
+    h.enroll(TEAM[0]);
+  });
+
+  it("only the works council can confirm — not the provider or the employer", () => {
+    expect(() => h.confirm(openingsOf(TEAM), PROVIDER_SK)).toThrow(/not the works council/);
+    expect(() => h.confirm(openingsOf(TEAM), EMPLOYER_SK)).toThrow(/not the works council/);
+  });
+
+  it("the council must open every committed row", () => {
+    expect(() => h.confirm(openingsOf(TEAM.slice(1)))).toThrow(/open every committed payroll row/);
+  });
+
+  it("a row the provider never committed cannot be opened", () => {
+    const wrong = openingsOf([{ ...TEAM[0], salary: 61_000n }, ...TEAM.slice(1)]);
+    expect(() => h.confirm(wrong)).toThrow(/not in the committed payroll/);
+  });
+
+  it("the same row cannot be opened twice to pad the count", () => {
+    const twice = openingsOf([TEAM[0], TEAM[0], ...TEAM.slice(2)]);
+    expect(() => h.confirm(twice)).toThrow(/opened twice/);
+  });
+
+  it("confirms once per round", () => {
+    h.confirm(openingsOf(TEAM));
+    expect(() => h.confirm(openingsOf(TEAM))).toThrow(/already confirmed/);
+  });
+});
+
+describe("publishVariablePay — the rest of Article 9", () => {
+  let h: Harness;
+  beforeEach(() => { h = new Harness(); h.onboard(TEAM); });
+
+  it("publishes recipients, variable-pay mean and median gaps", () => {
+    const claim = buildVariableClaim(TEAM);
+    const r = h.publishVariable(TEAM, claim);
+    expect(r.headcountWomen).toBe(7n);
+    expect(r.recipientsWomen).toBe(5n); // (e): 5 of 7 women
+    expect(r.recipientsMen).toBe(7n);   // (e): 7 of 7 men
+    expect(r.gapDefined).toBe(true);
+    expect(r.meanGapBps).toBe(claim.meanGapBps);
+    expect(r.meanFavorsMen).toBe(true);
+    expect(claim.medianWomen).toBe(3_000n);
+    expect(claim.medianMen).toBe(3_500n);
+    expect(r.medianGapBps).toBe(claim.medianGapBps);
+    expect(h.ledger.latestVariableReport.is_some).toBe(true);
+  });
+
+  it("splits the workforce into pay quartiles of 3, 4, 3 and 4", () => {
+    const r = h.publishVariable(TEAM);
+    const sizes = r.quartiles.map((q) => Number(q.women + q.men));
+    expect(sizes).toEqual([3, 4, 3, 4]);
+    // by total pay: bottom mia, ned, gia · top bea, dan, eli, fox
+    expect(r.quartiles[0]).toEqual({ women: 2n, men: 1n });
+    expect(r.quartiles[3]).toEqual({ women: 1n, men: 3n });
+  });
+
+  it("variable pay per category, suppressed below three recipients", () => {
+    const [eng, sales, ops] = h.publishVariable(TEAM).categories;
+    expect(eng.disclosed).toBe(false); // only 2 women in Engineering receive variable pay
+    expect(eng.recipientsWomen).toBe(2n);
+    expect(sales.disclosed).toBe(true);
+    expect(sales.meanGapBps).toBe(buildVariableClaim(TEAM).catGapBps[1]);
+    expect(ops.disclosed).toBe(false);
+  });
+
+  it("rejects a false variable-pay gap, one basis point either way", () => {
+    const claim = buildVariableClaim(TEAM);
+    expect(() => h.publishVariable(TEAM, { ...claim, meanGapBps: claim.meanGapBps + 1n })).toThrow(/claimed gap too high/);
+    expect(() => h.publishVariable(TEAM, { ...claim, meanGapBps: claim.meanGapBps - 1n })).toThrow(/claimed gap too low/);
+  });
+
+  it("rejects a false variable-pay median", () => {
+    const claim = buildVariableClaim(TEAM);
+    expect(() => h.publishVariable(TEAM, { ...claim, medianWomen: 4_000n })).toThrow(/variable-pay median is too high/);
+  });
+
+  it("rejects quartile bands out of pay order", () => {
+    const bands = assignBands(TEAM);
+    const top = TEAM.findIndex((r) => r.salary === 74_000n);
+    const bottom = TEAM.findIndex((r) => r.salary === 40_000n);
+    [bands[top], bands[bottom]] = [bands[bottom], bands[top]];
+    expect(() => h.publishVariable(TEAM, undefined, bands)).toThrow(/out of pay order/);
+  });
+
+  it("rejects bands that are not quarters", () => {
+    expect(() => h.publishVariable(TEAM, undefined, TEAM.map(() => 0n))).toThrow(/split the workforce into quarters/);
+  });
+
+  it("rejects a witness that changes anyone's variable pay", () => {
+    const edited = [{ ...TEAM[3], variable: 1_000n }, ...TEAM.filter((_, i) => i !== 3)];
+    expect(() => h.publishVariable(edited)).toThrow(/does not match what its employee enrolled/);
+  });
+
+  it("rejects a publish by anyone but the employer", () => {
+    expect(() => h.publishVariable(TEAM, undefined, undefined, PROVIDER_SK)).toThrow(/not the employer/);
+  });
+
+  it("with no women receiving variable pay, no gap may be claimed", () => {
+    const noBonusForWomen = TEAM.map((r) => (r.gender === 0n ? { ...r, variable: 0n } : r));
+    const h2 = new Harness();
+    h2.onboard(noBonusForWomen);
+    expect(() => h2.publishVariable(noBonusForWomen, { ...buildVariableClaim(noBonusForWomen), meanGapBps: 1_000n })).toThrow(/without recipients of both genders/);
+    const r = h2.publishVariable(noBonusForWomen);
+    expect(r.gapDefined).toBe(false);
+    expect(r.recipientsWomen).toBe(0n);
   });
 });

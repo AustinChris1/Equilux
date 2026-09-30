@@ -2,9 +2,12 @@
  * Payroll export → Equilux rows.
  *
  * Accepts the column shapes HR systems actually export, case-insensitively:
- *   Personio  — "First name", "Last name", "Gender", "Department", "Annual salary"
- *   DATEV     — "Name", "Geschlecht", "Tätigkeit", "Jahresbrutto"
- *   generic   — name, gender, category, salary
+ *   Personio  — "First name", "Last name", "Gender", "Department", "Annual salary", "Bonus"
+ *   DATEV     — "Name", "Geschlecht", "Tätigkeit", "Jahresbrutto", "Sonderzahlung"
+ *   generic   — name, gender, category, salary, variable
+ *
+ * The variable-pay column (bonus, commission, Sonderzahlung, Prämie …) is
+ * optional; without it every row carries 0 variable pay.
  *
  * Gender maps female/f/w/weiblich → 0 and male/m/männlich → 1. Worker
  * categories are assigned by first appearance of each distinct department /
@@ -14,6 +17,7 @@
 export interface PayrollRow {
   name: string;
   salary: number;
+  variable: number; // annual variable / complementary pay; 0 if none
   gender: 0 | 1;
   category: number;
   categoryLabel: string;
@@ -65,6 +69,7 @@ export function parsePayrollCsv(csv: string, maxCategories = 4): ParsedPayroll {
   const iGender = find(headers, ["gender", "sex", "geschlecht"]);
   const iCat = find(headers, ["category", "department", "job group", "job family", "tätigkeit", "taetigkeit", "abteilung"]);
   const iSalary = find(headers, ["salary", "annual salary", "base salary", "jahresbrutto", "gehalt", "brutto"]);
+  const iVariable = find(headers, ["variable", "variable pay", "bonus", "annual bonus", "commission", "sonderzahlung", "prämie", "praemie", "variable vergütung"]);
 
   if (iGender < 0) errors.push("no gender column (gender / sex / geschlecht)");
   if (iSalary < 0) errors.push("no salary column (salary / annual salary / jahresbrutto)");
@@ -81,6 +86,9 @@ export function parsePayrollCsv(csv: string, maxCategories = 4): ParsedPayroll {
     if (gender === null) { errors.push(`line ${lineNo}: gender "${cells[iGender]}" is not a Directive reporting category — skipped`); return; }
     const salary = parseAmount(cells[iSalary] ?? "");
     if (!Number.isFinite(salary) || salary <= 0) { errors.push(`line ${lineNo}: salary "${cells[iSalary]}" is not a positive amount — skipped`); return; }
+    const rawVar = iVariable >= 0 ? (cells[iVariable] ?? "").trim() : "";
+    const variable = rawVar === "" ? 0 : parseAmount(rawVar);
+    if (!Number.isFinite(variable) || variable < 0) { errors.push(`line ${lineNo}: variable pay "${cells[iVariable]}" is not an amount — skipped`); return; }
     const label = iCat >= 0 && cells[iCat] ? cells[iCat] : "All staff";
     let category = categories.indexOf(label);
     if (category < 0) {
@@ -88,7 +96,7 @@ export function parsePayrollCsv(csv: string, maxCategories = 4): ParsedPayroll {
       categories.push(label);
       category = categories.length - 1;
     }
-    rows.push({ name, salary, gender, category, categoryLabel: label });
+    rows.push({ name, salary, variable, gender, category, categoryLabel: label });
   });
 
   return { rows, categories, errors };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parsePayrollCsv } from "../deploy/payroll-csv.js";
-import { buildClaim, lowerMedian, gapBps } from "../deploy/claims.js";
+import { assignBands, buildClaim, lowerMedian, gapBps } from "../deploy/claims.js";
 
 describe("payroll CSV import (HRIS exports)", () => {
   it("parses a Personio-style export with departments as worker categories", () => {
@@ -14,9 +14,9 @@ describe("payroll CSV import (HRIS exports)", () => {
     expect(errors).toEqual([]);
     expect(categories).toEqual(["Engineering", "Sales"]);
     expect(rows).toEqual([
-      { name: "Ada Serrano", salary: 62000, gender: 0, category: 0, categoryLabel: "Engineering" },
-      { name: "Ben Keller", salary: 71000, gender: 1, category: 0, categoryLabel: "Engineering" },
-      { name: "Cai Okafor", salary: 55000, gender: 0, category: 1, categoryLabel: "Sales" },
+      { name: "Ada Serrano", salary: 62000, variable: 0, gender: 0, category: 0, categoryLabel: "Engineering" },
+      { name: "Ben Keller", salary: 71000, variable: 0, gender: 1, category: 0, categoryLabel: "Engineering" },
+      { name: "Cai Okafor", salary: 55000, variable: 0, gender: 0, category: 1, categoryLabel: "Sales" },
     ]);
   });
 
@@ -25,6 +25,13 @@ describe("payroll CSV import (HRIS exports)", () => {
     const { rows, errors } = parsePayrollCsv(csv);
     expect(errors).toEqual([]);
     expect(rows.map((r) => [r.name, r.gender, r.salary])).toEqual([["Müller", 0, 48500], ["Schmidt", 1, 51201]]);
+  });
+
+  it("reads a variable-pay column: Bonus, or Sonderzahlung in DATEV", () => {
+    const personio = parsePayrollCsv(["First name,Last name,Gender,Department,Annual salary,Bonus", "Ada,S,female,Eng,62000,4000", "Ben,K,male,Eng,71000,"].join("\n"));
+    expect(personio.rows.map((r) => r.variable)).toEqual([4000, 0]);
+    const datev = parsePayrollCsv(["Name;Geschlecht;Tätigkeit;Jahresbrutto;Sonderzahlung", "Müller;weiblich;Buchhaltung;48.500,00;2.500,00"].join("\n"));
+    expect(datev.rows[0].variable).toBe(2500);
   });
 
   it("reports unusable rows instead of guessing", () => {
@@ -65,10 +72,17 @@ describe("claim arithmetic mirrors the circuit", () => {
   it("suppresses category figures below k = 3", () => {
     const sk = new Uint8Array(32);
     const claim = buildClaim([
-      { salary: 50n, gender: 0n, category: 0n, sk },
-      { salary: 60n, gender: 1n, category: 0n, sk },
+      { salary: 50n, variable: 0n, gender: 0n, category: 0n, sk },
+      { salary: 60n, variable: 0n, gender: 1n, category: 0n, sk },
     ]);
     expect(claim.catMeanWomen[0]).toBe(0n);
     expect(claim.catGapBps[0]).toBe(0n);
+  });
+
+  it("quartile bands split by total pay at floor(b·n/4)", () => {
+    const sk = new Uint8Array(32);
+    const recs = [60, 10, 50, 20, 40, 30].map((x) => ({ salary: BigInt(x), variable: 0n, gender: 0n, category: 0n, sk }));
+    // sorted 10,20,30,40,50,60 → cuts at 1, 3, 4 → bands 0 | 1 1 | 2 | 3 3
+    expect(assignBands(recs)).toEqual([3n, 0n, 3n, 1n, 2n, 1n]);
   });
 });

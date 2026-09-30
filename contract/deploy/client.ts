@@ -159,7 +159,7 @@ export async function connectMidnight(log: Log) {
 
   const here = path.resolve(fileURLToPath(import.meta.url), "..");
   const buildDir = path.resolve(here, "..", "build");
-  const zkConfigProvider = new NodeZkConfigProvider<"declareRoster" | "enroll" | "checkReceipt" | "publishReport">(buildDir);
+  const zkConfigProvider = new NodeZkConfigProvider<"declareRoster" | "confirmPayroll" | "enroll" | "checkReceipt" | "publishReport" | "publishVariablePay">(buildDir);
   const accountId = walletAndMidnightProvider.getCoinPublicKey();
   const storagePassword = `${Buffer.from(accountId, "hex").toString("base64")}!`;
   const providers = {
@@ -182,10 +182,10 @@ export async function connectMidnight(log: Log) {
 
   return {
     providers,
-    async deploy(employerPk: Uint8Array, providerPk: Uint8Array, initial: EquiluxPrivateState) {
+    async deploy(employerPk: Uint8Array, providerPk: Uint8Array, councilPk: Uint8Array, initial: EquiluxPrivateState) {
       return deployContract(providers as any, {
         compiledContract,
-        args: [employerPk, providerPk],
+        args: [employerPk, providerPk, councilPk],
         privateStateId: PRIVATE_STATE_ID,
         initialPrivateState: initial,
       } as any);

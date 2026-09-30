@@ -16,6 +16,7 @@ export const SLOTS = 16;
 
 export interface PayRecord {
   salary: bigint;
+  variable: bigint; // annual variable / complementary pay; 0n if none
   gender: bigint; // 0 = woman, 1 = man
   category: bigint; // 0..3
   sk: Uint8Array;
@@ -75,11 +76,68 @@ export function buildClaim(records: PayRecord[]): ReportClaim {
   return { meanGapBps: mean.bps, medianWomen, medianMen, medianGapBps: median.bps, catMeanWomen, catMeanMen, catGapBps };
 }
 
-export const EMPTY_SLOT = { salary: 0n, gender: 0n, category: 0n, sk: new Uint8Array(32), active: false };
+export const EMPTY_SLOT = { salary: 0n, variable: 0n, gender: 0n, category: 0n, sk: new Uint8Array(32), active: false, band: 0n };
 
-export const padRecords = (records: PayRecord[]) => [
-  ...records.map((r) => ({ ...r, active: true })),
+/** Pads to the circuit's 16 slots. `bands` (from assignBands) is only needed for publishVariablePay. */
+export const padRecords = (records: PayRecord[], bands?: bigint[]) => [
+  ...records.map((r, i) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, sk: r.sk, active: true, band: bands?.[i] ?? 0n })),
   ...Array(SLOTS - records.length).fill(EMPTY_SLOT),
+];
+
+export interface VariableClaim {
+  meanGapBps: bigint;
+  medianWomen: bigint;
+  medianMen: bigint;
+  medianGapBps: bigint;
+  catGapBps: bigint[];
+}
+
+/**
+ * Honest variable-pay claim, mirroring publishVariablePay: gaps among the
+ * workers who receive variable pay, defined only when both genders do.
+ */
+export function buildVariableClaim(records: PayRecord[]): VariableClaim {
+  const got = (g: bigint) => records.filter((r) => r.gender === g && r.variable > 0n).map((r) => r.variable);
+  const w = got(0n), m = got(1n);
+  const defined = w.length > 0 && m.length > 0;
+  const medianWomen = defined ? lowerMedian(w) : 0n;
+  const medianMen = defined ? lowerMedian(m) : 0n;
+  const catGapBps: bigint[] = [];
+  for (let c = 0; c < CATEGORIES; c++) {
+    const cw = records.filter((r) => r.category === BigInt(c) && r.gender === 0n && r.variable > 0n).map((r) => r.variable);
+    const cm = records.filter((r) => r.category === BigInt(c) && r.gender === 1n && r.variable > 0n).map((r) => r.variable);
+    catGapBps.push(cw.length >= K_ANONYMITY && cm.length >= K_ANONYMITY ? gapBps(sum(cw), BigInt(cw.length), sum(cm), BigInt(cm.length)).bps : 0n);
+  }
+  return {
+    meanGapBps: defined ? gapBps(sum(w), BigInt(w.length), sum(m), BigInt(m.length)).bps : 0n,
+    medianWomen,
+    medianMen,
+    medianGapBps: defined ? gapBps(medianWomen, 1n, medianMen, 1n).bps : 0n,
+    catGapBps,
+  };
+}
+
+/**
+ * Quartile band per record, by total pay (basic + variable), lowest first.
+ * Band b holds sorted positions [⌊b·n/4⌋, ⌊(b+1)·n/4⌋) — the split the circuit checks.
+ */
+export function assignBands(records: PayRecord[]): bigint[] {
+  const n = records.length;
+  const order = records.map((r, i) => ({ i, total: r.salary + r.variable })).sort((a, b) => (a.total < b.total ? -1 : a.total > b.total ? 1 : a.i - b.i));
+  const bands = new Array<bigint>(n).fill(0n);
+  order.forEach(({ i }, pos) => {
+    let b = 0;
+    while (b < 3 && pos >= Math.floor(((b + 1) * n) / 4)) b++;
+    bands[i] = BigInt(b);
+  });
+  return bands;
+}
+
+/** What the works council opens for confirmPayroll, padded to 16. */
+export interface RowOpening { salary: bigint; variable: bigint; gender: bigint; category: bigint; nonce: Uint8Array; active: boolean }
+export const padOpenings = (rows: Omit<RowOpening, "active">[]): RowOpening[] => [
+  ...rows.map((r) => ({ ...r, active: true })),
+  ...Array.from({ length: SLOTS - rows.length }, () => ({ salary: 0n, variable: 0n, gender: 0n, category: 0n, nonce: new Uint8Array(32), active: false })),
 ];
 
 /** The provider's payroll-row hashes, padded to the circuit's Vector<16>. */
