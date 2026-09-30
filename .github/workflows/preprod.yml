@@ -1,0 +1,88 @@
+# Deploys Equilux v3 to Midnight's public preprod testnet and runs the full
+# 14-person flow with real proofs. Runs on GitHub's machines: the first wallet
+# sync replays every dust event on preprod (hours, gigabytes), so it does not
+# belong on a laptop. Wallet state and progress are cached, so a rerun resumes.
+#
+# Needs the repository secret PREPROD_SEED (the deploy wallet's hex seed).
+name: Preprod deploy
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: preprod-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install the Compact toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Compile the contract with proving keys
+        working-directory: contract
+        run: |
+          compact update 0.30.0
+          compact compile +0.30.0 src/equilux.compact build
+          ls -la build/keys
+
+      - name: Start the proof server
+        run: docker run -d --name proof-server -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v
+
+      - name: Install dependencies
+        run: |
+          (cd contract && pnpm install --frozen-lockfile)
+          (cd contract/preprod && npm ci)
+
+      - name: Restore wallet state and progress
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            contract/preprod/.state
+            contract/preprod/deployment.json
+            contract/preprod/midnight-level-db
+          key: preprod-wallet-${{ github.run_id }}
+          restore-keys: preprod-wallet-
+
+      - name: Deploy wallet seed
+        run: printf '%s' "${{ secrets.PREPROD_SEED }}" > contract/preprod/.seed
+
+      - name: Sync the wallet with preprod
+        working-directory: contract/preprod
+        run: npm run sync
+
+      - name: Run the full flow on preprod
+        working-directory: contract/preprod
+        run: npm run deploy
+
+      - name: Save wallet state and progress
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            contract/preprod/.state
+            contract/preprod/deployment.json
+            contract/preprod/midnight-level-db
+          key: preprod-wallet-${{ github.run_id }}
+
+      - name: Upload the deployment record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preprod-deployment
+          path: contract/preprod/deployment.json
+          if-no-files-found: ignore
