@@ -46,4 +46,8 @@ export const FIGURES = {
   salesGap: 3.7,
 };
 
+/** The demo company, deployed and proven on Midnight's public preprod testnet (2026-10-01). */
+export const PREPROD_CONTRACT = "598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb";
+export const PREPROD_VERIFY = `/verify?network=preprod&contract=${PREPROD_CONTRACT}`;
+
 export const EASE_OUT = [0.23, 1, 0.32, 1] as const;

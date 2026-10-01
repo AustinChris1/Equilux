@@ -32,8 +32,8 @@ const doesNot = [
     body: "This build fixes a 16-record witness, 32 commitment slots and 4 worker categories — right for a demo company, not a 250-person employer. Sizing is a compile-time parameter per company band.",
   },
   {
-    head: "Not yet on the public testnet",
-    body: "Proven end to end on a local Midnight network. Midnight's current wallet SDK fails while syncing the public preprod chain (a WebAssembly error inside the SDK); deployment follows its fix.",
+    head: "Testnet, not mainnet",
+    body: "Deployed and proven on Midnight's public preprod testnet (contract 598b346e…d1cb), the full flow with real proofs. Midnight's stable wallet SDK cannot sync preprod yet, so the deploy runs on its release-candidate wallet with one documented patch. Mainnet follows Midnight.",
   },
   {
     head: "Binary gender markers",

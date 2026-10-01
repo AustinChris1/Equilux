@@ -29,7 +29,7 @@ Zero-knowledge proofs on Midnight's dual ledger: salaries live only in private s
 
 - Contract v3: 6 circuits (declareRoster, confirmPayroll, enroll, checkReceipt, publishReport, publishVariablePay), 55 tests (45 on compiled circuits). All seven Article 9 indicators.
 - k = 3 suppression for category figures; binary gender markers per the Directive's annex; annual pay; sized instance of 16 records / 4 categories.
-- Proven end to end with real proofs on a local Midnight node. Public preprod deployment in progress (Midnight's stable wallet SDK cannot sync preprod; a patched release-candidate wallet can). Never claim preprod or mainnet until a deployment record exists.
+- Deployed and proven on Midnight's public preprod testnet (2026-10-01): contract 598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb, blocks 2787450–2787556, record in contract/preprod/deployment.json. Also proven on a local node. Not on mainnet; never claim mainnet.
 - Hosting: static Vercel only; no servers of ours.
 
 ## Brand Commitments

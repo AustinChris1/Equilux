@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Lock, Search, ShieldCheck } from "lucide-react";
 import { useScramble } from "./landing/useScramble";
-import { EASE_OUT, FIGURES, pseudoHash } from "./landing/data";
+import { EASE_OUT, FIGURES, PREPROD_VERIFY, pseudoHash } from "./landing/data";
 
 const enter = (delay: number) => ({
   initial: { opacity: 0, transform: "translateY(18px)" },
@@ -65,8 +65,8 @@ export function Hero() {
             <a href="/app" className="group inline-flex items-center gap-2 rounded-lg bg-gold px-6 py-3.5 text-[15px] font-semibold text-night transition-transform duration-150 ease-out active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold">
               Open the app <ArrowRight size={15} className="transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
             </a>
-            <a href="/verify" className="inline-flex items-center gap-2 rounded-lg px-4 py-3.5 text-[15px] font-medium text-cream/85 ring-1 ring-gold/25 transition-colors hover:text-gold hover:ring-gold/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold">
-              <Search size={14} /> Verify a report
+            <a href={PREPROD_VERIFY} className="inline-flex items-center gap-2 rounded-lg px-4 py-3.5 text-[15px] font-medium text-cream/85 ring-1 ring-gold/25 transition-colors hover:text-gold hover:ring-gold/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold">
+              <Search size={14} /> Verify it on testnet
             </a>
           </motion.div>
         </div>

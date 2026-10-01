@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Check, FileLock2, Lock, Search, ShieldCheck, UserCheck, Users, X } from "lucide-react";
 import { LogoMark } from "../Logo";
-import { EASE_OUT, FIGURES, PEOPLE, euro, pseudoHash } from "./data";
+import { EASE_OUT, FIGURES, PEOPLE, PREPROD_VERIFY, euro, pseudoHash } from "./data";
 import { useScramble } from "./useScramble";
 
 const STEPS = [
@@ -143,7 +143,7 @@ function Stage({ step }: { step: number }) {
               </dl>
               <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gold/12 pt-4 text-[13px]">
                 <span className="text-sage">salaries on chain: <span className="text-gold">0</span></span>
-                <a href="/verify" className="inline-flex items-center gap-1.5 text-gold hover:underline">Verify a report <ArrowRight size={13} /></a>
+                <a href={PREPROD_VERIFY} className="inline-flex items-center gap-1.5 text-gold hover:underline">Verify it on Midnight testnet <ArrowRight size={13} /></a>
               </div>
             </div>
           </motion.div>

@@ -10,13 +10,13 @@ const waves = [
     wave: "Wave 2",
     dates: "Sep 27 — Oct 17",
     status: "Building",
-    items: ["Payroll provider as a third party: every salary bound to its payroll row", "Works council confirms the payroll before enrollment", "All seven Article 9 indicators, incl. variable pay and quartiles", "k = 3 category pay (Article 7), small groups suppressed", "The compiled contract runs in the browser — no Docker", "Personio / DATEV CSV import"],
+    items: ["Payroll provider as a third party: every salary bound to its payroll row", "Works council confirms the payroll before enrollment", "All seven Article 9 indicators, incl. variable pay and quartiles", "k = 3 category pay (Article 7), small groups suppressed", "The compiled contract runs in the browser — no Docker", "Personio / DATEV CSV import", "Deployed and proven on Midnight's public preprod testnet", "Verify page and Article 9 filing pack"],
   },
   {
     wave: "Wave 3",
     dates: "Oct 27 — Nov 16",
     status: "Planned",
-    items: ["Public testnet deployment and Lace wallet writes", "Article 9 filing pack: proof hash + verify URL", "One named pilot: a works council and an EU employer"],
+    items: ["Lace wallet writes from the site", "Mainnet when Midnight opens it", "One named pilot: a works council and an EU employer"],
   },
 ];
 

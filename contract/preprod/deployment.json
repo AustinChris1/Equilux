@@ -1,0 +1,124 @@
+{
+  "network": "preprod",
+  "startedAt": "2026-10-01T08:12:08.357Z",
+  "steps": [
+    {
+      "step": "deploy",
+      "txId": "00508059764d024b34c6a0ec8203b9c2afbd58b3e7d5ee0835522dd578fe615c52",
+      "txHash": "e0b499212089873c45d7d1b5e5b36a9d04eb9f747bdc8f3d10f8c11989123fdc",
+      "block": 2787450
+    },
+    {
+      "step": "declareRoster",
+      "txId": "004c37b70763c5e44618cf56cf505632d23be5658729e244f2daccd4c622424c1c",
+      "txHash": "b2c7b82df25f9fa052869658d69058972573bcfe59c4236e34c68b6e28c55b8d",
+      "block": 2787454
+    },
+    {
+      "step": "confirmPayroll",
+      "txId": "00b5eda5b3b08eae8aae90ffd7a709504d9ac266bd09022f21be376ebf59d18bcc",
+      "txHash": "668c21926d54e726f60055487e04e639e05eb3ee98244ab5e470ebd66dbdcbe4",
+      "block": 2787463
+    },
+    {
+      "step": "enroll:ada",
+      "txId": "00d93f6bfa6f47deec2bd50db71106d487338c288a510b9ff7ee16795c2788ff1a",
+      "txHash": "ea0f08ffb2ff6fa3dc0165ff954c34809552db2411a090270ff7d68c51166af8",
+      "block": 2787468
+    },
+    {
+      "step": "enroll:bea",
+      "txId": "00dbbe6e8972e0a907129119aa418715cb57ddfeb2b3e70e31dcc9dae283a6fd6a",
+      "txHash": "9059a8c0e8a1fc3f172ca124a00a1184f1777fbae2f1b4b07320170920859608",
+      "block": 2787473
+    },
+    {
+      "step": "enroll:cai",
+      "txId": "005f1329a54487f9cb0fbaf77bc48f96a7d58e08f4d23e12ec9590b87f46905c94",
+      "txHash": "959ac665d17287c554690ebe2c3d1de885072b34da3f21f075d10023cba9b660",
+      "block": 2787478
+    },
+    {
+      "step": "enroll:dan",
+      "txId": "0050f242b2fdfa0a0c1722a10dc39b89ec1580dea50dbfde4de984e69773e593bd",
+      "txHash": "6dd5c84e54c9903e34d52b64747c7e6b55d0c1a0f796f42de06db1ee5aa19a5f",
+      "block": 2787482
+    },
+    {
+      "step": "enroll:eli",
+      "txId": "00da950557fd98413b5132d599cd6e12d654e64f8c6f8b3b21a9fb07525764975e",
+      "txHash": "634807bfa3dd407cbf6d0c69f01319cf9436f0941b05e0eae50c94dbac49f587",
+      "block": 2787487
+    },
+    {
+      "step": "enroll:fox",
+      "txId": "0048bc1ecc317ff07bba7adfbcf02dcf7e4dceb46a9d802cbc8a33300a22eef182",
+      "txHash": "00742d90af16c24dfece1adba9c3a6c3980ff9a4b6b2012001f0906e2d4bbf60",
+      "block": 2787491
+    },
+    {
+      "step": "enroll:gia",
+      "txId": "000e15e6dbc1e942e76f56b0987baf5e941117c024f965ace9f6c87796567cc271",
+      "txHash": "c94ba83d1970ee645469ca25a424a9af1e034a1e0d5559f70315bec330d3a1cc",
+      "block": 2787496
+    },
+    {
+      "step": "enroll:hal",
+      "txId": "0093cccffee5cda757927c8a586da9b13600ab1ad6988dc573151a134bee1e3398",
+      "txHash": "fa901774801bcc45bc59215aa181c8dcc2bbc4301d527cda5293a56f540c0e93",
+      "block": 2787501
+    },
+    {
+      "step": "enroll:ivy",
+      "txId": "0067d71d0b07209e1c2639c40e6fa5afd6f68b208cae24c7f26d0e1440446b723a",
+      "txHash": "08c1fa343b70fc8a85c98e60421bbd75b7f1a7d227a5efc285ef34c2fc5c7edb",
+      "block": 2787506
+    },
+    {
+      "step": "enroll:jon",
+      "txId": "00cf2f6342f6ad4c15f1e5ce9334713110269b5e751e4324c60c3c650c3885ee32",
+      "txHash": "31367d2b479870e1e19597b0fa97cde63adfbc4c03c687793eb0f276f55ea3e3",
+      "block": 2787510
+    },
+    {
+      "step": "enroll:kai",
+      "txId": "004949424c7dfe9c6c257ac2583d7cf42a983c10e3fae1de8d48c5377346bce24b",
+      "txHash": "cc7a6f7f8180561495bb262e8c6b3ea17511a57ab43a82f869aa4cbf738e3282",
+      "block": 2787515
+    },
+    {
+      "step": "enroll:leo",
+      "txId": "00eaefa77dc113c53c166a110a28bca5f3d5c605baa997796d9ddfe78426a26eec",
+      "txHash": "fa7108020995d8aef63ae1f46a3b98a6c4500d07addfd40cd6310a3f4f3be9f1",
+      "block": 2787520
+    },
+    {
+      "step": "enroll:mia",
+      "txId": "00da8908a3fdaf52203c544f2d3177781ab84513cb00a09ce6b30a90acb583d48f",
+      "txHash": "45e10c1b321d746398b87d123e88c3afabb65702243102d2ee95498cec544159",
+      "block": 2787524
+    },
+    {
+      "step": "enroll:ned",
+      "txId": "0010fc4cf5b45b45c5e1142a36ab718b371d1d16d7ef69fd696f997b81220e6416",
+      "txHash": "a0461dc4faad63998327fa8c6d44eddafcede5cadfeebeb7bc9c7a5cd37d0b0b",
+      "block": 2787529
+    },
+    {
+      "step": "publishReport",
+      "txId": "00fb2f198429c170ac57eac9b66da59896f032c4ddf8582640666d16f347e127b0",
+      "txHash": "94398db088d029174b70c604b4c074b0bddcd412785f94151bcad215b5bf79e3",
+      "block": 2787543
+    },
+    {
+      "step": "publishVariablePay",
+      "txId": "00d6231ddfdf0a4f18f600937e0164d098a835e599e839e3338414480a6153778a",
+      "txHash": "9b8cc235d75a6b2bc222052efa104c90a7df869390589cf2ff8ba839db0dbf20",
+      "block": 2787556
+    },
+    {
+      "step": "complete"
+    }
+  ],
+  "contract": "598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb"
+}

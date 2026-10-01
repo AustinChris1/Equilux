@@ -45,7 +45,7 @@ export function Indicators() {
         <div className="grid grid-cols-12 items-end gap-6">
           <h2 className="display col-span-12 text-4xl leading-[1.05] md:col-span-7 md:text-6xl">All seven Article 9 figures. Proven.</h2>
           <div className="col-span-12 flex items-center gap-4 md:col-span-5 md:justify-end">
-            <p className="text-[14px] font-medium text-night/75">Demo company · 14 people · proven on a Midnight node</p>
+            <p className="text-[14px] font-medium text-night/75">Demo company · 14 people · proven on Midnight's public testnet</p>
             <motion.span
               className="shrink-0 rounded-md border-2 border-night px-2.5 py-1 font-mono text-[12px] font-semibold uppercase tracking-[0.16em]"
               initial={reduce ? false : { opacity: 0, transform: "rotate(-8deg) scale(1.5)" }}
