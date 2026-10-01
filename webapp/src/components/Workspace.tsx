@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BadgeCheck, Building2, Check, CircleAlert, X, Cpu, FileSpreadsheet, Landmark, Loader2, Play, RefreshCw,
-  Download, RotateCcw, ShieldCheck, Upload, UserRound, Users, Wifi,
+  Download, LogOut, RotateCcw, ShieldCheck, Upload, UserRound, Users, Wallet, Wifi,
 } from "lucide-react";
 import { getStatus, resolveApiBase, runJob, short, type LedgerView, type Status, type Tamper, type VariableTamper } from "../lib/api";
 import { BrowserContract, newNonce, payrollRowHash, type Row } from "../lib/browser-contract";
@@ -10,9 +10,11 @@ import { parsePayrollCsv } from "../../../contract/deploy/payroll-csv";
 import { ReportView } from "./ReportView";
 import { useScramble } from "./landing/useScramble";
 import { buildFilingPack, downloadFilingPack } from "../lib/filing";
+import { listWallets, type WalletChoice } from "../lib/wallet-detect";
+import type { WalletSession } from "../lib/wallet-chain";
 
 type Role = "employer" | "provider" | "council" | "employee" | "regulator";
-type Mode = "checking" | "live" | "browser";
+type Mode = "checking" | "live" | "browser" | "wallet";
 
 interface Person {
   id: string;
@@ -153,6 +155,12 @@ export function Workspace() {
   const [vCheat, setVCheat] = useState<"none" | "mean" | "median" | "bands">("none");
   const [csvNote, setCsvNote] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [session, setSession] = useState<WalletSession | null>(null);
+  const [walletLedger, setWalletLedger] = useState<LedgerView | null>(null);
+  const [wallets, setWallets] = useState<WalletChoice[]>([]);
+  const [walletPanel, setWalletPanel] = useState(false);
+  const modeRef = useRef<Mode>("checking");
+  modeRef.current = mode;
   const bcRef = useRef<BrowserContract | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -165,16 +173,25 @@ export function Workspace() {
   useEffect(() => { logRef.current?.scrollTo({ top: logRef.current.scrollHeight }); }, [log]);
 
   const refresh = useCallback(async () => {
+    if (modeRef.current === "wallet") return;
     if (!apiBase) { setMode("browser"); return; }
     try {
       const s = await getStatus();
+      if ((modeRef.current as Mode) === "wallet") return;
       setStatus(s);
       setMode("live");
       if (s.ledger) setLiveLedger(s.ledger);
     } catch {
-      setMode("browser");
+      if ((modeRef.current as Mode) !== "wallet") setMode("browser");
     }
   }, [apiBase]);
+
+  // wallets inject themselves a moment after the page loads
+  useEffect(() => {
+    let n = 0;
+    const t = setInterval(() => { setWallets(listWallets()); if (++n >= 10) clearInterval(t); }, 500);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -190,14 +207,46 @@ export function Workspace() {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const browserLedger = useMemo(() => (mode === "browser" ? bc.view() : null), [mode, tick, bc]);
-  const ledger = mode === "live" ? liveLedger : browserLedger;
-  const deployed = mode === "live" ? status?.contractAddress ?? null : bc.address;
-  const ready = mode === "browser" || !!status?.ready;
+  const ledger = mode === "wallet" ? walletLedger : mode === "live" ? liveLedger : browserLedger;
+  const deployed = mode === "wallet" ? session?.address ?? null : mode === "live" ? status?.contractAddress ?? null : bc.address;
+  const ready = mode === "browser" || mode === "wallet" || !!status?.ready;
   const rosterDeclared = !!ledger?.rosterDeclared;
   const payrollConfirmed = !!ledger?.payrollConfirmed;
 
   const push = (lines: string[]) => setLog((l) => [...l, ...lines].slice(-80));
   const patch = (id: string, p: Partial<Person>) => setPeople((ps) => ps.map((x) => (x.id === id ? { ...x, ...p } : x)));
+
+  /** Switch the workspace to Midnight's preprod testnet, written through the visitor's wallet. */
+  const connect = async (w: WalletChoice) => {
+    setBusy(`Connecting ${w.name}`);
+    setLastError(null);
+    push([`▶ Connect ${w.name} on Midnight preprod`]);
+    try {
+      const { connectWallet } = await import("../lib/wallet-chain");
+      const s = await connectWallet(w, push);
+      setSession(s);
+      setWalletLedger(await s.readLedger());
+      if (!s.address) setPeople((ps) => stripProgress(ps));
+      setMode("wallet");
+      setWalletPanel(false);
+      push([`${w.name} connected · every step is now a real preprod transaction`]);
+    } catch (e) {
+      const m = e instanceof Error ? e.message : String(e);
+      setLastError(m);
+      push([`✗ ${m}`]);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const leaveWallet = () => {
+    setSession(null);
+    setWalletLedger(null);
+    setPeople((ps) => stripProgress(ps));
+    modeRef.current = "checking";
+    setMode("checking");
+    refresh();
+  };
 
   /** One protocol step, in either mode. Browser: the compiled circuit, in-page. Live: API → proof → chain. */
   async function step<T>(label: string, browser: () => T, live: { path: string; body: unknown }): Promise<T | undefined> {
@@ -205,6 +254,11 @@ export function Workspace() {
     setLastError(null);
     push([`▶ ${label}`]);
     try {
+      if (mode === "wallet") {
+        const out = await session!.run<T>(live.path, live.body, push);
+        setWalletLedger(await session!.readLedger());
+        return out;
+      }
       if (mode === "live") {
         const j = await runJob<T>(live.path, live.body, push);
         if (j.status === "error") throw new Error(j.error ?? "rejected");
@@ -324,6 +378,15 @@ export function Workspace() {
   const onFile = (f: File | undefined) => { if (f) f.text().then((t) => importCsv(t, f.name)); };
 
   const reset = () => {
+    if (mode === "wallet") {
+      // a fresh contract on preprod; the old one stays on the chain
+      session?.forget();
+      setWalletLedger(null);
+      setPeople((ps) => stripProgress(ps));
+      setLog([]);
+      setLastError(null);
+      return;
+    }
     bc.reset();
     setTick((t) => t + 1);
     setPeople((ps) => stripProgress(ps));
@@ -355,7 +418,7 @@ export function Workspace() {
           <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-sage">Four parties, one contract. Run it, then try to cheat.</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2.5">
-          <Btn onClick={reset} ghost disabled={mode !== "browser" || !!busy}><RotateCcw size={12} /> Reset</Btn>
+          <Btn onClick={reset} ghost disabled={(mode !== "browser" && mode !== "wallet") || !!busy}><RotateCcw size={12} /> {mode === "wallet" ? "New contract" : "Reset"}</Btn>
           <Btn onClick={autopilot} disabled={mode === "checking" || !ready || !!busy}>
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />} Run the full flow
           </Btn>
@@ -364,11 +427,24 @@ export function Workspace() {
 
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-sage" aria-live="polite">
         <span className="inline-flex items-start gap-2 text-cream">
-          <span className="mt-px shrink-0">{mode === "checking" ? <Loader2 size={13} className="animate-spin" /> : mode === "live" ? <Wifi size={13} className="text-gold" /> : <Cpu size={13} className="text-gold" />}</span>
-          {mode === "checking" ? "Looking for a local Midnight node…" : mode === "live"
+          <span className="mt-px shrink-0">{mode === "checking" ? <Loader2 size={13} className="animate-spin" /> : mode === "wallet" ? <Wallet size={13} className="text-gold" /> : mode === "live" ? <Wifi size={13} className="text-gold" /> : <Cpu size={13} className="text-gold" />}</span>
+          {mode === "checking" ? "Looking for a local Midnight node…" : mode === "wallet"
+            ? `Midnight preprod testnet · ${session?.walletName} pays and signs · ${session?.prover === "wallet" ? "proofs in the wallet" : "proofs on your proof server"}`
+            : mode === "live"
             ? (status?.ready ? `Live · ${status.network} · real proofs` : "Connecting to the local Midnight node…")
             : "Compiled contract running in this browser · real circuits, no proofs"}
         </span>
+        {mode === "browser" && (
+          <button onClick={() => setWalletPanel((v) => !v)} aria-expanded={walletPanel}
+            className="inline-flex items-center gap-1.5 rounded-full bg-gold/12 px-3 py-1 font-medium text-gold transition-colors hover:bg-gold/20 focus-visible:outline-2 focus-visible:outline-gold">
+            <Wallet size={12} /> Run it on testnet with your wallet
+          </button>
+        )}
+        {mode === "wallet" && (
+          <button onClick={leaveWallet} disabled={!!busy} className="inline-flex items-center gap-1.5 rounded text-sage hover:text-gold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-gold">
+            <LogOut size={12} /> Leave testnet
+          </button>
+        )}
         {deployed && <span className="chip bg-gold/12 text-gold" title={deployed}>contract {short(deployed, 8)}</span>}
         {ledger && (
           <span className="chip bg-cream/6">
@@ -378,6 +454,34 @@ export function Workspace() {
         {busy && <span className="text-gold">{busy}…</span>}
         {mode === "live" && <button onClick={refresh} className="ml-auto inline-flex items-center gap-1.5 rounded text-sage hover:text-gold focus-visible:outline-2 focus-visible:outline-gold"><RefreshCw size={12} /> Refresh</button>}
       </div>
+
+      <AnimatePresence>
+        {walletPanel && mode === "browser" && (
+          <motion.div initial={{ opacity: 0, transform: "translateY(-4px)" }} animate={{ opacity: 1, transform: "translateY(0px)" }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            className="mt-4 grid gap-4 rounded-2xl bg-night p-5 ring-1 ring-gold/15 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div className="min-w-0 text-[13px] leading-relaxed text-sage">
+              <p className="text-[14px] font-medium text-cream">Every step becomes a real transaction on Midnight's preprod testnet, approved in your wallet.</p>
+              <ul className="mt-2 flex flex-col gap-1.5">
+                <li className="flex gap-2"><Check size={13} className="mt-1 shrink-0 text-gold" /><span>Wallet on <span className="text-cream">Preprod</span>, with tNIGHT from the faucet generating DUST for fees.</span></li>
+                <li className="flex gap-2"><Check size={13} className="mt-1 shrink-0 text-gold" /><span>Lace makes proofs with a proof server on this computer. Start Docker, then run <code className="break-all font-mono text-[11px] text-cream/80">docker run -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v</code></span></li>
+                <li className="flex gap-2"><Check size={13} className="mt-1 shrink-0 text-gold" /><span>{people.length} employees means {people.length + 5} transactions.{people.length > 6 && <> <button onClick={() => setPeople(seedPeople().slice(0, 6))} className="text-gold underline decoration-gold/40 underline-offset-4 hover:decoration-gold">Use a 6-person company</button> for a quicker run (11).</>}</span></li>
+              </ul>
+            </div>
+            <div className="flex flex-wrap gap-2 md:flex-col">
+              {wallets.length === 0 ? (
+                <a href="https://www.lace.io" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-gold/25 px-3.5 py-2 text-[13px] font-medium text-cream/85 hover:border-gold/60 hover:text-gold">
+                  <Wallet size={13} /> No Midnight wallet found · get Lace
+                </a>
+              ) : wallets.map((w) => (
+                <Btn key={w.key} onClick={() => connect(w)} disabled={!!busy}>
+                  {busy?.startsWith("Connecting") ? <Loader2 size={13} className="animate-spin" /> : w.icon ? <img src={w.icon} alt="" className="size-4 rounded-sm" /> : <Wallet size={13} />} Connect {w.name}
+                </Btn>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
         {mode !== "checking" && (
           <ProgressRail current={role} onPick={setRole} steps={[
@@ -412,7 +516,7 @@ export function Workspace() {
                   <motion.div key={lastError} role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
                     className="mt-5 flex items-start gap-2.5 rounded-lg bg-red-950/30 p-3.5 text-[13px] leading-relaxed text-red-200 ring-1 ring-red-400/30">
                     <CircleAlert size={16} className="mt-0.5 shrink-0" />
-                    <span><span className="font-mono text-[11px] uppercase tracking-[0.14em]">Circuit rejected · </span>{lastError}</span>
+                    <span><span className="font-mono text-[11px] uppercase tracking-[0.14em]">{mode === "wallet" || /wallet|proof server|Lace|connect/i.test(lastError) ? "Stopped · " : "Circuit rejected · "}</span>{lastError}</span>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -612,19 +716,19 @@ export function Workspace() {
                       <p className="text-[12px] leading-relaxed text-sage">
                         A category at ≥ 5% triggers an Article 10 joint pay assessment only if the gap is also unjustified by objective,
                         gender-neutral criteria — a human judgement the circuit does not make. {vrep ? "All seven Article 9 indicators shown." : "Publish the variable-pay report for the other four Article 9 indicators."} Salaries on chain: <span className="text-gold">0</span>.
-                        {mode === "live" && ` Proven on-chain · contract ${short(ledger!.contractAddress, 8)}.`}
+                        {(mode === "live" || mode === "wallet") && ` Proven on-chain · contract ${short(ledger!.contractAddress, 8)}.`}
                       </p>
                       <div className="flex flex-wrap items-center gap-3">
-                        <Btn ghost onClick={() => downloadFilingPack(buildFilingPack(ledger!, mode === "live" ? "local" : "browser-session", categories))}>
+                        <Btn ghost onClick={() => downloadFilingPack(buildFilingPack(ledger!, mode === "wallet" ? "preprod" : mode === "live" ? "local" : "browser-session", categories))}>
                           <Download size={12} /> Download filing pack
                         </Btn>
-                        {mode === "live" && (
-                          <a href={`/verify?network=local&contract=${ledger!.contractAddress}`} className="text-[13px] text-sage underline decoration-gold/40 underline-offset-4 hover:text-gold">
+                        {(mode === "live" || mode === "wallet") && (
+                          <a href={`/verify?network=${mode === "wallet" ? "preprod" : "local"}&contract=${ledger!.contractAddress}`} className="text-[13px] text-sage underline decoration-gold/40 underline-offset-4 hover:text-gold">
                             Verify it on /verify
                           </a>
                         )}
                         <span className="text-[12px] text-sage">
-                          {mode === "live" ? "The figures plus the contract that proves them, for the monitoring body." : "From the in-browser demo, so there is no chain to verify it against."}
+                          {mode === "live" || mode === "wallet" ? "The figures plus the contract that proves them, for the monitoring body." : "From the in-browser demo, so there is no chain to verify it against."}
                         </span>
                       </div>
                     </div>
@@ -636,14 +740,14 @@ export function Workspace() {
             {/* ── ACTIVITY ───────────────────────────────────────────── */}
             <aside className="flex flex-col rounded-2xl bg-night-deep/60 p-5 ring-1 ring-gold/10 lg:sticky lg:top-20">
               <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Activity</h2>
-              <p className="mt-1 text-[12px] text-sage">{mode === "live" ? "Each step proven and finalized on the node." : "Each step runs the compiled circuit in this browser."}</p>
+              <p className="mt-1 text-[12px] text-sage">{mode === "wallet" ? "Each step proven, approved in your wallet, and included on preprod." : mode === "live" ? "Each step proven and finalized on the node." : "Each step runs the compiled circuit in this browser."}</p>
               <ol ref={logRef as never} className="mt-3 flex h-72 flex-col gap-1 overflow-auto rounded-lg bg-night p-3 text-[13px] lg:h-[26rem]">
-                {log.filter((l) => l.startsWith("▶") || l.startsWith("✗") || l.startsWith("rejected") || l.startsWith("imported") || /proven|finalized|block \d/.test(l)).length === 0
+                {log.filter((l) => mode === "wallet" || l.startsWith("▶") || l.startsWith("✗") || l.startsWith("rejected") || l.startsWith("imported") || /proven|finalized|block \d/.test(l)).length === 0
                   ? <li className="text-sage">{mode === "live" ? status?.startupLog?.slice(-3).join("\n") || "Start with Run the full flow, or deploy from the Employer tab." : "Start with Run the full flow, or deploy from the Employer tab."}</li>
                   : log.map((l, i) => {
                       const failed = l.startsWith("✗") || l.startsWith("rejected");
                       const action = l.startsWith("▶");
-                      if (!failed && !action && !l.startsWith("imported") && !/block \d/.test(l)) return null;
+                      if (!failed && !action && mode !== "wallet" && !l.startsWith("imported") && !/block \d/.test(l)) return null;
                       const text = l.replace(/^[▶✗]\s*/, "");
                       return (
                         <li key={i} className={`flex items-start gap-2 ${failed ? "text-red-300" : action ? "text-cream" : "text-sage"}`}>
@@ -654,7 +758,9 @@ export function Workspace() {
                     })}
               </ol>
               <p className="mt-4 text-[12px] leading-relaxed text-sage">
-                {mode === "live"
+                {mode === "wallet"
+                  ? "Each write: the circuit runs in this page, a zero-knowledge proof is made, your wallet adds the fee and signs, and the transaction lands on Midnight's preprod testnet. Anyone can check the result on /verify."
+                  : mode === "live"
                   ? "Each write: local circuit execution, a proof from the proof server, finality on the node, then a read back from the indexer."
                   : <>This page runs the compiled Compact contract on Midnight's WebAssembly runtime: the same circuits and assertions as on-chain, without proof generation. For real proofs, run <code className="font-mono text-[11px] text-cream/80">pnpm network:up &amp;&amp; pnpm app:server</code> locally and this page switches to live mode.</>}
               </p>

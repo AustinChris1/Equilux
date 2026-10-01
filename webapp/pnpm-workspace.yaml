@@ -4,4 +4,7 @@ onlyBuiltDependencies:
   - esbuild
   - "@tailwindcss/oxide"
 allowBuilds:
-  '@swc/core': set this to true or false
+  '@swc/core': false
+  msgpackr-extract: false
+overrides:
+  "@midnight-ntwrk/ledger-v8": 8.0.3
