@@ -1,0 +1,68 @@
+# Publishes the contract's proving keys and circuit IR to GitHub Pages, so the
+# website can prove transactions for a visitor's own wallet. The keys are about
+# 210 MB, too large for the site's repository; GitHub's machines compile them
+# from the committed source and serve them at
+#   https://austinchris1.github.io/Equilux/keys/<circuit>.prover|.verifier
+#   https://austinchris1.github.io/Equilux/zkir/<circuit>.bzkir
+name: Proving keys
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [contract/src/**]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the Compact toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Compile the contract with proving keys
+        working-directory: contract
+        run: |
+          compact update 0.30.0
+          cp -r build/zkir /tmp/committed-zkir
+          compact compile +0.30.0 src/equilux.compact build
+          # the site runs the committed contract module; the keys must come from the same circuits
+          for f in /tmp/committed-zkir/*.zkir; do
+            if ! cmp -s "$f" "build/zkir/$(basename "$f")"; then
+              echo "::error::$(basename "$f") differs from a fresh compile; recompile and commit contract/build"
+              exit 1
+            fi
+          done
+
+      - name: Assemble the site
+        run: |
+          mkdir -p _site
+          cp -r contract/build/keys contract/build/zkir _site/
+          printf '<!doctype html><meta charset="utf-8"><title>Equilux proving keys</title><p>Proving keys and circuit IR for the Equilux contract, used by <a href="https://equilux-lac.vercel.app/app">equilux-lac.vercel.app/app</a>.</p>\n' > _site/index.html
+          ls -la _site/keys _site/zkir
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
