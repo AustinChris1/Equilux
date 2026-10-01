@@ -409,7 +409,7 @@ export function Workspace() {
 
               <AnimatePresence mode="wait">
                 {lastError && (
-                  <motion.div key={lastError} role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  <motion.div key={lastError} role="alert" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
                     className="mt-5 flex items-start gap-2.5 rounded-lg bg-red-950/30 p-3.5 text-[13px] leading-relaxed text-red-200 ring-1 ring-red-400/30">
                     <CircleAlert size={16} className="mt-0.5 shrink-0" />
                     <span><span className="font-mono text-[11px] uppercase tracking-[0.14em]">Circuit rejected · </span>{lastError}</span>
@@ -549,7 +549,7 @@ export function Workspace() {
                         ? <Pop className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> payroll confirmed by the works council</Pop>
                         : <Btn onClick={() => confirmPayroll()} disabled={!rosterDeclared || !!busy}><ShieldCheck size={13} /> Open {people.length} rows and confirm</Btn>}
                     </div>
-                    {!rosterDeclared && <p className="mt-2 text-[13px] text-sage/80">Waiting for the payroll provider to commit the payroll.</p>}
+                    {!rosterDeclared && <p className="mt-2 text-[13px] text-sage">Waiting for the payroll provider to commit the payroll.</p>}
                   </div>
                   {rosterDeclared && !payrollConfirmed && (
                     <div className="rounded-lg border border-gold/12 bg-night p-3.5">
@@ -567,7 +567,7 @@ export function Workspace() {
                 <div className="mt-6">
                   <Step n="4">Seal your record</Step>
                   <p className="mt-2 text-[14px] text-sage">Seal your pay against your payroll row, then prove you were counted.</p>
-                  {!payrollConfirmed && <p className="mt-2 text-[13px] text-sage/80">Enrollment opens once the provider commits the payroll and the works council confirms it.</p>}
+                  {!payrollConfirmed && <p className="mt-2 text-[13px] text-sage">Enrollment opens once the provider commits the payroll and the works council confirms it.</p>}
                   {payrollConfirmed && people.length > 0 && (
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
                       <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Try to cheat · sent to the real circuit</div>
@@ -605,7 +605,7 @@ export function Workspace() {
                 <div className="mt-6">
                   <Step n="6">What the reports show — and nothing else</Step>
                   {!rep ? (
-                    <p className="mt-3 text-[14px] text-sage/70">No report published yet. Try “Run the full flow”.</p>
+                    <p className="mt-3 text-[14px] text-sage">No report published yet. Try “Run the full flow”.</p>
                   ) : (
                     <div className="mt-4 flex flex-col gap-4">
                       <ReportView rep={rep} vrep={vrep} categories={categories} />

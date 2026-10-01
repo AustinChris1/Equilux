@@ -87,12 +87,12 @@ export default function VerifyPage() {
           <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Contract address (hex)" aria-label="Contract address" spellCheck={false}
             className="min-w-0 rounded-md border border-gold/15 bg-night-deep px-3 py-2 font-mono text-[12px] text-cream outline-none placeholder:text-sage/50 focus:border-gold/50" />
           <button type="submit" disabled={busy || !address.trim()}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-night transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0">
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-gold px-4 py-2 text-[13px] font-semibold text-night transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0">
             {busy ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />} Verify
           </button>
         </form>
 
-        <div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[11px] text-sage">
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-[13px] text-sage">
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => loadPack(e.target.files?.[0])} />
           <button onClick={() => fileRef.current?.click()} className="inline-flex items-center gap-1.5 rounded text-sage hover:text-gold">
             <FileJson size={13} /> {pack ? "Load another filing pack" : "Load a filing pack (.json)"}
@@ -116,7 +116,7 @@ export default function VerifyPage() {
         {view && (
           <div className="mt-8 flex flex-col gap-8">
             <section aria-labelledby="checks">
-              <h2 id="checks" className="font-mono text-[11px] uppercase tracking-[0.18em] text-sage">What the chain says</h2>
+              <h2 id="checks" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">What the chain says</h2>
               <ul className="mt-3 flex flex-col gap-2">
                 {checks.map((c) => (
                   <li key={c.text} className="flex items-start gap-2.5 text-[14px] text-cream">
@@ -125,12 +125,12 @@ export default function VerifyPage() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 font-mono text-[11px] break-all text-sage/70">contract {view.contractAddress}</p>
+              <p className="mt-3 font-mono text-[12px] break-all text-sage">contract {view.contractAddress}</p>
             </section>
 
             {pack && pack.network !== "browser-session" && (
               <section aria-labelledby="filing">
-                <h2 id="filing" className="font-mono text-[11px] uppercase tracking-[0.18em] text-sage">The filing against the chain</h2>
+                <h2 id="filing" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">The filing against the chain</h2>
                 <p className={`mt-2 text-[15px] ${mismatches ? "text-red-200" : "text-gold"}`}>
                   {pack.contract !== view.contractAddress
                     ? "This filing names a different contract."
@@ -138,7 +138,7 @@ export default function VerifyPage() {
                 </p>
                 <div className="mt-3 overflow-x-auto rounded-lg border border-gold/15">
                   <table className="w-full min-w-120 text-left font-mono text-[12px]">
-                    <thead className="bg-cream/5 text-[10px] uppercase tracking-[0.14em] text-sage">
+                    <thead className="bg-cream/5 font-sans text-[12px] font-semibold text-sage">
                       <tr><th className="px-3 py-2">Figure</th><th className="px-3 py-2">Filed</th><th className="px-3 py-2">On chain</th><th className="px-3 py-2" /></tr>
                     </thead>
                     <tbody>
@@ -158,9 +158,9 @@ export default function VerifyPage() {
 
             {view.latestReport && (
               <section aria-labelledby="figures" className="flex flex-col gap-4">
-                <h2 id="figures" className="font-mono text-[11px] uppercase tracking-[0.18em] text-sage">The published figures</h2>
+                <h2 id="figures" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">The published figures</h2>
                 <ReportView rep={view.latestReport} vrep={view.latestVariableReport} categories={labels} />
-                {!pack && <p className="font-mono text-[10px] text-sage/70">Category names are not stored on-chain; load the employer's filing pack to see them.</p>}
+                {!pack && <p className="text-[12px] text-sage">Category names are not stored on-chain; load the employer's filing pack to see them.</p>}
               </section>
             )}
           </div>

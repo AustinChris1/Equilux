@@ -5,8 +5,6 @@
   --color-night-deep: #131a15;
   --color-night-soft: #2b382d;
   --color-gold: #ffd85f;
-  --color-gold-deep: #d9a723;
-  --color-gold-dim: #8a6d1f;
   --color-cream: #faf6e9;
   --color-paper: #fffdf5;
   --color-moss: #55604f;
@@ -34,23 +32,6 @@ body {
 }
 
 @layer components {
-/* Section overline label */
-.overline {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
-.overline::before {
-  content: "";
-  width: 22px;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.6;
-}
 
 /* Small data chip (hashes, statuses) */
 .chip {
@@ -77,25 +58,7 @@ body {
   font-weight: 400;
 }
 
-/* film-grain overlay */
-.grain::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.35;
-  border-radius: inherit;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-}
 
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-.animate-marquee {
-  animation: marquee 32s linear infinite;
-}
 
 /* duotone image treatment: grayscale photo pushed into the olive/gold world */
 .duotone {
