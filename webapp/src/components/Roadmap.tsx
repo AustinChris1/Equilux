@@ -10,17 +10,27 @@ const waves = [
     wave: "Wave 2",
     dates: "Sep 27 — Oct 17",
     status: "Building",
-    items: ["Payroll provider as a third party: every salary bound to its payroll row", "Works council confirms the payroll before enrollment", "All seven Article 9 indicators, incl. variable pay and quartiles", "k = 3 category pay (Article 7), small groups suppressed", "The compiled contract runs in the browser — no Docker", "Personio / DATEV CSV import", "Deployed and proven on Midnight's public preprod testnet", "Verify page and Article 9 filing pack"],
+    items: [
+      "Deployed and proven on Midnight's public preprod testnet",
+      "Payroll provider as a third party: every salary bound to its payroll row",
+      "Works council confirms the payroll before enrollment",
+      "All seven Article 9 indicators, incl. variable pay and quartiles",
+      "k = 3 category pay (Article 7), small groups suppressed",
+      "Verify page and Article 9 filing pack",
+      "The compiled contract runs in the browser — no Docker",
+      "Personio / DATEV CSV import",
+      "Everything first planned for Wave 3, delivered early",
+    ],
   },
   {
-    wave: "Wave 3",
-    dates: "Oct 27 — Nov 16",
-    status: "Planned",
-    items: ["Lace wallet writes from the site", "Mainnet when Midnight opens it", "One named pilot: a works council and an EU employer"],
+    wave: "Next",
+    dates: "after the Buildathon",
+    status: "Open",
+    items: ["Mainnet, when Midnight opens it", "A named pilot with a works council and an EU employer"],
   },
 ];
 
-const FILL = { Delivered: 1, Building: 0.6, Planned: 0 } as const;
+const FILL = { Delivered: 1, Building: 0.85, Open: 0 } as const;
 
 /** The three waves along the seal: solid, filling, hollow. Items open on demand. */
 export function Roadmap() {
