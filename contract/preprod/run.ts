@@ -15,6 +15,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import * as Rx from "rxjs";
 import { Transaction } from "@midnight-ntwrk/ledger-v8";
+import { ProtocolVersion, WalletTransaction } from "@midnight-ntwrk/wallet-sdk-abstractions";
 import { CompiledContract } from "@midnight-ntwrk/compact-js";
 import { deployContract, findDeployedContract } from "@midnight-ntwrk/midnight-js/contracts";
 import { setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
@@ -93,8 +94,15 @@ async function main() {
   }
 
   // ── midnight-js providers, bridged onto the RC wallet ──────────────────────
-  const toWalletTx = (tx: any) => Transaction.deserialize("signature", "proof", "pre-binding", tx.serialize());
-  const toFinalTx = (tx: any) => (typeof tx?.serialize === "function" ? Transaction.deserialize("signature", "proof", "binding", tx.serialize()) : tx);
+  // The RC wallet takes transactions as handles stamped with the protocol version
+  // that built them; ours are ledger-v8 transactions at preprod's current version.
+  const pvRes = await fetch(PREPROD.indexer, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ query: "{ block { protocolVersion } }" }) });
+  const pv = ProtocolVersion.ProtocolVersion(BigInt((await pvRes.json()).data.block.protocolVersion));
+  log(`preprod protocol version ${pv}`);
+  const toWalletTx = (tx: any) =>
+    WalletTransaction.adopt("Unbound", Transaction.deserialize("signature", "proof", "pre-binding", tx.serialize()) as never, pv);
+  const toFinalTx = (tx: any) =>
+    WalletTransaction.is(tx) ? tx : WalletTransaction.adopt("Finalized", Transaction.deserialize("signature", "proof", "binding", tx.serialize()) as never, pv);
   const walletProvider = {
     getCoinPublicKey: () => state.shielded.coinPublicKey.toHexString(),
     getEncryptionPublicKey: () => state.shielded.encryptionPublicKey.toHexString(),
