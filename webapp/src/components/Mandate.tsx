@@ -29,7 +29,7 @@ export function Mandate() {
         {/* the deadline */}
         <div className="mt-14">
           <div className="flex items-end justify-between gap-4">
-            <span className="text-[13px] font-medium text-night/75">Today</span>
+            <span className="text-[13px] font-medium text-night/75">June 2023 · in force</span>
             <span className="text-right">
               <span className="display block text-4xl md:text-6xl">7 June 2027</span>
               <span className="text-[13px] font-medium text-night/75">{days.toLocaleString("en-US")} days left</span>
@@ -37,8 +37,9 @@ export function Mandate() {
           </div>
           <div className="relative mt-3 h-2.5 rounded-full bg-night/12">
             <motion.div className="absolute inset-y-0 left-0 origin-left rounded-full bg-night" style={{ width: `${elapsed * 100}%` }} {...draw()} />
+            <span className="absolute top-4 -translate-x-1/2 whitespace-nowrap text-[12px] font-semibold" style={{ left: `${elapsed * 100}%` }}>Today</span>
           </div>
-          <p className="mt-3 max-w-2xl text-[15px] text-night/80">
+          <p className="mt-10 max-w-2xl text-[15px] text-night/80">
             First pay-gap reports are due from every EU employer with 250+ people, computed from 2026 pay data. Employers of 150+ follow on the same date.
           </p>
         </div>

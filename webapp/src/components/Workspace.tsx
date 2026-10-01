@@ -119,11 +119,14 @@ function ProgressRail({ steps, current, onPick }: { steps: RailStep[]; current: 
                   st.done ? "bg-gold text-night" : isActive ? "bg-night text-gold ring-2 ring-gold" : "bg-night text-sage/60 ring-1 ring-gold/15"} ${current === st.role ? "shadow-[0_0_0_4px_rgba(255,216,95,0.15)]" : ""}`}>
                 {st.done ? <Check size={16} strokeWidth={2.6} /> : <st.icon size={16} />}
               </button>
-              <span className={`mt-2 text-[11px] font-semibold uppercase leading-tight tracking-[0.06em] ${isActive || doneCount === steps.length ? "" : "hidden sm:block"} ${st.done ? "text-cream" : isActive ? "text-gold" : "text-sage"}`}>{st.label}</span>
+              <span className={`mt-2 text-[11px] font-semibold uppercase leading-tight tracking-[0.06em] hidden sm:block ${st.done ? "text-cream" : isActive ? "text-gold" : "text-sage"}`}>{st.label}</span>
             </li>
           );
         })}
       </ol>
+      <p className="mt-2 text-[12px] font-medium text-sage sm:hidden" aria-live="polite">
+        {active === -1 ? "All six steps done" : <>Step {active + 1} of {steps.length} · <span className="text-gold">{steps[active].label}</span></>}
+      </p>
     </nav>
   );
 }
