@@ -44,36 +44,36 @@ export function Indicators() {
       <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
         <div className="grid grid-cols-12 items-end gap-6">
           <h2 className="display col-span-12 text-4xl leading-[1.05] md:col-span-7 md:text-6xl">All seven Article 9 figures. Proven.</h2>
-          <p className="col-span-12 font-mono text-[11px] uppercase tracking-[0.14em] text-night/65 md:col-span-5 md:text-right">
-            Demo company · 14 people · proven on a Midnight node
-          </p>
+          <div className="col-span-12 flex items-center gap-4 md:col-span-5 md:justify-end">
+            <p className="text-[14px] font-medium text-night/75">Demo company · 14 people · proven on a Midnight node</p>
+            <motion.span
+              className="shrink-0 rounded-md border-2 border-night px-2.5 py-1 font-mono text-[12px] font-semibold uppercase tracking-[0.16em]"
+              initial={reduce ? false : { opacity: 0, transform: "rotate(-8deg) scale(1.5)" }}
+              animate={inView ? { opacity: 1, transform: "rotate(-8deg) scale(1)" } : undefined}
+              transition={{ duration: 0.35, ease: EASE_OUT, delay: 0.1 + 7 * 0.09 + 0.3 }}>
+              all 7 proven
+            </motion.span>
+          </div>
         </div>
         <div ref={ref} className="mt-12 grid grid-cols-2 gap-3 md:grid-cols-4">
           {CARDS.map((c, i) => (
-            <motion.article
+            <article
               key={c.letter}
-              className={`relative flex min-h-[176px] flex-col rounded-2xl bg-paper p-5 ${i === 6 ? "col-span-2" : ""}`}
-              initial={reduce ? false : { opacity: 0, transform: "translateY(14px)" }}
-              animate={inView ? { opacity: 1, transform: "translateY(0px)" } : undefined}
-              transition={{ duration: 0.5, ease: EASE_OUT, delay: i * 0.07 }}
+              className={`relative isolate flex min-h-[176px] flex-col overflow-hidden rounded-2xl p-5 ring-1 ring-night/20 ${i === 6 ? "col-span-2" : ""}`}
             >
+              {/* the card fills from the bottom as its figure is shown proven */}
+              <motion.span aria-hidden="true" className="absolute inset-0 -z-10 bg-paper"
+                initial={reduce ? false : { clipPath: "inset(100% 0 0 0)" }}
+                animate={inView ? { clipPath: "inset(0% 0 0 0)" } : undefined}
+                transition={{ duration: 0.55, ease: EASE_OUT, delay: 0.1 + i * 0.09 }} />
               <div className="flex items-center justify-between">
-                <span className="grid size-8 place-items-center rounded-full bg-night font-mono text-[12px] font-semibold text-gold">{c.letter}</span>
-                <c.icon size={18} className="text-night/40" aria-hidden="true" />
+                <span className="grid size-8 place-items-center rounded-full bg-night text-[13px] font-semibold text-gold">{c.letter}</span>
+                <c.icon size={18} className="text-night/60" aria-hidden="true" />
               </div>
               <div className={`display mt-auto pt-6 ${c.small ? "text-2xl md:text-[1.9rem]" : "text-3xl md:text-[2.1rem]"}`}>{c.figure}</div>
               <h3 className="mt-2 text-[14px] font-medium">{c.label}</h3>
-              <p className="mt-0.5 font-mono text-[10px] text-night/55">{c.note}</p>
-              <motion.span
-                aria-label="proven"
-                className="absolute right-4 top-14 rounded border-[1.5px] border-night/70 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-night/70"
-                initial={reduce ? false : { opacity: 0, transform: "rotate(-8deg) scale(1.4)" }}
-                animate={inView ? { opacity: 1, transform: "rotate(-8deg) scale(1)" } : undefined}
-                transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.35 + i * 0.07 }}
-              >
-                proven
-              </motion.span>
-            </motion.article>
+              <p className="mt-0.5 text-[12px] text-night/75">{c.note}</p>
+            </article>
           ))}
         </div>
       </div>

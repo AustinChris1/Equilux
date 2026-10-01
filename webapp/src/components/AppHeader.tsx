@@ -19,11 +19,11 @@ export function AppHeader({ current }: { current: "app" | "verify" }) {
           <span className="wordmark text-[21px]">Equilux</span>
         </a>
         <span className="hidden h-5 w-px bg-gold/15 sm:block" aria-hidden="true" />
-        <nav className="flex items-center gap-4 font-mono text-[11px] uppercase tracking-[0.16em]">
+        <nav className="flex items-center gap-4 text-[13px] font-medium">
           {link("/app", "Workspace", current === "app")}
           {link("/verify", "Verify", current === "verify")}
         </nav>
-        <nav className="ml-auto flex items-center gap-5 font-mono text-[11px] uppercase tracking-[0.14em]">
+        <nav className="ml-auto flex items-center gap-5 text-[13px] font-medium">
           <a href="/#protocol" className="hidden text-sage transition-colors hover:text-gold md:block">How it works</a>
           <a href={REPO} target="_blank" rel="noreferrer" aria-label="Source code on GitHub"
             className="inline-flex items-center gap-1.5 text-sage transition-colors hover:text-gold">

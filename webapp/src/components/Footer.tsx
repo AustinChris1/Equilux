@@ -18,7 +18,7 @@ export function Footer() {
                 employee-verifiable pay-transparency reporting protocol, born at Midnight.
               </p>
             </div>
-            <div className="flex flex-col items-start gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em] md:items-end">
+            <div className="flex flex-col items-start gap-2.5 text-[13px] font-medium md:items-end">
               <a
                 href="https://github.com/AustinChris1/Equilux"
                 target="_blank"
@@ -28,12 +28,12 @@ export function Footer() {
                 <ExternalLink size={12} />
                 GitHub · AustinChris1/Equilux
               </a>
-              <span className="text-cream/45">Apache License 2.0</span>
-              <span className="text-cream/45">Compact · TypeScript · Midnight</span>
+              <span className="text-sage">Apache License 2.0</span>
+              <span className="text-sage">Compact · TypeScript · Midnight</span>
             </div>
           </div>
         </Reveal>
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-gold/10 pt-6 font-mono text-[11px] uppercase tracking-[0.16em] text-sage/70">
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-gold/10 pt-6 text-[13px] text-sage">
           <span>© 2026 Equilux</span>
           <span>Prove everything · Reveal no one</span>
         </div>

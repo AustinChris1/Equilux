@@ -64,12 +64,30 @@ export function ReportView({ rep, vrep, categories }: { rep: PayReportOnChain; v
                 );
               })}
             </ol>
-            <p className="mt-2 font-mono text-[10px] text-sage/70">By total pay, basic plus variable. <span className="text-gold">■</span> women · <span className="text-sage">■</span> men</p>
+            <p className="mt-2 text-[12px] text-sage">By total pay, basic plus variable. <span className="text-gold">■</span> women · <span className="text-sage">■</span> men</p>
           </div>
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-gold/15">
+      <ul className="flex flex-col gap-2 sm:hidden">
+        {rep.categories.map((c, i) => (c.headcountWomen + c.headcountMen === 0 ? null : (
+          <li key={i} className="rounded-lg border border-gold/15 bg-night p-3.5 text-[13px] text-cream">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">{categories[i]}</span>
+              <span className="font-mono text-[12px] text-sage">{c.headcountWomen}W / {c.headcountMen}M</span>
+            </div>
+            {c.disclosed ? (
+              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span className="font-mono">{fmtPct(c.meanGapBps)}</span>
+                {c.gapAtOrAbove5pct ? <span className="chip bg-red-950/50 text-red-200">≥ 5% · assess</span> : <span className="chip bg-gold/10 text-gold">&lt; 5%</span>}
+                <span className="font-mono text-[12px] text-sage">€{c.meanWomen.toLocaleString()} · €{c.meanMen.toLocaleString()}</span>
+              </div>
+            ) : <p className="mt-2 text-[12px] text-sage">Suppressed: fewer than 3 in a group.</p>}
+            {vrep && <p className="mt-1.5 text-[12px] text-sage">Variable-pay gap: <span className="font-mono text-cream">{vrep.categories[i].disclosed ? fmtPct(vrep.categories[i].meanGapBps) : "suppressed"}</span></p>}
+          </li>
+        )))}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-lg border border-gold/15 sm:block">
         <table className="w-full min-w-130 text-left font-mono text-[12px]">
           <thead className="bg-cream/5 text-[10px] uppercase tracking-[0.14em] text-sage">
             <tr><th className="px-3 py-2">Worker category</th><th className="px-3 py-2">W / M</th><th className="px-3 py-2">Mean pay W · M</th><th className="px-3 py-2">Gap</th><th className="px-3 py-2"></th>{vrep && <th className="px-3 py-2">Variable-pay gap</th>}</tr>
@@ -88,13 +106,13 @@ export function ReportView({ rep, vrep, categories }: { rep: PayReportOnChain; v
                       : <span className="chip bg-gold/10 text-gold">&lt; 5%</span>}</td>
                   </>
                 ) : (
-                  <td colSpan={3} className="px-3 py-2.5 text-sage/70">suppressed — fewer than 3 in a group, so no one's pay can be inferred</td>
+                  <td colSpan={3} className="px-3 py-2.5 text-sage">suppressed — fewer than 3 in a group, so no one's pay can be inferred</td>
                 )}
                 {vrep && (
                   <td className="whitespace-nowrap px-3 py-2.5">
                     {vrep.categories[i].disclosed
                       ? fmtPct(vrep.categories[i].meanGapBps)
-                      : <span className="text-sage/70" title="fewer than 3 recipients in a group">suppressed · {vrep.categories[i].recipientsWomen}W/{vrep.categories[i].recipientsMen}M</span>}
+                      : <span className="text-sage" title="fewer than 3 recipients in a group">suppressed · {vrep.categories[i].recipientsWomen}W/{vrep.categories[i].recipientsMen}M</span>}
                   </td>
                 )}
               </tr>

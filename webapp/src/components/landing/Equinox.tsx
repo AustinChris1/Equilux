@@ -51,6 +51,7 @@ function Count({ to, decimals = 2, suffix = "%" }: { to: number; decimals?: numb
 }
 
 function Stage({ step }: { step: number }) {
+  const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { amount: 0.4 });
   const [sealed, setSealed] = useState(false);
@@ -69,7 +70,7 @@ function Stage({ step }: { step: number }) {
       {/* the payroll */}
       <motion.div
         className="grid grid-cols-2 gap-1.5 md:gap-2"
-        animate={step >= 4 ? { opacity: 0, transform: "scale(0.94)" } : step === 3 ? { opacity: 0.12, transform: "scale(0.94)" } : { opacity: 1, transform: "scale(1)" }}
+        animate={step >= 3 ? { opacity: 0, transform: "scale(0.94)" } : { opacity: 1, transform: "scale(1)" }}
         transition={{ duration: 0.5, ease: EASE_OUT }}
         aria-hidden={step >= 3}
       >
@@ -78,7 +79,7 @@ function Stage({ step }: { step: number }) {
 
       {/* the council's sweep */}
       <AnimatePresence>
-        {step === 1 && (
+        {step === 1 && !reduce && (
           <motion.div key="sweep" className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-transparent via-gold/25 to-transparent"
             initial={{ transform: "translateY(-40px)", opacity: 0 }} animate={{ transform: "translateY(320px)", opacity: [0, 1, 1, 0] }}
             transition={{ duration: 1.4, ease: "linear" }} />
@@ -102,15 +103,15 @@ function Stage({ step }: { step: number }) {
         {step === 3 && (
           <motion.div key="proof" className="absolute inset-0 grid place-items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>
             <div className="relative grid place-items-center">
-              <LogoMark size={150} className="text-gold" />
+              <LogoMark size={220} className="text-gold" />
               <motion.span
-                className="absolute -right-10 -top-4 rounded-md border-2 border-gold px-3 py-1 font-mono text-[13px] font-semibold uppercase tracking-[0.2em] text-gold"
-                initial={stamped.current ? false : { opacity: 0, transform: "rotate(-10deg) scale(1.5)" }}
+                className="absolute -right-8 top-2 rounded-md border-2 border-gold px-3.5 py-1.5 font-mono text-[15px] font-semibold uppercase tracking-[0.2em] text-gold"
+                initial={stamped.current || reduce ? false : { opacity: 0, transform: "rotate(-10deg) scale(1.5)" }}
                 animate={{ opacity: 1, transform: "rotate(-10deg) scale(1)" }}
                 transition={{ duration: 0.35, ease: EASE_OUT, delay: 0.25 }}>
                 proven
               </motion.span>
-              <p className="mt-6 font-mono text-[11px] text-sage">14 records · 6 circuits · 0 salaries disclosed</p>
+              <p className="mt-4 text-[14px] text-sage">14 records · 6 circuits · 0 salaries disclosed</p>
             </div>
           </motion.div>
         )}
@@ -123,7 +124,7 @@ function Stage({ step }: { step: number }) {
             initial={{ opacity: 0, transform: "translateY(16px)" }} animate={{ opacity: 1, transform: "translateY(0)" }} exit={{ opacity: 0 }}
             transition={{ duration: 0.45, ease: EASE_OUT }}>
             <div className="w-full rounded-2xl bg-night p-5 text-cream shadow-[0_30px_60px_-24px_rgba(32,43,34,0.6)] md:p-7">
-              <div className="flex items-center justify-between font-mono text-[11px] text-sage">
+              <div className="flex items-center justify-between text-[13px] text-sage">
                 <span>Pay-gap report · demo company · round 1</span>
                 <ShieldCheck size={15} className="text-gold" />
               </div>
@@ -135,12 +136,12 @@ function Stage({ step }: { step: number }) {
                   ["Engineering", FIGURES.engineeringGap],
                 ].map(([label, v]) => (
                   <div key={label as string}>
-                    <dt className="font-mono text-[10px] uppercase tracking-[0.14em] text-sage">{label}</dt>
+                    <dt className="text-[12px] font-medium text-sage">{label}</dt>
                     <dd className="display mt-1 text-3xl md:text-4xl"><Count to={v as number} /></dd>
                   </div>
                 ))}
               </dl>
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gold/12 pt-4 font-mono text-[11px]">
+              <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gold/12 pt-4 text-[13px]">
                 <span className="text-sage">salaries on chain: <span className="text-gold">0</span></span>
                 <a href="/verify" className="inline-flex items-center gap-1.5 text-gold hover:underline">Verify a report <ArrowRight size={13} /></a>
               </div>
@@ -154,6 +155,7 @@ function Stage({ step }: { step: number }) {
 
 /** The signature: a pinned stage that turns from night to day as the protocol runs. */
 export function Equinox() {
+  const reduceAll = useReducedMotion();
   const ref = useRef<HTMLElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const [step, setStep] = useState(0);
@@ -184,16 +186,16 @@ export function Equinox() {
                     <button onClick={() => goTo(i)} aria-current={active ? "step" : undefined}
                       className={`group flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors duration-300 ${active ? (day ? "bg-night/8" : "bg-cream/[0.07]") : ""}`}>
                       <span className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full transition-colors duration-300 ${
-                        active ? (day ? "bg-night text-gold" : "bg-gold text-night") : i < step ? (day ? "bg-night/15 text-night" : "bg-gold/20 text-gold") : (day ? "bg-night/8 text-night/50" : "bg-cream/8 text-sage")}`}>
+                        active ? (day ? "bg-night text-gold" : "bg-gold text-night") : i < step ? (day ? "bg-night/15 text-night" : "bg-gold/20 text-gold") : (day ? "bg-night/10 text-night/70" : "bg-cream/8 text-sage")}`}>
                         <s.icon size={14} />
                       </span>
                       <span className="min-w-0">
-                        <span className={`block text-[15px] font-medium transition-colors duration-300 ${active ? (day ? "text-night" : "text-cream") : day ? "text-night/55" : "text-sage"}`}>{s.title}</span>
+                        <span className={`block text-[15px] font-medium transition-colors duration-300 ${active ? (day ? "text-night" : "text-cream") : day ? "text-night/75" : "text-sage"}`}>{s.title}</span>
                         <AnimatePresence initial={false}>
                           {active && (
                             <motion.span className={`block overflow-hidden text-[13px] leading-snug ${day ? "text-night/75" : "text-sage"}`}
                               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: 0.25, ease: EASE_OUT }}>
+                              transition={{ duration: reduceAll ? 0 : 0.25, ease: EASE_OUT }}>
                               <span className="block pt-1">{s.line}</span>
                             </motion.span>
                           )}

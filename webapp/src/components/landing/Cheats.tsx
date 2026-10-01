@@ -20,7 +20,7 @@ export function Cheats() {
         <div className="col-span-12 md:col-span-5">
           <h2 className="display text-4xl leading-[1.05] text-cream md:text-5xl">Try to cheat.</h2>
           <p className="mt-4 max-w-sm text-[15px] text-sage">Pick a lie. The circuit refuses it, in its own words.</p>
-          <a href="/app" className="mt-8 inline-flex items-center gap-1.5 font-mono text-[12px] uppercase tracking-[0.14em] text-gold underline decoration-gold/40 underline-offset-8 hover:decoration-gold">
+          <a href="/app" className="mt-8 inline-flex items-center gap-1.5 text-[15px] font-medium text-gold underline decoration-gold/40 underline-offset-8 hover:decoration-gold">
             Run all seven for real <ArrowRight size={14} />
           </a>
         </div>
@@ -32,7 +32,7 @@ export function Cheats() {
                   picked === i ? "bg-red-950/40 ring-1 ring-red-400/50" : "bg-cream/[0.05] ring-1 ring-gold/10 hover:bg-cream/[0.08] hover:ring-gold/30"}`}>
                 <c.icon size={17} className={picked === i ? "text-red-300" : "text-gold"} />
                 <span>
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.14em] text-sage">{c.who}</span>
+                  <span className="block text-[12px] font-medium text-sage">{c.who}</span>
                   <span className="text-[14px] text-cream">{c.try}</span>
                 </span>
               </button>
@@ -47,7 +47,7 @@ export function Cheats() {
                   exit={{ opacity: 0 }} transition={{ duration: 0.32, ease: EASE_OUT }}>
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-red-950/60"><X size={15} className="text-red-300" /></span>
                   <span>
-                    <span className="block font-mono text-[11px] uppercase tracking-[0.16em] text-red-300">Circuit rejected</span>
+                    <span className="block text-[12px] font-semibold uppercase tracking-[0.08em] text-red-300">Circuit rejected</span>
                     <span className="font-mono text-[13px] text-cream">{CHEATS[picked].msg}</span>
                   </span>
                 </motion.div>

@@ -30,7 +30,7 @@ export function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="font-mono text-[11px] uppercase tracking-[0.16em] text-sage transition-colors hover:text-gold"
+              className="text-[13px] font-medium text-sage transition-colors hover:text-gold"
             >
               {l.label}
             </a>
@@ -38,7 +38,7 @@ export function Nav() {
         </div>
         <a
           href="/app"
-          className="group inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-night transition-transform hover:-translate-y-0.5"
+          className="group inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-[13px] font-semibold text-night transition-transform hover:-translate-y-0.5"
         >
           Open the app
           <ArrowUpRight size={14} className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />

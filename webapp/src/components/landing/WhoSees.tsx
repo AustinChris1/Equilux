@@ -16,7 +16,7 @@ const ROWS: { what: string; sees: boolean[]; note?: string }[] = [
 
 export function WhoSees() {
   return (
-    <section id="who-sees" className="mx-2 mt-2 rounded-[28px] bg-cream text-night md:mx-3 md:mt-3">
+    <section id="who-sees" className="mx-2 mt-2 rounded-[28px] bg-paper text-night md:mx-3 md:mt-3">
       <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
         <h2 className="display max-w-3xl text-4xl leading-[1.05] md:text-6xl">Who sees what.</h2>
 
@@ -27,17 +27,17 @@ export function WhoSees() {
                 <img src={r.img} alt="" loading="lazy" className="transition-transform duration-500 ease-out group-hover:scale-[1.03]" />
               </div>
               <figcaption className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-night/90 to-transparent p-3 md:p-4">
-                <span className="block font-mono text-[10px] uppercase tracking-[0.16em] text-gold">{r.who}</span>
+                <span className="block text-[12px] font-semibold uppercase tracking-[0.08em] text-gold">{r.who}</span>
                 <span className="hidden text-[14px] text-cream sm:block">{r.does}</span>
               </figcaption>
             </figure>
           ))}
         </div>
 
-        <div className="mt-6 overflow-x-auto rounded-2xl bg-paper ring-1 ring-night/10">
+        <div className="mt-6 overflow-x-auto rounded-2xl bg-cream/60 ring-1 ring-night/10">
           <table className="w-full min-w-[620px] text-left">
             <thead>
-              <tr className="font-mono text-[10px] uppercase tracking-[0.14em] text-night/55">
+              <tr className="text-[12px] font-semibold text-night/75">
                 <th className="px-4 py-3 font-medium" />
                 {COLS.map((c) => <th key={c} className="px-3 py-3 text-center font-medium">{c}</th>)}
               </tr>
@@ -47,7 +47,7 @@ export function WhoSees() {
                 <tr key={r.what} className="border-t border-night/8">
                   <th className="px-4 py-3.5 text-[14px] font-medium">
                     {r.what}
-                    {r.note && <span className="mt-0.5 block font-mono text-[10px] font-normal text-night/55">{r.note}</span>}
+                    {r.note && <span className="mt-0.5 block text-[12px] font-normal text-night/75">{r.note}</span>}
                   </th>
                   {r.sees.map((s, i) => (
                     <td key={i} className="px-3 py-3.5 text-center">

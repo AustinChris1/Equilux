@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BadgeCheck, Building2, Check, CircleAlert, Cpu, FileSpreadsheet, Landmark, Loader2, Play, RefreshCw,
+  BadgeCheck, Building2, Check, CircleAlert, X, Cpu, FileSpreadsheet, Landmark, Loader2, Play, RefreshCw,
   Download, RotateCcw, ShieldCheck, Upload, UserRound, Users, Wifi,
 } from "lucide-react";
 import { getStatus, resolveApiBase, runJob, short, type LedgerView, type Status, type Tamper, type VariableTamper } from "../lib/api";
@@ -67,8 +67,8 @@ function Btn({ onClick, disabled, children, ghost }: { onClick: () => void; disa
       disabled={disabled}
       className={
         ghost
-          ? "inline-flex items-center gap-2 rounded-lg border border-gold/25 px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-cream/80 transition-colors hover:border-gold/60 hover:text-gold disabled:opacity-40"
-          : "inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-night transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
+          ? "inline-flex items-center gap-2 rounded-lg border border-gold/25 px-3.5 py-2 text-[13px] font-medium text-cream/85 transition-colors hover:border-gold/60 hover:text-gold disabled:opacity-40"
+          : "inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-[13px] font-semibold text-night transition-transform hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0"
       }
     >
       {children}
@@ -77,7 +77,7 @@ function Btn({ onClick, disabled, children, ghost }: { onClick: () => void; disa
 }
 
 const Step = ({ n, children }: { n: string; children: React.ReactNode }) => (
-  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">
+  <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">
     <span className="text-gold">{n}</span> · {children}
   </div>
 );
@@ -95,7 +95,7 @@ function Pop({ children, className = "" }: { children: React.ReactNode; classNam
 /** A payroll-row hash that resolves out of noise the moment the provider commits it. */
 function ChainHash({ hash, committed }: { hash: string; committed: boolean }) {
   const text = useScramble(committed ? short(hash, 8) : "not committed");
-  return <span className={`font-mono text-[10px] ${committed ? "text-gold/80" : "text-sage/50"}`}>{text}</span>;
+  return <span className={`font-mono text-[11px] ${committed ? "text-gold/90" : "text-sage"}`}>{text}</span>;
 }
 
 type RailStep = { label: string; icon: typeof Building2; role: Role; done: boolean };
@@ -119,7 +119,7 @@ function ProgressRail({ steps, current, onPick }: { steps: RailStep[]; current: 
                   st.done ? "bg-gold text-night" : isActive ? "bg-night text-gold ring-2 ring-gold" : "bg-night text-sage/60 ring-1 ring-gold/15"} ${current === st.role ? "shadow-[0_0_0_4px_rgba(255,216,95,0.15)]" : ""}`}>
                 {st.done ? <Check size={16} strokeWidth={2.6} /> : <st.icon size={16} />}
               </button>
-              <span className={`mt-2 font-mono text-[10px] uppercase leading-tight tracking-[0.12em] ${isActive ? "" : "hidden sm:block"} ${st.done ? "text-cream" : isActive ? "text-gold" : "text-sage/60"}`}>{st.label}</span>
+              <span className={`mt-2 text-[11px] font-semibold uppercase leading-tight tracking-[0.06em] ${isActive || doneCount === steps.length ? "" : "hidden sm:block"} ${st.done ? "text-cream" : isActive ? "text-gold" : "text-sage"}`}>{st.label}</span>
             </li>
           );
         })}
@@ -359,7 +359,7 @@ export function Workspace() {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[11px] text-sage" aria-live="polite">
+      <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-[12px] text-sage" aria-live="polite">
         <span className="inline-flex items-start gap-2 text-cream">
           <span className="mt-px shrink-0">{mode === "checking" ? <Loader2 size={13} className="animate-spin" /> : mode === "live" ? <Wifi size={13} className="text-gold" /> : <Cpu size={13} className="text-gold" />}</span>
           {mode === "checking" ? "Looking for a local Midnight node…" : mode === "live"
@@ -398,7 +398,7 @@ export function Workspace() {
               <div role="tablist" aria-label="Party" className="flex flex-wrap gap-2">
                 {tabs.map((t) => (
                   <button key={t.id} role="tab" aria-selected={role === t.id} onClick={() => setRole(t.id)}
-                    className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${role === t.id ? "bg-gold text-night" : "bg-cream/6 text-sage hover:text-cream"}`}>
+                    className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${role === t.id ? "bg-gold text-night" : "bg-cream/6 text-sage hover:text-cream"}`}>
                     <t.icon size={13} /> {t.label}
                   </button>
                 ))}
@@ -437,7 +437,7 @@ export function Workspace() {
                     <Step n="5a">Publish the pay-gap report</Step>
                     <p className="mt-2 text-[14px] text-sage">{counts.enrolled} of {ledger?.declaredHeadcount ?? people.length} records bound · every figure recomputed in-circuit.</p>
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
+                      <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Try to cheat · sent to the real circuit</div>
                       <div className="mt-2.5 grid gap-1.5 text-[13px] text-cream/85">
                         {([
                           ["none", "Publish honestly"],
@@ -465,7 +465,7 @@ export function Workspace() {
                     <Step n="5b">Publish the variable-pay report</Step>
                     <p className="mt-2 text-[14px] text-sage">Variable-pay gaps, who receives it, and pay quartiles, over the same records.</p>
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
+                      <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Try to cheat · sent to the real circuit</div>
                       <div className="mt-2.5 grid gap-1.5 text-[13px] text-cream/85">
                         {([
                           ["none", "Publish honestly"],
@@ -500,8 +500,8 @@ export function Workspace() {
                       <Btn onClick={() => fileRef.current?.click()} ghost disabled={locked || !!busy}><Upload size={12} /> Upload CSV</Btn>
                       <Btn onClick={() => importCsv(SAMPLE_CSV, "a sample Personio export")} ghost disabled={locked || !!busy}><FileSpreadsheet size={12} /> Load sample export</Btn>
                     </div>
-                    {locked && <p className="mt-2 font-mono text-[11px] text-sage/70">The payroll is committed — fixed for this round.</p>}
-                    {csvNote && <p className="mt-2 font-mono text-[11px] text-gold/90">{csvNote}</p>}
+                    {locked && <p className="mt-2 text-[12px] text-sage">The payroll is committed, fixed for this round.</p>}
+                    {csvNote && <p className="mt-2 text-[12px] text-gold">{csvNote}</p>}
                   </div>
 
                   <div>
@@ -527,7 +527,7 @@ export function Workspace() {
                             ? null
                             : p.commitment
                               ? <Pop className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> confirmed by employee</Pop>
-                              : <span className="font-mono text-[10px] text-sage/70">{payrollConfirmed ? "awaiting employee" : "awaiting works council"}</span>}
+                              : <span className="text-[12px] text-sage">{payrollConfirmed ? "awaiting employee" : "awaiting works council"}</span>}
                         </div>
                       ))}
                     </div>
@@ -550,7 +550,7 @@ export function Workspace() {
                   </div>
                   {rosterDeclared && !payrollConfirmed && (
                     <div className="rounded-lg border border-gold/12 bg-night p-3.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
+                      <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Try to cheat · sent to the real circuit</div>
                       <div className="mt-2.5 flex flex-wrap gap-2">
                         <Btn onClick={() => confirmPayroll(true)} disabled={!!busy} ghost>Confirm without opening one row</Btn>
                       </div>
@@ -567,7 +567,7 @@ export function Workspace() {
                   {!payrollConfirmed && <p className="mt-2 text-[13px] text-sage/80">Enrollment opens once the provider commits the payroll and the works council confirms it.</p>}
                   {payrollConfirmed && people.length > 0 && (
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
-                      <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
+                      <div className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Try to cheat · sent to the real circuit</div>
                       <div className="mt-2.5 flex flex-wrap gap-2">
                         <Btn onClick={() => cheatEnroll("inflate")} disabled={!!busy} ghost>{people[0].name.split(" ")[0]} claims €5,000 more</Btn>
                         <Btn onClick={() => cheatEnroll("ghost")} disabled={!!busy} ghost>Enroll an invented employee</Btn>
@@ -579,9 +579,9 @@ export function Workspace() {
                       <div key={p.id} className="grid grid-cols-[1.4fr_0.8fr_auto] items-center gap-3 py-2">
                         <div>
                           <div className="text-[14px] text-cream">{p.name}</div>
-                          <div className="font-mono text-[10px] text-sage/70">{categories[p.category]} · {p.gender === 0 ? "W" : "M"}</div>
+                          <div className="text-[12px] text-sage">{categories[p.category]} · {p.gender === 0 ? "W" : "M"}</div>
                         </div>
-                        <div className="font-mono text-[12px] text-cream">€{p.salary.toLocaleString()}{p.variable > 0 && <span className="block text-[10px] text-sage">+ €{p.variable.toLocaleString()} variable</span>}</div>
+                        <div className="font-mono text-[12px] text-cream">€{p.salary.toLocaleString()}{p.variable > 0 && <span className="block text-[11px] text-sage">+ €{p.variable.toLocaleString()} variable</span>}</div>
                         <div className="flex justify-end">
                           {!p.commitment ? (
                             <Btn onClick={() => enroll(p)} disabled={!payrollConfirmed || !!busy} ghost>Enroll</Btn>
@@ -606,7 +606,7 @@ export function Workspace() {
                   ) : (
                     <div className="mt-4 flex flex-col gap-4">
                       <ReportView rep={rep} vrep={vrep} categories={categories} />
-                      <p className="font-mono text-[10px] leading-relaxed text-sage/70">
+                      <p className="text-[12px] leading-relaxed text-sage">
                         A category at ≥ 5% triggers an Article 10 joint pay assessment only if the gap is also unjustified by objective,
                         gender-neutral criteria — a human judgement the circuit does not make. {vrep ? "All seven Article 9 indicators shown." : "Publish the variable-pay report for the other four Article 9 indicators."} Salaries on chain: <span className="text-gold">0</span>.
                         {mode === "live" && ` Proven on-chain · contract ${short(ledger!.contractAddress, 8)}.`}
@@ -616,11 +616,11 @@ export function Workspace() {
                           <Download size={12} /> Download filing pack
                         </Btn>
                         {mode === "live" && (
-                          <a href={`/verify?network=local&contract=${ledger!.contractAddress}`} className="font-mono text-[11px] text-sage underline decoration-gold/40 underline-offset-4 hover:text-gold">
+                          <a href={`/verify?network=local&contract=${ledger!.contractAddress}`} className="text-[13px] text-sage underline decoration-gold/40 underline-offset-4 hover:text-gold">
                             Verify it on /verify
                           </a>
                         )}
-                        <span className="font-mono text-[10px] text-sage/70">
+                        <span className="text-[12px] text-sage">
                           {mode === "live" ? "The figures plus the contract that proves them, for the monitoring body." : "From the in-browser demo, so there is no chain to verify it against."}
                         </span>
                       </div>
@@ -632,13 +632,25 @@ export function Workspace() {
 
             {/* ── ACTIVITY ───────────────────────────────────────────── */}
             <aside className="flex flex-col rounded-2xl bg-night-deep/60 p-5 ring-1 ring-gold/10 lg:sticky lg:top-20">
-              <h2 className="font-mono text-[11px] uppercase tracking-[0.18em] text-sage">Activity</h2>
-              <div ref={logRef} className="mt-3 h-72 overflow-auto rounded-lg bg-night p-3 font-mono text-[11px] leading-relaxed text-sage lg:h-[26rem]">
-                {log.length === 0
-                  ? <span className="text-sage/60">{mode === "live" ? status?.startupLog?.slice(-3).join("\n") || "Every circuit call appears here. Start with Run the full flow, or deploy from the Employer tab." : "Every circuit call appears here. Start with Run the full flow, or deploy from the Employer tab."}</span>
-                  : log.map((l, i) => <div key={i} className={l.startsWith("▶") ? "text-cream" : l.startsWith("✗") || l.startsWith("rejected") ? "text-red-300" : ""}>{l}</div>)}
-              </div>
-              <p className="mt-4 text-[12px] leading-relaxed text-sage/75">
+              <h2 className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">Activity</h2>
+              <p className="mt-1 text-[12px] text-sage">{mode === "live" ? "Each step proven and finalized on the node." : "Each step runs the compiled circuit in this browser."}</p>
+              <ol ref={logRef as never} className="mt-3 flex h-72 flex-col gap-1 overflow-auto rounded-lg bg-night p-3 text-[13px] lg:h-[26rem]">
+                {log.filter((l) => l.startsWith("▶") || l.startsWith("✗") || l.startsWith("rejected") || l.startsWith("imported") || /proven|finalized|block \d/.test(l)).length === 0
+                  ? <li className="text-sage">{mode === "live" ? status?.startupLog?.slice(-3).join("\n") || "Start with Run the full flow, or deploy from the Employer tab." : "Start with Run the full flow, or deploy from the Employer tab."}</li>
+                  : log.map((l, i) => {
+                      const failed = l.startsWith("✗") || l.startsWith("rejected");
+                      const action = l.startsWith("▶");
+                      if (!failed && !action && !l.startsWith("imported") && !/block \d/.test(l)) return null;
+                      const text = l.replace(/^[▶✗]\s*/, "");
+                      return (
+                        <li key={i} className={`flex items-start gap-2 ${failed ? "text-red-300" : action ? "text-cream" : "text-sage"}`}>
+                          {failed ? <X size={14} className="mt-0.5 shrink-0" /> : action ? <Check size={14} className="mt-0.5 shrink-0 text-gold" /> : <span className="mt-2 size-1 shrink-0 rounded-full bg-sage" />}
+                          <span className={failed || !action ? "font-mono text-[12px]" : ""}>{text}</span>
+                        </li>
+                      );
+                    })}
+              </ol>
+              <p className="mt-4 text-[12px] leading-relaxed text-sage">
                 {mode === "live"
                   ? "Each write: local circuit execution, a proof from the proof server, finality on the node, then a read back from the indexer."
                   : <>This page runs the compiled Compact contract on Midnight's WebAssembly runtime: the same circuits and assertions as on-chain, without proof generation. For real proofs, run <code className="font-mono text-[11px] text-cream/80">pnpm network:up &amp;&amp; pnpm app:server</code> locally and this page switches to live mode.</>}
