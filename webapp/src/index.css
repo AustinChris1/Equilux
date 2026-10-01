@@ -33,6 +33,7 @@ body {
   color: var(--color-night);
 }
 
+@layer components {
 /* Section overline label */
 .overline {
   font-family: var(--font-mono);
@@ -124,4 +125,16 @@ body {
   pointer-events: none;
   background: rgba(255, 216, 95, 0.1);
   mix-blend-mode: overlay;
+}
+
+}
+
+/* sealed payroll points in the hero's night sky */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.9; }
+}
+.twinkle { animation: twinkle 3.2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .twinkle { animation: none; opacity: 0.5; }
 }

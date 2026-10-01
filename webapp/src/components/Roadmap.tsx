@@ -1,4 +1,3 @@
-import { Reveal } from "./Reveal";
 
 const waves = [
   {
@@ -24,19 +23,12 @@ const waves = [
 export function Roadmap() {
   return (
     <section id="roadmap" className="mx-2 mt-2 rounded-[28px] bg-gold text-night md:mx-3 md:mt-3">
-      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
-        <Reveal>
-          <div className="overline text-night/70">The Midnight Buildathon · three waves</div>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <h2 className="display mt-5 max-w-3xl text-4xl leading-[1.05] md:text-6xl">
-            Built in the open, wave by wave.
-          </h2>
-        </Reveal>
+      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
+        <h2 className="display max-w-3xl text-4xl leading-[1.05] md:text-6xl">Built in the open, wave by wave.</h2>
 
         <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {waves.map((w, i) => (
-            <Reveal key={w.wave} delay={0.1 * i} className="h-full">
+          {waves.map((w) => (
+            <div key={w.wave} className="h-full">
               <div className={`flex h-full flex-col rounded-2xl p-7 ${w.status === "Building" ? "bg-night text-cream" : "border border-night/15"}`}>
                 <div className="flex items-baseline justify-between">
                   <h3 className="display text-3xl">{w.wave}</h3>
@@ -54,7 +46,7 @@ export function Roadmap() {
                   ))}
                 </ul>
               </div>
-            </Reveal>
+            </div>
           ))}
         </div>
       </div>

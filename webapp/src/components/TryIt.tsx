@@ -1,39 +1,16 @@
 import { ArrowRight } from "lucide-react";
 import { Reveal } from "./Reveal";
 
-const steps = [
-  "The payroll provider commits fourteen payroll rows, hashed.",
-  "Every employee proves their sealed record matches their row.",
-  "The employer publishes the report; the regulator reads it.",
-  "Then try seven ways to cheat. The circuit rejects each one.",
-];
-
 /** Landing band that sends visitors to /app, where the real contract runs. */
 export function TryIt() {
   return (
-    <section id="try" className="grain relative mx-2 mt-2 overflow-hidden rounded-[28px] bg-night md:mx-3 md:mt-3">
+    <section id="try" className="relative mx-2 mt-2 overflow-hidden rounded-[28px] bg-night md:mx-3 md:mt-3">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 md:px-8 md:py-24 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <Reveal>
             <h2 className="display max-w-xl text-4xl leading-[1.05] text-cream md:text-5xl">
-              Run the whole protocol in your browser.
+              See it run, in your browser.
             </h2>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <p className="mt-5 max-w-lg text-[16px] leading-relaxed text-sage">
-              The app executes the compiled Compact contract on Midnight's WebAssembly runtime: the same circuits and
-              assertions as on-chain, no install, about two seconds end to end.
-            </p>
-          </Reveal>
-          <Reveal delay={0.16}>
-            <ol className="mt-8 flex max-w-lg flex-col gap-3.5">
-              {steps.map((s, i) => (
-                <li key={s} className="flex gap-4 text-[15px] leading-snug text-cream/90">
-                  <span className="mt-px font-mono text-[12px] tabular-nums text-gold">{i + 1}</span>
-                  {s}
-                </li>
-              ))}
-            </ol>
           </Reveal>
           <Reveal delay={0.22}>
             <a

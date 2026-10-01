@@ -1,4 +1,3 @@
-import { Reveal } from "./Reveal";
 
 const facts = [
   {
@@ -17,34 +16,18 @@ const facts = [
 
 export function Mandate() {
   return (
-    <section id="mandate" className="mx-2 mt-2 rounded-[28px] bg-gold text-night md:mx-3 md:mt-3">
-      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
-        <Reveal>
-          <div className="overline text-night/70">The mandate · Directive (EU) 2023/970</div>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <h2 className="display mt-5 max-w-3xl text-4xl leading-[1.05] md:text-6xl">
-            The law now demands a number companies cannot prove.
-          </h2>
-        </Reveal>
-        <Reveal delay={0.2}>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-night/75">
-            The EU Pay Transparency Directive makes gender pay gap reporting mandatory across the Union — and gives
-            every employee the right to ask what their category earns. But the report is a spreadsheet the employer
-            fills in alone. Nobody can verify it without seeing everyone's salary. That is the exact gap between
-            <span className="font-medium"> trust me</span> and <span className="font-medium">prove it</span> that
-            zero-knowledge was invented for.
-          </p>
-        </Reveal>
-
-        <div className="mt-14 grid gap-4 md:grid-cols-3">
-          {facts.map((f, i) => (
-            <Reveal key={f.stat} delay={0.1 * i} className="h-full">
-              <div className="flex h-full flex-col rounded-2xl border border-night/15 p-6">
-                <div className="display text-4xl md:text-5xl">{f.stat}</div>
-                <p className="mt-4 text-[15px] leading-relaxed text-night/75">{f.body}</p>
-              </div>
-            </Reveal>
+    <section id="mandate" className="mx-2 mt-2 rounded-[28px] bg-night text-cream md:mx-3 md:mt-3">
+      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
+        <h2 className="display max-w-3xl text-4xl leading-[1.05] md:text-6xl">
+          The law now demands a number <span className="text-gold">companies cannot prove.</span>
+        </h2>
+        <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.14em] text-sage">Directive (EU) 2023/970 · EU Pay Transparency</p>
+        <div className="mt-12 grid gap-3 md:grid-cols-3">
+          {facts.map((f) => (
+            <div key={f.stat} className="flex flex-col rounded-2xl bg-cream/[0.05] p-6 ring-1 ring-gold/12">
+              <div className="display text-5xl text-gold md:text-6xl">{f.stat}</div>
+              <p className="mt-4 text-[14px] leading-relaxed text-sage">{f.body}</p>
+            </div>
           ))}
         </div>
       </div>

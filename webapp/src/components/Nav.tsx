@@ -3,11 +3,11 @@ import { ArrowUpRight } from "lucide-react";
 import { LogoMark } from "./Logo";
 
 const links = [
-  { label: "Mandate", href: "#mandate" },
-  { label: "Protocol", href: "#protocol" },
-  { label: "Guarantees", href: "#guarantees" },
+  { label: "How it works", href: "#protocol" },
+  { label: "Indicators", href: "#indicators" },
+  { label: "Try to cheat", href: "#cheats" },
   { label: "Scope", href: "#scope" },
-  { label: "Roadmap", href: "#roadmap" },
+  { label: "Verify", href: "/verify" },
 ];
 
 export function Nav() {

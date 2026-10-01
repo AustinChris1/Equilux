@@ -1,14 +1,13 @@
-import { Check, Minus } from "lucide-react";
-import { Reveal } from "./Reveal";
+import { Check, Minus, Plus } from "lucide-react";
 
 const proves = [
-  "The report covers exactly the payroll rows the provider committed before anyone enrolled — no one can be left out, not even by never enrolling.",
-  "The works council opened every committed payroll row before enrollment began, so the provider cannot slip in a row the council has not seen.",
-  "Every counted salary is the payroll provider's own figure, confirmed by the employee it belongs to: the employer cannot invent a person or change anyone's pay, and no employee can inflate their own.",
-  "Nobody was counted twice — enrollment nullifiers make duplicates unprovable.",
-  "All seven Article 9 indicators are exact: mean and median gaps on basic and on variable pay, who receives variable pay, the gender mix of each pay quartile, and every category's gap. The circuit accepts one value and rejects every other, including one basis point off.",
-  "No category's pay is published unless both groups have at least three people, so no colleague's salary can be worked out.",
-  "Each employee can verify their own record was inside the numbers, without seeing anyone else's.",
+  { head: "Nobody left out", body: "The report covers exactly the payroll rows the provider committed before anyone enrolled — no one can be left out, not even by never enrolling." },
+  { head: "The council saw every row", body: "The works council opened every committed payroll row before enrollment began, so the provider cannot slip in a row the council has not seen." },
+  { head: "Every salary is payroll's", body: "Every counted salary is the payroll provider's own figure, confirmed by the employee it belongs to: the employer cannot invent a person or change anyone's pay, and no employee can inflate their own." },
+  { head: "Nobody counted twice", body: "Nobody was counted twice — enrollment nullifiers make duplicates unprovable." },
+  { head: "Every figure is exact", body: "All seven Article 9 indicators are exact: mean and median gaps on basic and on variable pay, who receives variable pay, the gender mix of each pay quartile, and every category's gap. The circuit accepts one value and rejects every other, including one basis point off." },
+  { head: "No small-group leaks", body: "No category's pay is published unless both groups have at least three people, so no colleague's salary can be worked out." },
+  { head: "You can check you were counted", body: "Each employee can verify their own record was inside the numbers, without seeing anyone else's." },
 ];
 
 const doesNot = [
@@ -42,56 +41,35 @@ const doesNot = [
   },
 ];
 
+function Item({ head, body, ok }: { head: string; body: string; ok: boolean }) {
+  return (
+    <details className="group border-t border-night/10 py-1 [&_summary::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer list-none items-center gap-3 py-2.5 text-[15px] font-medium text-night">
+        {ok
+          ? <span className="grid size-6 shrink-0 place-items-center rounded-full bg-night text-gold"><Check size={13} strokeWidth={2.4} /></span>
+          : <span className="grid size-6 shrink-0 place-items-center rounded-full bg-night/8 text-night/45"><Minus size={13} strokeWidth={2.4} /></span>}
+        <span className="flex-1">{head}</span>
+        <Plus size={15} className="shrink-0 text-night/40 transition-transform duration-200 ease-out group-open:rotate-45" aria-hidden="true" />
+      </summary>
+      <p className="pb-3 pl-9 text-[14px] leading-relaxed text-moss">{body}</p>
+    </details>
+  );
+}
+
 export function Scope() {
   return (
     <section id="scope" className="mx-2 mt-2 rounded-[28px] bg-paper text-night md:mx-3 md:mt-3">
-      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
-        <Reveal>
-          <div className="overline text-moss">Threat model · scope</div>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <h2 className="display mt-5 max-w-3xl text-4xl leading-[1.05] md:text-6xl">
-            Honest about what a proof can prove.
-          </h2>
-        </Reveal>
-        <Reveal delay={0.18}>
-          <p className="mt-5 max-w-2xl text-[15px] leading-relaxed text-moss">
-            A compliance tool that overstates itself is worse than none — the first auditor who
-            reads the circuit would find the gap. So here is the boundary, drawn precisely.
-          </p>
-        </Reveal>
-
-        <div className="mt-14 grid gap-10 lg:grid-cols-2">
-          <Reveal>
-            <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-gold-dim">
-              What the circuit proves
-            </h3>
-            <ul className="mt-5 flex flex-col gap-4">
-              {proves.map((p) => (
-                <li key={p} className="flex gap-3 text-[15px] leading-relaxed text-night/80">
-                  <Check size={17} className="mt-0.5 shrink-0 text-gold-deep" strokeWidth={2.2} />
-                  {p}
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-
-          <Reveal delay={0.08}>
-            <h3 className="font-mono text-[11px] uppercase tracking-[0.18em] text-moss/70">
-              What it does not claim
-            </h3>
-            <ul className="mt-5 flex flex-col gap-5">
-              {doesNot.map((d) => (
-                <li key={d.head} className="flex gap-3">
-                  <Minus size={17} className="mt-0.5 shrink-0 text-moss/50" strokeWidth={2.2} />
-                  <div>
-                    <div className="text-[15px] font-medium text-night">{d.head}</div>
-                    <p className="mt-1 text-[14px] leading-relaxed text-moss">{d.body}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Reveal>
+      <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
+        <h2 className="display max-w-3xl text-4xl leading-[1.05] md:text-6xl">Honest about what a proof can prove.</h2>
+        <div className="mt-12 grid gap-x-10 gap-y-12 lg:grid-cols-2">
+          <div>
+            <h3 className="display text-xl">What the circuit proves</h3>
+            <div className="mt-4">{proves.map((p) => <Item key={p.head} head={p.head} body={p.body} ok />)}</div>
+          </div>
+          <div>
+            <h3 className="display text-xl">What it does not claim</h3>
+            <div className="mt-4">{doesNot.map((d) => <Item key={d.head} head={d.head} body={d.body} ok={false} />)}</div>
+          </div>
         </div>
       </div>
     </section>
