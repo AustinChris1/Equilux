@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BadgeCheck, Building2, CircleAlert, Cpu, FileSpreadsheet, Landmark, Loader2, Play, RefreshCw,
+  BadgeCheck, Building2, Check, CircleAlert, Cpu, FileSpreadsheet, Landmark, Loader2, Play, RefreshCw,
   Download, RotateCcw, ShieldCheck, Upload, UserRound, Users, Wifi,
 } from "lucide-react";
 import { getStatus, resolveApiBase, runJob, short, type LedgerView, type Status, type Tamper, type VariableTamper } from "../lib/api";
 import { BrowserContract, newNonce, payrollRowHash, type Row } from "../lib/browser-contract";
 import { parsePayrollCsv } from "../../../contract/deploy/payroll-csv";
 import { ReportView } from "./ReportView";
+import { useScramble } from "./landing/useScramble";
 import { buildFilingPack, downloadFilingPack } from "../lib/filing";
 
 type Role = "employer" | "provider" | "council" | "employee" | "regulator";
@@ -80,6 +81,52 @@ const Step = ({ n, children }: { n: string; children: React.ReactNode }) => (
     <span className="text-gold">{n}</span> · {children}
   </div>
 );
+
+/** A badge that pops in when a state is reached: state indication, ~200ms ease-out. */
+function Pop({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <motion.span className={className} initial={{ opacity: 0, transform: "scale(0.9)" }} animate={{ opacity: 1, transform: "scale(1)" }}
+      transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}>
+      {children}
+    </motion.span>
+  );
+}
+
+/** A payroll-row hash that resolves out of noise the moment the provider commits it. */
+function ChainHash({ hash, committed }: { hash: string; committed: boolean }) {
+  const text = useScramble(committed ? short(hash, 8) : "not committed");
+  return <span className={`font-mono text-[10px] ${committed ? "text-gold/80" : "text-sage/50"}`}>{text}</span>;
+}
+
+type RailStep = { label: string; icon: typeof Building2; role: Role; done: boolean };
+
+/** The protocol at a glance: six steps that fill as the flow runs; each opens its party's tab. */
+function ProgressRail({ steps, current, onPick }: { steps: RailStep[]; current: Role; onPick: (r: Role) => void }) {
+  const doneCount = steps.filter((s) => s.done).length;
+  const active = steps.findIndex((s) => !s.done);
+  return (
+    <nav aria-label="Protocol progress" className="mt-5 overflow-x-auto">
+      <ol className="relative flex items-start justify-between sm:min-w-[560px]">
+        <span aria-hidden="true" className="absolute left-5 right-5 top-5 h-px bg-gold/12" />
+        <motion.span aria-hidden="true" className="absolute left-5 top-5 h-px origin-left bg-gold" style={{ right: 20 }}
+          animate={{ transform: `scaleX(${Math.max(0, doneCount - 1) / (steps.length - 1)})` }} transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }} />
+        {steps.map((st, i) => {
+          const isActive = i === active;
+          return (
+            <li key={st.label} className="relative z-10 flex flex-col items-center text-center sm:w-24">
+              <button onClick={() => onPick(st.role)} aria-current={isActive ? "step" : undefined} aria-label={`Step: ${st.label}`}
+                className={`grid size-10 place-items-center rounded-full transition-[background-color,color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${
+                  st.done ? "bg-gold text-night" : isActive ? "bg-night text-gold ring-2 ring-gold" : "bg-night text-sage/60 ring-1 ring-gold/15"} ${current === st.role ? "shadow-[0_0_0_4px_rgba(255,216,95,0.15)]" : ""}`}>
+                {st.done ? <Check size={16} strokeWidth={2.6} /> : <st.icon size={16} />}
+              </button>
+              <span className={`mt-2 font-mono text-[10px] uppercase leading-tight tracking-[0.12em] ${isActive ? "" : "hidden sm:block"} ${st.done ? "text-cream" : isActive ? "text-gold" : "text-sage/60"}`}>{st.label}</span>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
 
 const toRow = (p: Person): Row => ({ salary: p.salary, variable: p.variable, gender: p.gender, category: p.category, secret: p.secret, nonce: p.nonce });
 const openingOf = (r: Row) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, nonce: r.nonce });
@@ -302,11 +349,7 @@ export function Workspace() {
       <div className="flex flex-col gap-5 border-b border-gold/10 pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-cream">Pay-gap report workspace</h1>
-          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-sage">
-            The payroll provider commits every payroll row, hashed, and the works council checks each one. Employees seal their
-            pay and prove it matches their row. The employer publishes all seven Article 9 figures, and the circuit checks every
-            one. Then try to cheat.
-          </p>
+          <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-sage">Four parties, one contract. Run it, then try to cheat.</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2.5">
           <Btn onClick={reset} ghost disabled={mode !== "browser" || !!busy}><RotateCcw size={12} /> Reset</Btn>
@@ -333,14 +376,25 @@ export function Workspace() {
         {mode === "live" && <button onClick={refresh} className="ml-auto inline-flex items-center gap-1.5 rounded text-sage hover:text-gold focus-visible:outline-2 focus-visible:outline-gold"><RefreshCw size={12} /> Refresh</button>}
       </div>
 
+        {mode !== "checking" && (
+          <ProgressRail current={role} onPick={setRole} steps={[
+            { label: "Deploy", icon: Building2, role: "employer", done: !!deployed },
+            { label: "Commit payroll", icon: FileSpreadsheet, role: "provider", done: rosterDeclared },
+            { label: "Council", icon: Users, role: "council", done: payrollConfirmed },
+            { label: `Enroll ${counts.enrolled}/${people.length}`, icon: UserRound, role: "employee", done: people.length > 0 && counts.enrolled === people.length },
+            { label: "Publish", icon: ShieldCheck, role: "employer", done: !!rep && !!vrep },
+            { label: "Regulator", icon: Landmark, role: "regulator", done: !!rep && !!vrep && role === "regulator" },
+          ]} />
+        )}
+
         {mode === "checking" ? (
           <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]" aria-hidden="true">
             <div className="h-[520px] animate-pulse rounded-2xl bg-night-soft/40" />
             <div className="h-[520px] animate-pulse rounded-2xl bg-night-soft/30" />
           </div>
         ) : (
-          <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
-            <div className="rounded-2xl bg-night p-5 ring-1 ring-gold/12 md:p-6">
+          <div className="mt-6 grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+            <div className="min-w-0 rounded-2xl bg-night p-5 ring-1 ring-gold/12 md:p-6">
               <div role="tablist" aria-label="Party" className="flex flex-wrap gap-2">
                 {tabs.map((t) => (
                   <button key={t.id} role="tab" aria-selected={role === t.id} onClick={() => setRole(t.id)}
@@ -365,7 +419,7 @@ export function Workspace() {
                 <div className="mt-6 flex flex-col gap-7">
                   <div>
                     <Step n="1">Deploy the reporting contract</Step>
-                    <p className="mt-2 text-[14px] text-sage">Three keys go on-chain as hashes: the employer's, the payroll provider's and the works council's. Only the provider can commit payroll; only the council can confirm it.</p>
+                    <p className="mt-2 text-[14px] text-sage">Three role keys go on-chain, hashed: employer, payroll provider, works council.</p>
                     {deployed ? (
                       <p className="mt-3 font-mono text-[12px] text-gold"><BadgeCheck size={13} className="mr-1.5 inline" />deployed · {short(deployed, 10)}</p>
                     ) : (
@@ -381,10 +435,7 @@ export function Workspace() {
 
                   <div>
                     <Step n="5a">Publish the pay-gap report</Step>
-                    <p className="mt-2 text-[14px] text-sage">
-                      Witness: {counts.enrolled} enrolled record(s), each bound to a payroll row, of {ledger?.declaredHeadcount ?? people.length} on the roster.
-                      The circuit recomputes every figure and rejects anything that doesn't match.
-                    </p>
+                    <p className="mt-2 text-[14px] text-sage">{counts.enrolled} of {ledger?.declaredHeadcount ?? people.length} records bound · every figure recomputed in-circuit.</p>
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
                       <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
                       <div className="mt-2.5 grid gap-1.5 text-[13px] text-cream/85">
@@ -412,10 +463,7 @@ export function Workspace() {
 
                   <div>
                     <Step n="5b">Publish the variable-pay report</Step>
-                    <p className="mt-2 text-[14px] text-sage">
-                      The rest of Article 9 over the same bound set: gaps in variable pay, who receives it, and the gender mix of each
-                      pay quartile. The employer places each record in a quartile band; the circuit checks the bands are in pay order.
-                    </p>
+                    <p className="mt-2 text-[14px] text-sage">Variable-pay gaps, who receives it, and pay quartiles, over the same records.</p>
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
                       <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-sage">Try to cheat — sent to the real circuit</div>
                       <div className="mt-2.5 grid gap-1.5 text-[13px] text-cream/85">
@@ -446,10 +494,7 @@ export function Workspace() {
                 <div className="mt-6 flex flex-col gap-7">
                   <div>
                     <Step n="2a">Import the payroll</Step>
-                    <p className="mt-2 text-[14px] text-sage">
-                      Personio and DATEV exports work as-is (commas or semicolons, <span className="font-mono">62.000,00</span> amounts, German headers).
-                      Parsed in this browser — no salary leaves it.
-                    </p>
+                    <p className="mt-2 text-[14px] text-sage">Personio and DATEV exports, parsed in this browser.</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
                       <Btn onClick={() => fileRef.current?.click()} ghost disabled={locked || !!busy}><Upload size={12} /> Upload CSV</Btn>
@@ -461,11 +506,7 @@ export function Workspace() {
 
                   <div>
                     <Step n="2b">Commit the payroll</Step>
-                    <p className="mt-2 text-[14px] text-sage">
-                      One transaction, <em>before</em> anyone enrolls: a hiding hash of each row — basic pay, variable pay, gender marker,
-                      category and a payslip nonce. The salaries stay here; each employee gets their nonce with their payslip. The report must then
-                      cover exactly these rows, so nobody can be left out, invented, or have their pay changed.
-                    </p>
+                    <p className="mt-2 text-[14px] text-sage">One hiding hash per row, in one transaction. Salaries stay here.</p>
                     <div className="mt-3">
                       {rosterDeclared
                         ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> {ledger?.payrollRows} payroll rows committed</span>
@@ -480,12 +521,12 @@ export function Workspace() {
                         <div key={p.id} className="flex items-center justify-between gap-3 py-2">
                           <div>
                             <div className="text-[14px] text-cream">{p.name}</div>
-                            <div className="font-mono text-[10px] text-sage/70">row {short(payrollRowHash(toRow(p)), 8)}</div>
+                            <ChainHash hash={payrollRowHash(toRow(p))} committed={rosterDeclared} />
                           </div>
                           {!rosterDeclared
-                            ? <span className="font-mono text-[10px] text-sage/60">not committed</span>
+                            ? null
                             : p.commitment
-                              ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> confirmed by employee</span>
+                              ? <Pop className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> confirmed by employee</Pop>
                               : <span className="font-mono text-[10px] text-sage/70">{payrollConfirmed ? "awaiting employee" : "awaiting works council"}</span>}
                         </div>
                       ))}
@@ -499,14 +540,10 @@ export function Workspace() {
                 <div className="mt-6 flex flex-col gap-7">
                   <div>
                     <Step n="3">Confirm the payroll</Step>
-                    <p className="mt-2 text-[14px] text-sage">
-                      The works council receives the payroll export with its nonces and proves it can open every committed row:
-                      the circuit recomputes each hash. The provider cannot commit a row the council has not seen, and the council
-                      checks the headcount against the workforce it represents. Enrollment opens only after this.
-                    </p>
+                    <p className="mt-2 text-[14px] text-sage">Open every committed row; the circuit recomputes each hash. Enrollment waits for this.</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {payrollConfirmed
-                        ? <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> payroll confirmed by the works council</span>
+                        ? <Pop className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> payroll confirmed by the works council</Pop>
                         : <Btn onClick={() => confirmPayroll()} disabled={!rosterDeclared || !!busy}><ShieldCheck size={13} /> Open {people.length} rows and confirm</Btn>}
                     </div>
                     {!rosterDeclared && <p className="mt-2 text-[13px] text-sage/80">Waiting for the payroll provider to commit the payroll.</p>}
@@ -526,11 +563,7 @@ export function Workspace() {
               {role === "employee" && (
                 <div className="mt-6">
                   <Step n="4">Seal your record</Step>
-                  <p className="mt-2 text-[14px] text-sage">
-                    Enrolling proves your salary, gender marker and category open to your payroll row (with the nonce from your
-                    payslip) — without revealing them. The chain sees one commitment and one nullifier. Then verify your receipt: a
-                    Merkle proof that you were counted.
-                  </p>
+                  <p className="mt-2 text-[14px] text-sage">Seal your pay against your payroll row, then prove you were counted.</p>
                   {!payrollConfirmed && <p className="mt-2 text-[13px] text-sage/80">Enrollment opens once the provider commits the payroll and the works council confirms it.</p>}
                   {payrollConfirmed && people.length > 0 && (
                     <div className="mt-3 rounded-lg border border-gold/12 bg-night p-3.5">
@@ -553,7 +586,7 @@ export function Workspace() {
                           {!p.commitment ? (
                             <Btn onClick={() => enroll(p)} disabled={!payrollConfirmed || !!busy} ghost>Enroll</Btn>
                           ) : p.receipt ? (
-                            <span className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> counted</span>
+                            <Pop className="chip bg-gold/15 text-gold"><BadgeCheck size={11} /> counted</Pop>
                           ) : (
                             <Btn onClick={() => receipt(p)} disabled={!!busy} ghost>Verify receipt</Btn>
                           )}

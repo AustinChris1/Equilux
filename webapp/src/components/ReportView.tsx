@@ -1,4 +1,5 @@
 import type { PayReportOnChain, VariablePayReportOnChain } from "../lib/api";
+import { motion } from "framer-motion";
 import { fmtPct } from "../lib/api";
 
 const pctOf = (a: number, b: number) => (b === 0 ? "—" : `${Math.round((a / b) * 100)}%`);
@@ -8,7 +9,13 @@ export function ReportView({ rep, vrep, categories }: { rep: PayReportOnChain; v
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-gold/25 bg-night p-4">
+        <div className="relative rounded-lg border border-gold/25 bg-night p-4">
+          <motion.span aria-hidden="true"
+            className="absolute right-3 top-3 rounded border-[1.5px] border-gold px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-gold"
+            initial={{ opacity: 0, transform: "rotate(-8deg) scale(1.4)" }} animate={{ opacity: 1, transform: "rotate(-8deg) scale(1)" }}
+            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1], delay: 0.15 }}>
+            proven
+          </motion.span>
           <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-sage">Mean gap</div>
           <div className="display mt-1 text-3xl text-cream">{fmtPct(rep.meanGapBps)}</div>
           <div className="font-mono text-[10px] text-sage">favors {rep.gapFavorsMen ? "men" : "women"}</div>
