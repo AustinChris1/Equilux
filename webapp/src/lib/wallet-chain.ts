@@ -30,6 +30,18 @@ export const KEYS_URL = "https://austinchris1.github.io/Equilux";
 export const LOCAL_PROOF_SERVER = "http://localhost:6300";
 export const PROOF_SERVER_CMD = "docker run -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v";
 const NETWORK = "preprod";
+// Midnight's own public indexer: open to browsers (CORS) and the one our preprod deploy used
+const INDEXER = "https://indexer.preprod.midnight.network/api/v4/graphql";
+const INDEXER_WS = "wss://indexer.preprod.midnight.network/api/v4/graphql/ws";
+const APPROVE_TIMEOUT_MS = 5 * 60_000;
+
+/** Errors the page explains with pictures rather than words. */
+export const NO_DUST = "no-dust";
+export const NO_ANSWER = "no-answer";
+export class WalletStop extends Error {
+  readonly kind: typeof NO_DUST | typeof NO_ANSWER;
+  constructor(kind: typeof NO_DUST | typeof NO_ANSWER, message: string) { super(message); this.kind = kind; }
+}
 const STORAGE = "equilux.wallet-chain.v1";
 const PRIVATE_STATE_ID = "equiluxPrivateState";
 
@@ -113,7 +125,10 @@ function applyVariableTamper(claim: VariableClaim, tamper?: VariableTamper): Var
 
 export interface WalletSession {
   walletName: string;
+  walletIcon: string;
   prover: "wallet" | "local";
+  /** DUST is the fee fuel; null when the wallet will not say. */
+  dust(): Promise<{ balance: bigint; cap: bigint } | null>;
   address: string | null;
   run<T = unknown>(path: string, body: any, log: Log): Promise<T>;
   readLedger(): Promise<LedgerView | null>;
@@ -141,9 +156,10 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
   const coinPk = toHex(bech32Bytes(keys.shieldedCoinPublicKey));
   const encPk = toHex(bech32Bytes(keys.shieldedEncryptionPublicKey));
   if (coinPk.length !== 64 || encPk.length !== 64) throw new Error(`unexpected key format from the wallet (${keys.shieldedCoinPublicKey.slice(0, 24)}…)`);
-  const dust = await api.getDustBalance().catch(() => null);
+  const readDust = () => api.getDustBalance().catch(() => null);
+  const dust = await readDust();
   log([
-    `connected · indexer ${new URL(config.indexerUri).host}`,
+    `connected · wallet indexer ${new URL(config.indexerUri).host} · reads from ${new URL(INDEXER).host}`,
     dust ? `fee balance: ${dust.balance.toLocaleString()} DUST (cap ${dust.cap.toLocaleString()})` : "fee balance: unknown",
   ]);
   if (dust && dust.balance === 0n) log(["⚠ no DUST yet: in the wallet, make sure your tNIGHT is generating DUST, then wait a few minutes"]);
@@ -183,7 +199,12 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
     getEncryptionPublicKey: () => encPk as never,
     async balanceTx(tx) {
       log([`approve the transaction in ${choice.name} (it pays the fee in DUST)…`]);
-      const { tx: out } = await api.balanceUnsealedTransaction(toHex(tx.serialize()));
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const silence = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new WalletStop(NO_ANSWER,
+          `${choice.name} did not answer for 5 minutes. Open ${choice.name}: it may be waiting for your approval, or it may not have enough DUST to pay the fee.`)), APPROVE_TIMEOUT_MS);
+      });
+      const { tx: out } = await Promise.race([api.balanceUnsealedTransaction(toHex(tx.serialize())), silence]).finally(() => clearTimeout(timer));
       return Transaction.deserialize("signature", "proof", "binding", fromHex(out)) as FinalizedTransaction;
     },
     async submitTx(tx) {
@@ -196,7 +217,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
 
   const providers = {
     privateStateProvider: memoryPrivateState(),
-    publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri, window.WebSocket as never),
+    publicDataProvider: indexerPublicDataProvider(INDEXER, INDEXER_WS, window.WebSocket as never),
     zkConfigProvider: zk,
     proofProvider: timedProof,
     walletProvider: wallet,
@@ -239,6 +260,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
 
   async function call(circuit: Circuit, ps: EquiluxPrivateState, args: unknown[], log: Log) {
     await dryRun(circuit, ps, ...args);
+    await requireDust();
     await providers.privateStateProvider.set(PRIVATE_STATE_ID, ps);
     log([`circuit ${circuit} ran in this page: assertions passed`]);
     return deployed.callTx[circuit](...args);
@@ -251,6 +273,14 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
     return cs ? ledgerView(ledger(cs.data as never), saved.address) : null;
   };
 
+  /** Every write costs a fee in DUST; stop before building anything when there is none. */
+  async function requireDust() {
+    const d = await readDust();
+    if (d && d.balance === 0n) {
+      throw new WalletStop(NO_DUST, `${choice.name} has no DUST yet, so it cannot pay the network fee. Turn on DUST generation for your tNIGHT in ${choice.name}, wait a few minutes, then try again.`);
+    }
+  }
+
   async function run(path: string, body: any, log: Log): Promise<any> {
     try {
       switch (path) {
@@ -258,6 +288,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           if (deployed && saved) return { contractAddress: saved.address, alreadyDeployed: true };
           const s = { employerSecret: String(body.employerSecret), providerSecret: String(body.providerSecret), councilSecret: String(body.councilSecret) };
           const e = bytes32(s.employerSecret), p = bytes32(s.providerSecret), c = bytes32(s.councilSecret);
+          await requireDust();
           log([`deploying: employer ${toHex(pureCircuits.publicKey(e)).slice(0, 10)}…, payroll provider ${toHex(pureCircuits.publicKey(p)).slice(0, 10)}…, works council ${toHex(pureCircuits.publicKey(c)).slice(0, 10)}…`]);
           const d: any = await deployContract(providers as never, {
             compiledContract, args: [pureCircuits.publicKey(e), pureCircuits.publicKey(p), pureCircuits.publicKey(c)],
@@ -331,13 +362,16 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           throw new Error(`unknown step ${path}`);
       }
     } catch (e) {
+      if (e instanceof WalletStop) throw e;
       throw new Error(circuitMessage(e));
     }
   }
 
   return {
     walletName: choice.name,
+    walletIcon: choice.icon,
     prover,
+    dust: readDust,
     get address() { return saved?.address ?? null; },
     run,
     readLedger,

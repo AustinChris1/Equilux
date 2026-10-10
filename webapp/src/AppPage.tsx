@@ -1,19 +1,15 @@
 import { useEffect } from "react";
-import { AppHeader } from "./components/AppHeader";
 import { Workspace } from "./components/Workspace";
 
-/** /app — the four-party workspace on its own page, loaded only when visited. */
+/** /app: the pay-report story, loaded only when visited. Workspace draws its own header (it owns the wallet). */
 export default function AppPage() {
   useEffect(() => {
-    document.title = "Workspace · Equilux";
+    document.title = "Try it · Equilux";
   }, []);
 
   return (
     <div className="min-h-dvh bg-night-deep">
-      <AppHeader current="app" />
-      <main>
-        <Workspace />
-      </main>
+      <Workspace />
     </div>
   );
 }
