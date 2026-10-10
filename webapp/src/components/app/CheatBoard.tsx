@@ -24,7 +24,9 @@ export function CheatBoard({ cheats, results, onTry, busy }: { cheats: Cheat[]; 
         const rejected = r?.state === "rejected";
         return (
           <li key={c.id}>
-            <button onClick={() => onTry(c.id)} disabled={busy || !!c.locked || r?.state === "running"}
+            <motion.button onClick={() => onTry(c.id)} disabled={busy || !!c.locked || r?.state === "running"}
+              variants={{ rest: { transform: "translateX(0px)" }, knock: { transform: ["translateX(0px)", "translateX(-9px)", "translateX(7px)", "translateX(-3px)", "translateX(0px)"] } }}
+              initial={false} animate={rejected && !reduce ? "knock" : "rest"} transition={{ duration: 0.32, ease: EASE }}
               className={`relative flex h-full min-h-[132px] w-full flex-col overflow-hidden rounded-xl p-4 text-left ring-1 transition-[background-color,box-shadow] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold ${
                 rejected ? "bg-[#460809]/45 ring-[#ff6467]/45" : c.locked ? "bg-cream/[0.03] ring-gold/8" : "bg-cream/6 ring-gold/12 hover:bg-cream/10 hover:ring-gold/35"}`}>
               <span className="flex items-center gap-3">
@@ -36,22 +38,22 @@ export function CheatBoard({ cheats, results, onTry, busy }: { cheats: Cheat[]; 
               <span className="mt-auto pt-3 text-[13px] leading-snug">
                 {rejected
                   ? <><span className="block text-[#ffc9c9]">{c.why}</span>
-                      <span className="mt-1.5 block font-mono text-[11px] leading-snug text-[#ffa2a2]/80" title="The contract's own message">“{(r as { message: string }).message}”</span></>
+                      <span className="mt-1.5 block font-mono text-[11px] leading-snug text-[#ffa2a2]/80" title="Equilux's own message">“{(r as { message: string }).message}”</span></>
                   : c.locked
                     ? <span className="inline-flex items-center gap-1.5 text-sage"><Lock size={12} /> {c.locked}</span>
-                    : r?.state === "accepted" ? <span className="text-gold">The contract accepted it.</span> : <span className="text-sage">Tap to try it</span>}
+                    : r?.state === "accepted" ? <span className="text-gold">Equilux's rules let it through.</span> : <span className="text-sage">Tap to try it</span>}
               </span>
               <AnimatePresence>
                 {rejected && (
                   <motion.span key="stamp" aria-hidden="true"
                     className="absolute right-3 top-3 rounded-md border-2 border-[#ff6467] px-2 py-0.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#ffa2a2]"
                     initial={reduce ? false : { opacity: 0, transform: "rotate(-10deg) scale(1.6)" }} animate={{ opacity: 1, transform: "rotate(-10deg) scale(1)" }}
-                    transition={{ duration: 0.3, ease: EASE }}>
+                    transition={{ duration: 0.3, ease: EASE, delay: reduce ? 0 : 0.22 }}>
                     rejected
                   </motion.span>
                 )}
               </AnimatePresence>
-            </button>
+            </motion.button>
           </li>
         );
       })}

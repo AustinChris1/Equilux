@@ -458,6 +458,7 @@ export function Workspace() {
   };
 
   const locked = !!deployed && rosterDeclared;
+  const isSample = people.every((p) => SEED.some(([n]) => n === p.name));
   const walletState: WalletState | null = session ? { name: session.walletName, icon: session.walletIcon, prover: session.prover, fuel } : null;
 
   const cheats: Cheat[] = (() => {
@@ -506,7 +507,7 @@ export function Workspace() {
         return {
           title: "Acme opens its pay report",
           line: "The law asks Acme to publish its gender pay gap. Here Acme proves the numbers instead of just claiming them.",
-          cast: <Avatar seed={CAST.ceo} tone="gold" size={150} />,
+          cast: <Avatar seed={CAST.ceo} tone="gold" fluid className="size-28 md:size-[150px]" />,
           action: shownDone
             ? <Done>Report opened{onChain && deployed ? ` · ${short(deployed, 6)}` : ""}</Done>
             : <Action onClick={deploy} disabled={!ready} busy={working}>Open the report</Action>,
@@ -516,10 +517,10 @@ export function Workspace() {
         return {
           title: "The payroll company locks every salary",
           line: "Each salary turns into a sealed code. The codes go public. The salaries never do.",
-          cast: <Avatar seed={CAST.payroll} tone="gold" size={150} />,
+          cast: <Avatar seed={CAST.payroll} tone="gold" fluid className="size-28 md:size-[150px]" />,
           action: shownDone ? <Done>{ledger?.payrollRows} salaries locked</Done>
             : waiting ?? <Action onClick={declareRoster} busy={working}>Lock {people.length} salaries</Action>,
-          body: <PayrollGrid people={people} locked={rosterDeclared} checked={payrollConfirmed} categories={categories} onSetup={locked ? undefined : () => setSetupOpen(true)} />,
+          body: <PayrollGrid people={people} locked={rosterDeclared} checked={payrollConfirmed} categories={categories} sample={isSample} onSetup={locked ? undefined : () => setSetupOpen(true)} />,
         };
       case "council":
         return {
@@ -527,12 +528,12 @@ export function Workspace() {
           line: "Employee representatives check every sealed code against the real payroll before anyone can join.",
           cast: (
             <div className="flex -space-x-8">
-              {CAST.council.map((s, i) => <Avatar key={s} seed={s} tone="gold" size={i === 1 ? 128 : 100} className={`ring-4 ring-night ${i === 1 ? "relative z-10" : "mt-6"}`} />)}
+              {CAST.council.map((s, i) => <Avatar key={s} seed={s} tone="gold" fluid className={`ring-4 ring-night ${i === 1 ? "relative z-10 size-28 md:size-32" : "mt-6 size-20 md:size-[100px]"}`} />)}
             </div>
           ),
           action: shownDone ? <Done>Every row checked and approved</Done>
             : waiting ?? <Action onClick={confirmPayroll} busy={working}>Check and approve</Action>,
-          body: <PayrollGrid people={people} locked={rosterDeclared} checked={payrollConfirmed} categories={categories} />,
+          body: <PayrollGrid people={people} locked={rosterDeclared} checked={payrollConfirmed} categories={categories} sample={isSample} />,
         };
       case "team":
         return {
@@ -540,7 +541,7 @@ export function Workspace() {
           line: "Everyone proves their sealed code is really theirs. Nobody sees anyone else's salary.",
           cast: (
             <div className="flex -space-x-7">
-              {people.slice(0, 3).map((p, i) => <Avatar key={p.id} seed={p.name} size={i === 1 ? 124 : 98} className={`ring-4 ring-night ${i === 1 ? "relative z-10" : "mt-6"}`} />)}
+              {people.slice(0, 3).map((p, i) => <Avatar key={p.id} seed={p.name} fluid className={`ring-4 ring-night ${i === 1 ? "relative z-10 size-28 md:size-[124px]" : "mt-6 size-20 md:size-[98px]"}`} />)}
             </div>
           ),
           action: shownDone ? <Done>All {ledger?.declaredHeadcount} employees confirmed</Done>
@@ -556,14 +557,14 @@ export function Workspace() {
         return {
           title: "Acme publishes the pay gap",
           line: "Before anything goes public, the math rechecks every figure against the sealed payroll.",
-          cast: <Avatar seed={CAST.ceo} tone="gold" size={150} />,
+          cast: <Avatar seed={CAST.ceo} tone="gold" fluid className="size-28 md:size-[150px]" />,
           action: shownDone ? <Done>Published and proven</Done>
             : waiting ?? <Action onClick={publishBoth} busy={working}>Publish the report</Action>,
           body: rep ? (
             <div className="flex flex-col gap-3">
               <ReportSummary rep={rep} vrep={vrep} categories={categories} />
               <details className="group rounded-xl bg-night-deep/60 ring-1 ring-gold/10">
-                <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[14px] font-medium text-cream">
+                <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-[14px] font-medium text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
                   <ScrollText size={16} className="shrink-0 text-gold" /> See all seven figures the law asks for
                   <ChevronDown size={16} className="ml-auto shrink-0 text-sage transition-transform group-open:rotate-180" />
                 </summary>
@@ -576,14 +577,14 @@ export function Workspace() {
         return {
           title: "Anyone can check the report",
           line: "An inspector, an employee or you can check it. No salary is ever shown.",
-          cast: <Avatar seed={CAST.inspector} tone="gold" size={150} />,
+          cast: <Avatar seed={CAST.inspector} tone="gold" fluid className="size-28 md:size-[150px]" />,
           action: !published ? waiting : (
             <div className="flex flex-wrap gap-2.5">
               <Action onClick={() => downloadFilingPack(buildFilingPack(ledger!, mode === "wallet" ? "preprod" : mode === "live" ? "local" : "browser-session", categories))}>
                 <Download size={17} /> Download the report file
               </Action>
               <a href={onChain ? `/verify?network=${mode === "wallet" ? "preprod" : "local"}&contract=${ledger!.contractAddress}` : PREPROD_VERIFY}
-                className="inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-[15px] font-medium text-cream ring-1 ring-gold/30 transition-colors hover:text-gold hover:ring-gold/60">
+                className="inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-[15px] font-medium text-cream ring-1 ring-gold/30 transition-colors hover:text-gold hover:ring-gold/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
                 <ExternalLink size={16} /> {onChain ? "Check it on the blockchain" : "See a real one on Midnight testnet"}
               </a>
             </div>
@@ -600,9 +601,9 @@ export function Workspace() {
           teamSize={people.length} onSmallTeam={smallTeam} locked={locked} />
       } />
 
-      <div className="mx-auto max-w-6xl px-4 pb-24 pt-8 md:px-6 md:pt-10">
+      <div className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:px-6 md:pt-10">
         {/* title row */}
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between md:gap-5">
           <div>
             <h1 className="font-display text-[2rem] font-semibold leading-[1.1] tracking-[-0.025em] text-cream md:text-[2.5rem]">
               Watch Acme prove its pay gap
@@ -617,22 +618,17 @@ export function Workspace() {
           <div className="flex flex-wrap items-center gap-2.5">
             <Ghost onClick={openCheats}><VenetianMask size={15} /> Try to cheat</Ghost>
             <Ghost onClick={startOver} disabled={!!busy || mode === "checking" || mode === "live"}><RotateCcw size={14} /> Start over</Ghost>
-            {!published && (
-              <button onClick={playAll} disabled={mode === "checking" || !ready || !!busy}
-                className="inline-flex items-center gap-2 rounded-lg bg-cream px-4 py-2 text-[13px] font-semibold text-night transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.97] disabled:opacity-50 disabled:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
-                {busy && !cheatsOpen ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />} Play the whole story
-              </button>
-            )}
           </div>
         </div>
 
         {/* the chapter track: the Equals Seal with the cast riding on it */}
-        <nav aria-label="Story chapters" className="relative mt-9">
-          <div className="absolute inset-x-6 top-[16px] flex flex-col gap-1.5 sm:inset-x-7 sm:top-[22px]" aria-hidden="true">
-            <div className="h-1.5 overflow-hidden rounded-full bg-cream/8">
-              <motion.div className="h-full origin-left rounded-full bg-gold" initial={false} animate={{ transform: `scaleX(${progress / CHAPTERS.length})` }} transition={{ duration: 0.6, ease: EASE }} />
+        <nav aria-label="Story chapters" className="relative mt-6 md:mt-9">
+          <div className="absolute inset-x-6 top-[11px] flex flex-col gap-1.5 sm:inset-x-12 sm:top-[17px]" aria-hidden="true">
+            <div className="h-2 rounded-full bg-gold/10">
+              <motion.div className="h-full origin-left rounded-full bg-gold" initial={false}
+                animate={{ transform: `scaleX(${Math.max(0, progress - 1) / (CHAPTERS.length - 1)})` }} transition={{ duration: 0.6, ease: EASE }} />
             </div>
-            <div className="h-1.5 rounded-full ring-1 ring-gold/30" />
+            <div className="h-2 rounded-full border-2 border-gold/40" />
           </div>
           <ol className="relative flex items-start justify-between">
             {CHAPTERS.map((c, i) => {
@@ -663,17 +659,25 @@ export function Workspace() {
         {mode === "checking" ? (
           <div className="mt-8 h-[420px] animate-pulse rounded-3xl bg-night-soft/40" aria-hidden="true" />
         ) : (
-          <section aria-live="polite" className="mt-8 overflow-hidden rounded-3xl bg-night ring-1 ring-gold/12">
+          <section aria-live="polite" className="mt-6 overflow-hidden rounded-3xl bg-night ring-1 ring-gold/12 md:mt-8">
             <AnimatePresence mode="wait" initial={false}>
               <motion.div key={shown}
                 initial={reduce ? false : { opacity: 0, transform: "translateX(28px)" }} animate={{ opacity: 1, transform: "translateX(0px)" }}
                 exit={reduce ? undefined : { opacity: 0, transform: "translateX(-20px)" }} transition={{ duration: 0.35, ease: EASE }}
-                className="grid gap-7 p-6 md:grid-cols-[200px_minmax(0,1fr)] md:gap-10 md:p-10">
+                className="grid gap-5 p-5 md:grid-cols-[200px_minmax(0,1fr)] md:gap-10 md:p-10">
                 <div className="flex justify-center md:justify-start md:pt-1">{chapter.cast}</div>
                 <div className="min-w-0">
                   <h2 className="font-display text-[1.75rem] font-semibold leading-[1.15] tracking-[-0.02em] text-cream md:text-[2.125rem]">{chapter.title}</h2>
-                  <p className="mt-3 max-w-xl text-[16px] leading-relaxed text-sage">{chapter.line}</p>
-                  <div className="mt-6">{chapter.action}</div>
+                  <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-sage md:mt-3 md:text-[16px]">{chapter.line}</p>
+                  <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+                    {chapter.action}
+                    {!published && !busy && (
+                      <button onClick={playAll} disabled={!ready}
+                        className="inline-flex items-center gap-1.5 rounded text-[14px] font-medium text-sage underline decoration-gold/30 underline-offset-4 transition-colors hover:text-gold disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
+                        <Play size={14} /> {progress ? "Play the rest" : "Play the whole story"}
+                      </button>
+                    )}
+                  </div>
                   {busy && !cheatsOpen && mode === "wallet" && phase >= 0 && <WriteProgress phase={phase} wallet={session?.walletName ?? "your wallet"} />}
                   {problem && <ProblemNote problem={problem} wallet={session?.walletName} onRecheck={recheckFuel} />}
                   {chapter.body && <div className="mt-8">{chapter.body}</div>}
@@ -691,10 +695,10 @@ export function Workspace() {
               transition={{ duration: 0.4, ease: EASE }}>
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <span className="grid size-14 shrink-0 place-items-center rounded-full bg-[#460809]/60 text-[#ffa2a2]"><VenetianMask size={26} /></span>
+                  <span className="grid size-14 shrink-0 place-items-center rounded-full bg-gold/15 text-gold"><VenetianMask size={26} /></span>
                   <div>
                     <h2 id="cheat-title" className="font-display text-[1.75rem] font-semibold leading-tight tracking-[-0.02em] text-cream">Try to cheat</h2>
-                    <p className="mt-1 text-[15px] text-sage">Pick a trick. The same contract code checks it{mode === "wallet" ? ", before anything reaches the chain" : ""}.</p>
+                    <p className="mt-1 text-[15px] text-sage">Pick a trick. Equilux's rules check it{mode === "wallet" ? ", before anything reaches the chain" : ""}.</p>
                   </div>
                 </div>
                 {rejectedCount > 0 && <span className="text-[14px] font-medium text-[#ffa2a2]">{rejectedCount} of {cheats.length} tricks rejected</span>}
@@ -707,7 +711,7 @@ export function Workspace() {
         {/* your own payroll + behind the scenes */}
         <div className="mt-8 grid items-start gap-4 lg:grid-cols-2">
           <details open={setupOpen} onToggle={(e) => setSetupOpen((e.target as HTMLDetailsElement).open)} className="group rounded-2xl bg-night/70 ring-1 ring-gold/10">
-            <summary className="flex cursor-pointer list-none items-center gap-3 p-5 text-[15px] font-medium text-cream">
+            <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl p-5 text-[15px] font-medium text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
               <span className="grid size-9 place-items-center rounded-full bg-gold/12 text-gold"><Settings2 size={17} /></span>
               Use your own payroll
               <ChevronDown size={17} className="ml-auto text-sage transition-transform group-open:rotate-180" />
@@ -735,7 +739,7 @@ export function Workspace() {
           </details>
 
           <details className="group rounded-2xl bg-night/70 ring-1 ring-gold/10">
-            <summary className="flex cursor-pointer list-none items-center gap-3 p-5 text-[15px] font-medium text-cream">
+            <summary className="flex cursor-pointer list-none items-center gap-3 rounded-2xl p-5 text-[15px] font-medium text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
               <span className="grid size-9 place-items-center rounded-full bg-gold/12 text-gold"><ScrollText size={17} /></span>
               Behind the scenes
               {log.length > 0 && <span className="rounded-full bg-cream/8 px-2 py-0.5 text-[12px] text-sage">{log.length}</span>}
@@ -765,9 +769,10 @@ export function Workspace() {
 }
 
 /** The payroll as people: a salary each, sealed into a code once locked, checked once the council approves. */
-function PayrollGrid({ people, locked, checked, categories, onSetup }: { people: Person[]; locked: boolean; checked: boolean; categories: string[]; onSetup?: () => void }) {
+function PayrollGrid({ people, locked, checked, categories, sample, onSetup }: { people: Person[]; locked: boolean; checked: boolean; categories: string[]; sample: boolean; onSetup?: () => void }) {
   return (
     <div>
+      {sample && <p className="mb-3 text-[13px] text-sage">A sample team: invented people and salaries.</p>}
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         {people.map((p, i) => (
           <li key={p.id} className="flex items-center gap-2.5 rounded-xl bg-night-deep/70 p-2.5 ring-1 ring-gold/8">
@@ -791,7 +796,7 @@ function PayrollGrid({ people, locked, checked, categories, onSetup }: { people:
         ))}
       </ul>
       {onSetup && (
-        <button onClick={onSetup} className="mt-3 inline-flex items-center gap-1.5 text-[13px] text-sage underline decoration-gold/30 underline-offset-4 hover:text-gold">
+        <button onClick={onSetup} className="mt-3 inline-flex items-center gap-1.5 rounded text-[13px] text-sage underline decoration-gold/30 underline-offset-4 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
           <Upload size={13} /> Use your own payroll
         </button>
       )}
@@ -854,22 +859,24 @@ function SeesNever() {
 function ProblemNote({ problem, wallet, onRecheck }: { problem: NonNullable<Problem>; wallet?: string; onRecheck: () => void }) {
   if (problem.kind === "no-dust") {
     return (
-      <div role="alert" className="mt-5 rounded-2xl bg-[#460809]/35 p-5 ring-1 ring-[#ff6467]/35">
-        <div className="flex items-center gap-2.5 text-[15px] font-semibold text-[#ffc9c9]"><Fuel size={18} /> {wallet ?? "Your wallet"} has no fee fuel (DUST) yet</div>
-        <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+      <div role="alert" className="mt-5 rounded-2xl bg-gold/[0.07] p-5 ring-1 ring-gold/25">
+        <div className="flex items-center gap-2.5 text-[15px] font-semibold text-cream"><Fuel size={18} className="text-gold" /> {wallet ?? "Your wallet"} needs fee fuel (DUST) first</div>
+        <ol className="mt-4 grid gap-4 sm:grid-cols-3">
           {[
-            { n: 1, t: "Get free tNIGHT", d: <a href="https://faucet.preprod.midnight.network" target="_blank" rel="noreferrer" className="underline underline-offset-4">Midnight faucet</a> },
+            { n: 1, t: "Get free tNIGHT", d: <a href="https://faucet.preprod.midnight.network" target="_blank" rel="noreferrer" className="rounded text-cream underline decoration-gold/40 underline-offset-4 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">Midnight faucet</a> },
             { n: 2, t: "Turn on DUST", d: `In ${wallet ?? "your wallet"}, set your tNIGHT to generate DUST` },
             { n: 3, t: "Wait a few minutes", d: "DUST builds up over time, then try again" },
           ].map((s) => (
-            <li key={s.n} className="rounded-xl bg-night-deep/60 p-3.5">
-              <span className="grid size-7 place-items-center rounded-full bg-[#ff6467]/20 text-[13px] font-semibold text-[#ffa2a2]">{s.n}</span>
-              <div className="mt-2 text-[14px] font-medium text-cream">{s.t}</div>
-              <div className="mt-0.5 text-[13px] text-sage">{s.d}</div>
+            <li key={s.n} className="flex gap-3">
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-gold text-[13px] font-semibold text-night">{s.n}</span>
+              <span>
+                <span className="block text-[14px] font-medium text-cream">{s.t}</span>
+                <span className="mt-0.5 block text-[13px] text-sage">{s.d}</span>
+              </span>
             </li>
           ))}
         </ol>
-        <button onClick={onRecheck} className="mt-4 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium text-cream ring-1 ring-gold/30 hover:text-gold">
+        <button onClick={onRecheck} className="mt-5 inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-medium text-cream ring-1 ring-gold/30 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
           <RotateCcw size={14} /> Check again
         </button>
       </div>

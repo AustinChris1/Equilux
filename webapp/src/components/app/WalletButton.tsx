@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, Cpu, ExternalLink, Fuel, Globe, Loader2, LogOut, Users, Wallet, X } from "lucide-react";
+import { Check, ChevronDown, CircleDashed, Cpu, ExternalLink, Fuel, Globe, Loader2, LogOut, Users, Wallet, X } from "lucide-react";
 import type { WalletChoice } from "../../lib/wallet-detect";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -47,7 +47,7 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
           className="inline-flex items-center gap-2 rounded-lg bg-night py-1.5 pl-1.5 pr-2.5 text-[13px] font-medium text-cream ring-1 ring-gold/30 transition-colors hover:ring-gold/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
           {wallet.icon ? <img src={wallet.icon} alt="" className="size-6 rounded-md" /> : <span className="grid size-6 place-items-center rounded-md bg-gold text-night"><Wallet size={14} /></span>}
           <span className="hidden sm:inline">{wallet.name}</span>
-          <span className={`size-2 rounded-full ${wallet.fuel === false ? "bg-[#ff6467]" : "bg-gold"}`} aria-hidden="true" />
+          <span className={`size-2 rounded-full ${wallet.fuel === false ? "ring-[1.5px] ring-gold/70" : "bg-gold"}`} aria-hidden="true" />
           <span className="text-sage">Testnet</span>
           <ChevronDown size={14} className={`text-sage transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
         </button>
@@ -67,7 +67,7 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
             className="absolute right-0 top-[calc(100%+10px)] z-50 w-[min(92vw,360px)] origin-top-right rounded-2xl bg-night p-4 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.7)] ring-1 ring-gold/20">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-[17px] font-semibold text-cream">{wallet ? "Live on Midnight testnet" : "Connect a wallet"}</h2>
-              <button onClick={() => setOpen(false)} aria-label="Close" className="grid size-7 place-items-center rounded-md text-sage hover:bg-cream/6 hover:text-cream"><X size={15} /></button>
+              <button onClick={() => setOpen(false)} aria-label="Close" className="grid size-7 place-items-center rounded-md text-sage hover:bg-cream/6 hover:text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"><X size={15} /></button>
             </div>
 
             {!wallet ? (
@@ -86,7 +86,7 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
                     <div className="rounded-xl bg-cream/6 p-3 text-[13px] text-sage">
                       No Midnight wallet found in this browser.
                       <div className="mt-2 flex gap-2">
-                        <a href="https://www.lace.io" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3 py-1.5 text-[12px] font-semibold text-night">Get Lace <ExternalLink size={12} /></a>
+                        <a href="https://www.lace.io" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3 py-1.5 text-[12px] font-semibold text-night focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">Get Lace <ExternalLink size={12} /></a>
                       </div>
                     </div>
                   )}
@@ -104,21 +104,21 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
                   <Row ok icon={Cpu} label="Math proofs" value={wallet.prover === "wallet" ? `Made by ${wallet.name}` : "Your proof server"} />
                 </ul>
                 {wallet.fuel === false && (
-                  <ol className="mt-3 flex flex-col gap-2 rounded-xl bg-[#460809]/40 p-3 text-[12px] text-[#ffc9c9] ring-1 ring-[#ff6467]/30">
-                    <li className="flex gap-2"><span className="font-semibold">1</span> Get tNIGHT from the <a href="https://faucet.preprod.midnight.network" target="_blank" rel="noreferrer" className="underline underline-offset-4">faucet</a></li>
-                    <li className="flex gap-2"><span className="font-semibold">2</span> In {wallet.name}, turn on DUST generation for your tNIGHT</li>
-                    <li className="flex gap-2"><span className="font-semibold">3</span> Wait a few minutes; this turns gold by itself</li>
+                  <ol className="mt-3 flex flex-col gap-2 rounded-xl bg-gold/[0.07] p-3 text-[12px] text-cream ring-1 ring-gold/20">
+                    <li className="flex items-center gap-2"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-gold text-[11px] font-semibold text-night">1</span> Get tNIGHT from the <a href="https://faucet.preprod.midnight.network" target="_blank" rel="noreferrer" className="rounded underline decoration-gold/40 underline-offset-4 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">faucet</a></li>
+                    <li className="flex items-center gap-2"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-gold text-[11px] font-semibold text-night">2</span> In {wallet.name}, turn on DUST generation</li>
+                    <li className="flex items-center gap-2"><span className="grid size-5 shrink-0 place-items-center rounded-full bg-gold text-[11px] font-semibold text-night">3</span> Wait a little; this turns gold by itself</li>
                   </ol>
                 )}
                 {teamSize > 6 && !locked && (
                   <button onClick={onSmallTeam}
-                    className="mt-3 flex w-full items-center gap-3 rounded-xl bg-cream/6 p-3 text-left text-[13px] text-cream transition-colors hover:bg-cream/10">
+                    className="mt-3 flex w-full items-center gap-3 rounded-xl bg-cream/6 p-3 text-left text-[13px] text-cream transition-colors hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
                     <Users size={18} className="shrink-0 text-gold" />
                     <span className="flex-1">Use a 6-person team <span className="block text-[12px] text-sage">11 approvals instead of {teamSize + 5}</span></span>
                   </button>
                 )}
                 <button onClick={() => { onDisconnect(); setOpen(false); }}
-                  className="mt-3 inline-flex items-center gap-1.5 text-[12px] text-sage hover:text-gold">
+                  className="mt-3 inline-flex items-center gap-1.5 rounded text-[12px] text-sage hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
                   <LogOut size={13} /> Back to practice mode
                 </button>
               </>
@@ -133,9 +133,9 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
 function Row({ ok, icon: Icon, label, value }: { ok: boolean; icon: typeof Globe; label: string; value: string }) {
   return (
     <li className="flex items-center gap-3 text-[13px]">
-      <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${ok ? "bg-gold/12 text-gold" : "bg-[#460809]/50 text-[#ffa2a2]"}`}><Icon size={15} /></span>
+      <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${ok ? "bg-gold/12 text-gold" : "text-gold ring-1 ring-inset ring-gold/40"}`}><Icon size={15} /></span>
       <span className="flex-1 text-sage">{label}</span>
-      <span className={`inline-flex items-center gap-1.5 font-medium ${ok ? "text-cream" : "text-[#ffa2a2]"}`}>{ok ? <Check size={13} className="text-gold" /> : <X size={13} />}{value}</span>
+      <span className="inline-flex items-center gap-1.5 font-medium text-cream">{ok ? <Check size={13} className="text-gold" /> : <CircleDashed size={13} className="text-gold" />}{value}</span>
     </li>
   );
 }

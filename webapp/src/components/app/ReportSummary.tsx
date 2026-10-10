@@ -41,9 +41,9 @@ export function ReportSummary({ rep, vrep, categories }: { rep: PayReportOnChain
         ))}
       </div>
 
-      <ul className="mt-6 grid gap-2 sm:grid-cols-2">
+      <ul className="mt-6 divide-y divide-night/15 border-y border-night/15">
         {flagged.map((c) => (
-          <li key={c.name} className="flex items-center gap-3 rounded-xl bg-night/8 px-3.5 py-2.5 text-[14px]">
+          <li key={c.name} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 py-2.5 text-[14px]">
             {!c.disclosed
               ? <Users size={17} className="shrink-0 text-night/60" />
               : c.gapAtOrAbove5pct ? <AlertTriangle size={17} className="shrink-0 text-[#9f0712]" /> : <ShieldCheck size={17} className="shrink-0 text-night/70" />}
@@ -56,7 +56,7 @@ export function ReportSummary({ rep, vrep, categories }: { rep: PayReportOnChain
       </ul>
 
       {vrep && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 border-t border-night/15 pt-4 text-[14px]">
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px]">
           <span className="inline-flex items-center gap-2"><Gift size={17} className="text-night/70" />
             Bonus gap <strong className="font-semibold">{vrep.gapDefined ? fmtPct(vrep.meanGapBps) : "none"}</strong></span>
           <span>{vrep.recipientsWomen} of {vrep.headcountWomen} women and {vrep.recipientsMen} of {vrep.headcountMen} men get a bonus</span>
