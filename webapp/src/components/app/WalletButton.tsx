@@ -36,8 +36,9 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
     return () => { document.removeEventListener("mousedown", away); document.removeEventListener("keydown", esc); };
   }, [open]);
 
-  // once a connection lands, open the checklist so the fee fuel status is seen
-  useEffect(() => { if (wallet && !connecting) setOpen(true); }, [wallet, connecting]);
+  // once a connection lands, open the checklist so the fee fuel status is seen (once per connection, not per render)
+  const connectedAs = wallet?.name ?? null;
+  useEffect(() => { if (connectedAs) setOpen(true); }, [connectedAs]);
 
   return (
     <div ref={ref} className="relative">
