@@ -299,11 +299,14 @@ export function Workspace() {
     }
   }
 
-  /** An honest step: on failure, the stage explains what stopped it. */
-  async function step<T>(label: string, browser: () => T, live: { path: string; body: unknown }): Promise<T | undefined> {
+  /** An honest step: on failure, the stage explains what stopped it. `hold` keeps that chapter on stage
+   *  for a moment after success, so its result plays out (salaries sealing, the council's ticks) before the story moves on. */
+  async function step<T>(label: string, browser: () => T, live: { path: string; body: unknown }, hold?: { chapter: ChapterId; ms: number }): Promise<T | undefined> {
     setProblem(null);
+    if (hold) setView(hold.chapter);
     const o = await exec(label, browser, live);
     if (!o.ok) { setProblem({ message: o.error, kind: o.kind }); return undefined; }
+    if (hold && !reduce) await new Promise((r) => setTimeout(r, hold.ms));
     setView(null);
     return o.value;
   }
@@ -313,12 +316,12 @@ export function Workspace() {
 
   const declareRoster = () => {
     const rows = people.map((p) => payrollRowHash(toRow(p)));
-    return step("Locking the salaries…", () => bc.apply({ k: "roster", rows }), { path: "/api/roster", body: { rows } });
+    return step("Locking the salaries…", () => bc.apply({ k: "roster", rows }), { path: "/api/roster", body: { rows } }, { chapter: "payroll", ms: 1400 });
   };
 
   const confirmPayroll = () => {
     const rows = people.map(toRow);
-    return step("The council is checking…", () => bc.apply({ k: "confirm", rows }), { path: "/api/confirm", body: { openings: rows.map(openingOf) } });
+    return step("The council is checking…", () => bc.apply({ k: "confirm", rows }), { path: "/api/confirm", body: { openings: rows.map(openingOf) } }, { chapter: "council", ms: 1300 });
   };
 
   const enroll = async (p: Person) => {

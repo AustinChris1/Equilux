@@ -31,8 +31,8 @@ export const LOCAL_PROOF_SERVER = "http://localhost:6300";
 export const PROOF_SERVER_CMD = "docker run -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v";
 const NETWORK = "preprod";
 // Midnight's own public indexer: open to browsers (CORS) and the one our preprod deploy used
-const INDEXER = "https://indexer.preprod.midnight.network/api/v4/graphql";
-const INDEXER_WS = "wss://indexer.preprod.midnight.network/api/v4/graphql/ws";
+// Midnight's own preprod indexer was decommissioned on 2026-10-09 (now Blockfrost, keyed per project).
+// Writes read the chain through the indexer the wallet itself is configured with, as Midnight's migration guide advises.
 const APPROVE_TIMEOUT_MS = 5 * 60_000;
 
 /** Errors the page explains with pictures rather than words. */
@@ -159,7 +159,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
   const readDust = () => api.getDustBalance().catch(() => null);
   const dust = await readDust();
   log([
-    `connected · wallet indexer ${new URL(config.indexerUri).host} · reads from ${new URL(INDEXER).host}`,
+    `connected · reads the chain through ${choice.name}'s indexer (${new URL(config.indexerUri).host})`,
     dust ? `fee balance: ${dust.balance.toLocaleString()} DUST (cap ${dust.cap.toLocaleString()})` : "fee balance: unknown",
   ]);
   if (dust && dust.balance === 0n) log(["⚠ no DUST yet: in the wallet, make sure your tNIGHT is generating DUST, then wait a few minutes"]);
@@ -217,7 +217,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
 
   const providers = {
     privateStateProvider: memoryPrivateState(),
-    publicDataProvider: indexerPublicDataProvider(INDEXER, INDEXER_WS, window.WebSocket as never),
+    publicDataProvider: indexerPublicDataProvider(config.indexerUri, config.indexerWsUri, window.WebSocket as never),
     zkConfigProvider: zk,
     proofProvider: timedProof,
     walletProvider: wallet,

@@ -11,3 +11,6 @@ contract/preprod/.seed
 contract/preprod/.state/
 contract/preprod/midnight-level-db/
 .impeccable/
+
+# demo film workspace and generated media (local only)
+video/

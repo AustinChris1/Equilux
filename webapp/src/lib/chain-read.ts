@@ -11,7 +11,8 @@ import { ledgerView } from "./browser-contract";
 export type ChainNetwork = "preprod" | "local";
 
 export const INDEXERS: Record<ChainNetwork, { label: string; url: string }> = {
-  preprod: { label: "Midnight preprod (public testnet)", url: "https://indexer.preprod.midnight.network/api/v4/graphql" },
+  // Midnight's own preprod indexer closed on 2026-10-09; Blockfrost serves it now, keyed. /api/indexer adds the key server-side.
+  preprod: { label: "Midnight preprod (public testnet)", url: import.meta.env.VITE_PREPROD_INDEXER ?? "/api/indexer" },
   local: { label: "Local Midnight node (this machine)", url: "http://127.0.0.1:8088/api/v3/graphql" },
 };
 
