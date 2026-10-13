@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck, CircleAlert, CircleX, FileJson, Loader2, Search } from "lucide-react";
+import { BadgeCheck, CircleAlert, CircleX, ExternalLink, FileJson, Loader2, Search } from "lucide-react";
 import { AppHeader } from "./components/AppHeader";
 import { ReportView } from "./components/ReportView";
 import type { LedgerView } from "./lib/api";
-import { INDEXERS, readContract, type ChainNetwork } from "./lib/chain-read";
+import { INDEXERS, explorerContractUrl, readContract, type ChainNetwork } from "./lib/chain-read";
 import { compareFiling, type Comparison, type FilingPack } from "./lib/filing";
 
 /** /verify — anyone reads a published report from the chain and checks a filing against it. */
@@ -125,7 +125,15 @@ export default function VerifyPage() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 font-mono text-[12px] break-all text-sage">contract {view.contractAddress}</p>
+              {explorerContractUrl(network, view.contractAddress) ? (
+                <a href={explorerContractUrl(network, view.contractAddress)!} target="_blank" rel="noreferrer"
+                  className="mt-3 inline-flex items-start gap-2 rounded font-mono text-[12px] break-all text-sage underline decoration-gold/30 underline-offset-4 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
+                  <ExternalLink size={13} className="mt-0.5 shrink-0" />
+                  <span>contract {view.contractAddress} <span className="font-sans not-italic text-cream/80">· view on Midnight's preprod explorer</span></span>
+                </a>
+              ) : (
+                <p className="mt-3 font-mono text-[12px] break-all text-sage">contract {view.contractAddress}</p>
+              )}
             </section>
 
             {pack && pack.network !== "browser-session" && (

@@ -16,6 +16,10 @@ export const INDEXERS: Record<ChainNetwork, { label: string; url: string }> = {
   local: { label: "Local Midnight node (this machine)", url: "http://127.0.0.1:8088/api/v3/graphql" },
 };
 
+/** Where a person can see a contract on a block explorer (Midnight's own preprod explorer). */
+export const explorerContractUrl = (network: ChainNetwork, address: string) =>
+  network === "preprod" ? `https://explorer.preprod.midnight.network/contracts/${address}` : null;
+
 const hexToBytes = (h: string) => new Uint8Array(h.match(/../g)?.map((x) => parseInt(x, 16)) ?? []);
 
 export async function readContract(network: ChainNetwork, address: string): Promise<LedgerView> {
