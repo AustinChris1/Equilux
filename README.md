@@ -4,7 +4,7 @@
 
 **Live site:** https://equilux-lac.vercel.app · **App:** https://equilux-lac.vercel.app/app (press **Play the whole story**) ·
 **Verify the on-chain report:** https://equilux-lac.vercel.app/verify?network=preprod&contract=598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb ·
-**Demo video:** [WAVE 2 VIDEO LINK] · **Deck:** [`deck/Equilux-Wave2-deck.pdf`](deck/Equilux-Wave2-deck.pdf)
+**Demo video:** [youtu.be/AmFv_UKSj4A](https://youtu.be/AmFv_UKSj4A) · **Deck:** [`deck/Equilux-Wave2-deck.pdf`](deck/Equilux-Wave2-deck.pdf)
 
 Equilux lets a company prove that its legally required gender pay gap report was computed from its
 complete, real payroll (every salary the payroll provider's own figure, checked by the works council,
@@ -17,7 +17,7 @@ The full flow runs on preprod: 14 employees, three role keys, both reports prove
 
 | Step | Block | Explorer |
 |---|---|---|
-| Contract deployed | 2,787,450 | [contract 598b346e…d1cb](https://explorer.preprod.midnight.network/contracts/598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb) |
+| Contract deployed | 2,787,450 | [contract 598b346e…d1cb](https://preprod.midnightexplorer.com/contracts/598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb) |
 | Payroll provider commits 14 payroll rows (`declareRoster`) | 2,787,454 | |
 | Works council approves (`confirmPayroll`) | 2,787,463 | |
 | 14 employees enroll, each bound to their own row (`enroll`) | 2,787,468 to 2,787,529 | |
