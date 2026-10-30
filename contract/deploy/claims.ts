@@ -90,6 +90,7 @@ export interface VariableClaim {
   medianMen: bigint;
   medianGapBps: bigint;
   catGapBps: bigint[];
+  cuts: bigint[]; // v4: quartile cut points on total pay (see quartileCuts)
 }
 
 /**
@@ -114,6 +115,7 @@ export function buildVariableClaim(records: PayRecord[]): VariableClaim {
     medianMen,
     medianGapBps: defined ? gapBps(medianWomen, 1n, medianMen, 1n).bps : 0n,
     catGapBps,
+    cuts: quartileCuts(records),
   };
 }
 
@@ -145,3 +147,94 @@ export const padRows = (rows: Uint8Array[]): Uint8Array[] => [
   ...rows,
   ...Array.from({ length: SLOTS - rows.length }, () => new Uint8Array(32)),
 ];
+
+// ── v4: batches of 16 and sealed running totals ─────────────────────────────
+
+export const BATCH = SLOTS;
+
+/** Splits a company into reporting batches of 16 (the last one may be shorter). */
+export const chunk = <T>(xs: T[], size = BATCH): T[][] => {
+  const out: T[][] = [];
+  for (let i = 0; i < xs.length; i += size) out.push(xs.slice(i, i + size));
+  return out;
+};
+
+/**
+ * Quartile cut points on total pay (basic + variable) for the bands from assignBands:
+ * cuts[b-1] is the total at sorted position ⌊b·n/4⌋, so every record in band b has
+ * cuts[b-1] ≤ total ≤ cuts[b]. The circuit checks exactly this, batch by batch.
+ */
+export function quartileCuts(records: PayRecord[]): bigint[] {
+  const totals = records.map((r) => r.salary + r.variable).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const n = totals.length;
+  if (n === 0) return [0n, 0n, 0n];
+  return [1, 2, 3].map((b) => totals[Math.min(n - 1, Math.floor((b * n) / 4))]);
+}
+
+export interface PayTotals {
+  n: bigint; nW: bigint; nM: bigint; sumW: bigint; sumM: bigint;
+  belowW: bigint; upToW: bigint; belowM: bigint; upToM: bigint;
+  catW: bigint[]; catM: bigint[]; catSumW: bigint[]; catSumM: bigint[];
+}
+export interface VarTotals {
+  n: bigint; nW: bigint; nM: bigint; rW: bigint; rM: bigint; sW: bigint; sM: bigint;
+  belowW: bigint; upToW: bigint; belowM: bigint; upToM: bigint;
+  catRW: bigint[]; catRM: bigint[]; catSW: bigint[]; catSM: bigint[];
+  bandW: bigint[]; bandM: bigint[]; below: bigint[];
+}
+const z4 = () => [0n, 0n, 0n, 0n];
+export const zeroPayTotals = (): PayTotals => ({
+  n: 0n, nW: 0n, nM: 0n, sumW: 0n, sumM: 0n, belowW: 0n, upToW: 0n, belowM: 0n, upToM: 0n,
+  catW: z4(), catM: z4(), catSumW: z4(), catSumM: z4(),
+});
+export const zeroVarTotals = (): VarTotals => ({
+  n: 0n, nW: 0n, nM: 0n, rW: 0n, rM: 0n, sW: 0n, sM: 0n, belowW: 0n, upToW: 0n, belowM: 0n, upToM: 0n,
+  catRW: z4(), catRM: z4(), catSW: z4(), catSM: z4(), bandW: z4(), bandM: z4(), below: [0n, 0n, 0n],
+});
+
+const count = (xs: PayRecord[], f: (r: PayRecord) => boolean) => BigInt(xs.filter(f).length);
+const total = (xs: PayRecord[], f: (r: PayRecord) => boolean, v: (r: PayRecord) => bigint) => xs.filter(f).reduce((a, r) => a + v(r), 0n);
+
+/** The totals after one pay-report batch: mirrors reportBatch, field for field. */
+export function addPayBatch(t: PayTotals, claim: ReportClaim, batch: PayRecord[]): PayTotals {
+  const W = (r: PayRecord) => r.gender === 0n, M = (r: PayRecord) => r.gender === 1n;
+  const cat = (c: number, g: (r: PayRecord) => boolean) => (r: PayRecord) => g(r) && r.category === BigInt(c);
+  return {
+    n: t.n + BigInt(batch.length),
+    nW: t.nW + count(batch, W), nM: t.nM + count(batch, M),
+    sumW: t.sumW + total(batch, W, (r) => r.salary), sumM: t.sumM + total(batch, M, (r) => r.salary),
+    belowW: t.belowW + count(batch, (r) => W(r) && r.salary < claim.medianWomen),
+    upToW: t.upToW + count(batch, (r) => W(r) && r.salary <= claim.medianWomen),
+    belowM: t.belowM + count(batch, (r) => M(r) && r.salary < claim.medianMen),
+    upToM: t.upToM + count(batch, (r) => M(r) && r.salary <= claim.medianMen),
+    catW: t.catW.map((x, c) => x + count(batch, cat(c, W))),
+    catM: t.catM.map((x, c) => x + count(batch, cat(c, M))),
+    catSumW: t.catSumW.map((x, c) => x + total(batch, cat(c, W), (r) => r.salary)),
+    catSumM: t.catSumM.map((x, c) => x + total(batch, cat(c, M), (r) => r.salary)),
+  };
+}
+
+/** The totals after one variable-pay batch: mirrors variableBatch. `bands` are this batch's bands. */
+export function addVarBatch(t: VarTotals, claim: VariableClaim, batch: PayRecord[], bands: bigint[]): VarTotals {
+  const W = (r: PayRecord) => r.gender === 0n, M = (r: PayRecord) => r.gender === 1n;
+  const got = (g: (r: PayRecord) => boolean) => (r: PayRecord) => g(r) && r.variable > 0n;
+  const inCat = (c: number, g: (r: PayRecord) => boolean) => (r: PayRecord) => got(g)(r) && r.category === BigInt(c);
+  const banded = batch.map((r, i) => ({ r, b: bands[i] }));
+  return {
+    n: t.n + BigInt(batch.length),
+    nW: t.nW + count(batch, W), nM: t.nM + count(batch, M),
+    rW: t.rW + count(batch, got(W)), rM: t.rM + count(batch, got(M)),
+    sW: t.sW + total(batch, got(W), (r) => r.variable), sM: t.sM + total(batch, got(M), (r) => r.variable),
+    belowW: t.belowW + count(batch, (r) => got(W)(r) && r.variable < claim.medianWomen),
+    upToW: t.upToW + count(batch, (r) => got(W)(r) && r.variable <= claim.medianWomen),
+    belowM: t.belowM + count(batch, (r) => got(M)(r) && r.variable < claim.medianMen),
+    upToM: t.upToM + count(batch, (r) => got(M)(r) && r.variable <= claim.medianMen),
+    catRW: t.catRW.map((x, c) => x + count(batch, inCat(c, W))),
+    catRM: t.catRM.map((x, c) => x + count(batch, inCat(c, M))),
+    catSW: t.catSW.map((x, c) => x + total(batch, inCat(c, W), (r) => r.variable)),
+    catSM: t.catSM.map((x, c) => x + total(batch, inCat(c, M), (r) => r.variable)),
+    bandW: t.bandW.map((x, b) => x + BigInt(banded.filter(({ r, b: rb }) => W(r) && rb === BigInt(b)).length)),
+    bandM: t.bandM.map((x, b) => x + BigInt(banded.filter(({ r, b: rb }) => M(r) && rb === BigInt(b)).length)),
+    below: t.below.map((x, i) => x + BigInt(banded.filter(({ b }) => b < BigInt(i + 1)).length)),
+  };
+}
