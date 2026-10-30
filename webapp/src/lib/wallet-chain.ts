@@ -20,8 +20,11 @@ import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-conf
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { Contract, ledger, pureCircuits } from "../../../contract/build/contract/index.js";
-import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord, type ReportClaim, type VariableClaim } from "../../../contract/deploy/claims";
-import { bytes32, initialPrivateState, witnesses, type EquiluxPrivateState } from "../../../contract/deploy/witnesses";
+import { assignBands, buildClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "../../../contract/deploy/claims";
+import {
+  bytes32, confirmSteps, initialPrivateState, payReportSteps, rosterSteps, variableReportSteps, witnesses,
+  type Circuit, type EquiluxPrivateState, type Step,
+} from "../../../contract/deploy/witnesses";
 import { ledgerView } from "./browser-contract";
 import type { LedgerView, Tamper, VariableTamper } from "./api";
 import type { WalletChoice } from "./wallet-detect";
@@ -45,7 +48,6 @@ export class WalletStop extends Error {
 const STORAGE = "equilux.wallet-chain.v1";
 const PRIVATE_STATE_ID = "equiluxPrivateState";
 
-type Circuit = "declareRoster" | "confirmPayroll" | "enroll" | "checkReceipt" | "publishReport" | "publishVariablePay";
 type Log = (lines: string[]) => void;
 
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -266,6 +268,28 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
     return deployed.callTx[circuit](...args);
   }
 
+  /**
+   * A multi-transaction phase (roster, council, a report). Every step runs in this page first, chained on the
+   * live state: a cheat that would only fail at the final check is refused before a single fee is paid.
+   * Then the steps are submitted in order, one wallet approval each.
+   */
+  async function phase(steps: Step[], log: Log) {
+    const cs = await providers.publicDataProvider.queryContractState(saved!.address);
+    if (!cs) throw new Error("contract state not found via the indexer");
+    let ctx = createCircuitContext(saved!.address, coinPk, cs as never, steps[0].ps);
+    for (const st of steps) ctx = (localContract.impureCircuits as any)[st.circuit]({ ...ctx, currentPrivateState: st.ps }, ...st.args).context;
+    log([`all ${steps.length} steps ran in this page: every check passed`]);
+    let res: any = null;
+    for (const [i, st] of steps.entries()) {
+      await requireDust();
+      await providers.privateStateProvider.set(PRIVATE_STATE_ID, st.ps);
+      log([`${i + 1}/${steps.length} · ${st.label}: approve in ${choice.name}`]);
+      res = await deployed.callTx[st.circuit](...st.args);
+      log([`${i + 1}/${steps.length} · ${st.label} (block ${res.public.blockHeight})`]);
+    }
+    return res;
+  }
+
   const n = (x: unknown) => Number(x);
   const readLedger = async (): Promise<LedgerView | null> => {
     if (!saved) return null;
@@ -303,18 +327,16 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
         case "/api/roster": {
           requireDeployed();
           const hashes = (body.rows as string[]).map(String);
-          if (hashes.length === 0 || hashes.length > 16 || !hashes.every(isHex32)) throw new Error("rows must be 1–16 payroll-row hashes");
-          const rows = padRows(hashes.map(fromHex));
-          const headcount = BigInt(hashes.length);
-          const res: any = await call("declareRoster", baseState(), [rows, headcount], log);
-          log([`${headcount} payroll rows committed by the payroll provider (block ${res.public.blockHeight})`]);
-          return { headcount: n(headcount), txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
+          if (hashes.length === 0 || hashes.length > 512 || !hashes.every(isHex32)) throw new Error("rows must be 1 to 512 payroll-row hashes");
+          const res: any = await phase(rosterSteps(baseState(), hashes.map(fromHex)), log);
+          log([`${hashes.length} payroll rows committed by the payroll provider`]);
+          return { headcount: hashes.length, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
         }
         case "/api/confirm": {
           requireDeployed();
           const raw = body.openings as { salary: number; variable?: number; gender: number; category: number; nonce: string }[];
-          const openings = padOpenings(raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), nonce: fromHex(String(o.nonce)) })));
-          const res: any = await call("confirmPayroll", { ...baseState(), openings }, [], log);
+          const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), nonce: fromHex(String(o.nonce)) }));
+          const res: any = await phase(confirmSteps(baseState(), openings), log);
           log([`payroll confirmed by the works council (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
         }
@@ -332,7 +354,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           requireDeployed();
           const recs = (body.payroll as Row[]).map(toRecord);
           const claim = applyTamper(buildClaim(recs), body.tamper);
-          const res: any = await call("publishReport", { ...baseState(), payroll: padRecords(recs), claim }, [], log);
+          const res: any = await phase(payReportSteps(baseState(), recs, claim), log);
           log([`report published (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
         }
@@ -345,7 +367,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
             if (top >= 0 && bottom >= 0) [bands[top], bands[bottom]] = [bands[bottom], bands[top]];
           }
           const claim = applyVariableTamper(buildVariableClaim(recs), body.tamper);
-          const res: any = await call("publishVariablePay", { ...baseState(), payroll: padRecords(recs, bands), variableClaim: claim }, [], log);
+          const res: any = await phase(variableReportSteps(baseState(), recs, claim, bands), log);
           log([`variable-pay report published (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
         }

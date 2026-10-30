@@ -10,6 +10,10 @@
  *
  * Contract state is not serializable, but circuits are deterministic, so we
  * persist the list of successful actions and replay them on load.
+ *
+ * Contract v4 is batched: the provider commits rows and the council opens them
+ * 16 at a time, and each report is begin, one batch per 16 records, finish, over
+ * sealed running totals. One action here runs every batch of its step.
  */
 import {
   createCircuitContext,
@@ -18,7 +22,10 @@ import {
   type CircuitContext,
 } from "@midnight-ntwrk/compact-runtime";
 import { Contract, ledger, pureCircuits, type Witnesses } from "../../../contract/build/contract/index.js";
-import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord, type ReportClaim, type RowOpening, type VariableClaim } from "../../../contract/deploy/claims";
+import {
+  addPayBatch, addVarBatch, assignBands, buildClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows, zeroPayTotals, zeroVarTotals,
+  type PayRecord, type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
+} from "../../../contract/deploy/claims";
 import type { LedgerView, Tamper, VariableTamper } from "./api";
 
 interface PS {
@@ -32,6 +39,9 @@ interface PS {
   payroll: ReturnType<typeof padRecords>;
   claim: ReportClaim;
   variableClaim: VariableClaim;
+  paySeal: { totals: PayTotals; claim: ReportClaim; salt: Uint8Array };
+  variableSeal: { totals: VarTotals; claim: VariableClaim; salt: Uint8Array };
+  nextSalt: Uint8Array;
 }
 
 /** One employee's record. `nonce` (hex) is the payslip nonce blinding their payroll row. */
@@ -45,7 +55,7 @@ export type Action =
   | { k: "publish"; rows: Row[] }
   | { k: "publishVariable"; rows: Row[] };
 
-const KEY = "equilux.browser-contract.v4";
+const KEY = "equilux.browser-contract.v5";
 
 export const bytes32 = (seed: string): Uint8Array => {
   const b = new Uint8Array(32);
@@ -67,7 +77,11 @@ const witnesses: Witnesses<PS> = {
   providerSecret: ({ privateState }) => [privateState, privateState.providerSecret],
   payrollRecords: ({ privateState }) => [privateState, privateState.payroll],
   reportClaim: ({ privateState }) => [privateState, privateState.claim],
+  paySeal: ({ privateState }) => [privateState, privateState.paySeal],
+  variableSeal: ({ privateState }) => [privateState, privateState.variableSeal],
+  freshSalt: ({ privateState }) => [privateState, privateState.nextSalt],
 };
+const salt = () => crypto.getRandomValues(new Uint8Array(32));
 
 const toRecord = (r: Row): PayRecord => ({
   salary: BigInt(r.salary), variable: BigInt(r.variable), gender: BigInt(r.gender), category: BigInt(r.category), sk: bytes32(r.secret),
@@ -135,6 +149,54 @@ export class BrowserContract {
     this.ctx = { ...this.ctx!, currentPrivateState: { ...this.base!, ...patch } };
   }
 
+  /** `ctx` with this step's private inputs; contexts are values, so a scratch run never touches the real one. */
+  private with(ctx: CircuitContext<PS>, patch: Partial<PS>): CircuitContext<PS> {
+    return { ...ctx, currentPrivateState: { ...this.base!, ...patch } };
+  }
+
+  private get c() { return this.contract.impureCircuits; }
+
+  /** The provider declares the headcount and commits every row, 16 per transaction. */
+  private roster(ctx: CircuitContext<PS>, rows: string[]) {
+    let x = this.c.declareRoster(this.with(ctx, {}), BigInt(rows.length)).context;
+    for (const b of chunk(rows)) x = this.c.addPayrollRows(this.with(x, {}), padRows(b.map(fromHex)), BigInt(b.length)).context;
+    return x;
+  }
+
+  /** The works council opens rows, 16 per transaction. */
+  private confirm(ctx: CircuitContext<PS>, rows: Row[]) {
+    let x = ctx;
+    for (const b of chunk(rows)) x = this.c.confirmPayroll(this.with(x, { openings: padOpenings(b.map(toOpening)) })).context;
+    return x;
+  }
+
+  /** The pay report: begin, one batch per 16 records over sealed totals, finish. */
+  private payReport(ctx: CircuitContext<PS>, recs: PayRecord[], claim: ReportClaim) {
+    const s0 = salt();
+    let x = this.c.beginReport(this.with(ctx, { claim, nextSalt: s0 })).context;
+    let seal = { totals: zeroPayTotals(), claim, salt: s0 };
+    for (const b of chunk(recs)) {
+      const s1 = salt();
+      x = this.c.reportBatch(this.with(x, { payroll: padRecords(b), paySeal: seal, nextSalt: s1 })).context;
+      seal = { totals: addPayBatch(seal.totals, claim, b), claim, salt: s1 };
+    }
+    return this.c.finishReport(this.with(x, { paySeal: seal }));
+  }
+
+  /** The variable-pay report, the same way; bands ride on the records. */
+  private varReport(ctx: CircuitContext<PS>, recs: PayRecord[], claim: VariableClaim, bands: bigint[]) {
+    const s0 = salt();
+    let x = this.c.beginVariableReport(this.with(ctx, { variableClaim: claim, nextSalt: s0 })).context;
+    let seal = { totals: zeroVarTotals(), claim, salt: s0 };
+    const bandBatches = chunk(bands);
+    chunk(recs).forEach((b, i) => {
+      const s1 = salt();
+      x = this.c.variableBatch(this.with(x, { payroll: padRecords(b, bandBatches[i]), variableSeal: seal, nextSalt: s1 })).context;
+      seal = { totals: addVarBatch(seal.totals, claim, b, bandBatches[i]), claim, salt: s1 };
+    });
+    return this.c.finishVariableReport(this.with(x, { variableSeal: seal }));
+  }
+
   /** Runs one action through the real circuits; throws the circuit's message on rejection. */
   apply(a: Action, record = true): unknown {
     let result: unknown;
@@ -156,6 +218,9 @@ export class BrowserContract {
         employeeSecret: new Uint8Array(32), employeeRecord: [0n, 0n, 0n, 0n], rowNonce: new Uint8Array(32),
         employerSecret: eSk, providerSecret: pSk, councilSecret: cSk, openings: padOpenings([]),
         payroll: padRecords([]), claim: buildClaim([]), variableClaim: buildVariableClaim([]),
+        paySeal: { totals: zeroPayTotals(), claim: buildClaim([]), salt: new Uint8Array(32) },
+        variableSeal: { totals: zeroVarTotals(), claim: buildVariableClaim([]), salt: new Uint8Array(32) },
+        nextSalt: new Uint8Array(32),
       };
       const init = this.contract.initialState(
         createConstructorContext(this.base, "0".repeat(64)),
@@ -167,57 +232,48 @@ export class BrowserContract {
       this.ctx = createCircuitContext(this.address, init.currentZswapLocalState, init.currentContractState, init.currentPrivateState);
       return this.address;
     }
-    if (!this.ctx) throw new Error("No contract deployed yet — deploy from the Employer tab");
-    const c = this.contract.impureCircuits;
+    if (!this.ctx) throw new Error("No contract deployed yet");
     switch (a.k) {
-      case "roster": {
-        this.set({});
-        this.ctx = c.declareRoster(this.ctx, padRows(a.rows.map(fromHex)), BigInt(a.rows.length)).context;
+      case "roster":
+        this.ctx = this.roster(this.ctx, a.rows);
         return a.rows.length;
-      }
-      case "confirm": {
-        this.set({ openings: padOpenings(a.rows.map(toOpening)) });
-        this.ctx = c.confirmPayroll(this.ctx).context;
+      case "confirm":
+        this.ctx = this.confirm(this.ctx, a.rows);
         return a.rows.length;
-      }
       case "enroll": {
         const r = toRecord(a.row);
-        this.set({ employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(a.row.nonce) });
-        const res = c.enroll(this.ctx);
+        const res = this.c.enroll(this.with(this.ctx, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(a.row.nonce) }));
         this.ctx = res.context;
         return toHex(res.result);
       }
       case "publish": {
         const recs = a.rows.map(toRecord);
-        this.set({ payroll: padRecords(recs), claim: buildClaim(recs) });
-        const res = c.publishReport(this.ctx);
+        const res = this.payReport(this.ctx, recs, buildClaim(recs));
         this.ctx = res.context;
         return res.result;
       }
       case "publishVariable": {
         const recs = a.rows.map(toRecord);
-        this.set({ payroll: padRecords(recs, assignBands(recs)), variableClaim: buildVariableClaim(recs) });
-        const res = c.publishVariablePay(this.ctx);
+        const res = this.varReport(this.ctx, recs, buildVariableClaim(recs), assignBands(recs));
         this.ctx = res.context;
         return res.result;
       }
     }
   }
 
-  /** A cheating publish: runs the circuit with a tampered witness or claim, never recorded. */
+  /** A cheating pay report: the real circuits on a scratch context, never recorded. */
   tryCheat(rows: Row[], tamper?: Tamper): never {
     if (!this.ctx) throw new Error("No contract deployed yet");
     const recs = rows.map(toRecord);
-    this.set({ payroll: padRecords(recs), claim: applyTamper(buildClaim(recs), tamper) });
     try {
-      this.contract.impureCircuits.publishReport(this.ctx);
+      this.payReport(this.ctx, recs, applyTamper(buildClaim(recs), tamper));
     } catch (e) {
       throw new Error(circuitMessage(e));
     }
-    throw new Error("the circuit accepted this report — it was not actually a cheat");
+    throw new Error("the circuit accepted this report: it was not actually a cheat");
   }
 
-  /** A cheating variable-pay publish: the real circuit, a tampered claim or bands, never recorded. */
+  /** A cheating variable-pay report: the real circuits, a tampered claim or bands, never recorded. */
   tryCheatVariable(rows: Row[], tamper?: VariableTamper): never {
     if (!this.ctx) throw new Error("No contract deployed yet");
     const recs = rows.map(toRecord);
@@ -226,38 +282,41 @@ export class BrowserContract {
       const top = bands.indexOf(3n), bottom = bands.indexOf(0n);
       [bands[top], bands[bottom]] = [bands[bottom], bands[top]];
     }
-    this.set({ payroll: padRecords(recs, bands), variableClaim: applyVariableTamper(buildVariableClaim(recs), tamper) });
     try {
-      this.contract.impureCircuits.publishVariablePay(this.ctx);
+      this.varReport(this.ctx, recs, applyVariableTamper(buildVariableClaim(recs), tamper), bands);
     } catch (e) {
       throw new Error(circuitMessage(e));
     }
-    throw new Error("the circuit accepted this report — it was not actually a cheat");
+    throw new Error("the circuit accepted this report: it was not actually a cheat");
   }
 
-  /** A cheating council confirmation (e.g. a row left unopened): the real circuit, never recorded. */
+  /**
+   * A council that leaves rows unopened. In v4 opening is batched, so skipping a row is not an error by
+   * itself: the payroll simply never counts as confirmed. The cheat opens the rows given, then shows the
+   * real enroll circuit refusing the first of them. Scratch context, never recorded.
+   */
   tryConfirm(rows: Row[]): never {
     if (!this.ctx) throw new Error("No contract deployed yet");
-    this.set({ openings: padOpenings(rows.map(toOpening)) });
     try {
-      this.contract.impureCircuits.confirmPayroll(this.ctx);
+      const x = this.confirm(this.ctx, rows);
+      const r = toRecord(rows[0]);
+      this.c.enroll(this.with(x, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(rows[0].nonce) }));
     } catch (e) {
       throw new Error(circuitMessage(e));
     }
-    throw new Error("the circuit accepted this confirmation — it was not actually a cheat");
+    throw new Error("the circuit accepted this confirmation: it was not actually a cheat");
   }
 
   /** A cheating enrollment: runs the real enroll circuit, never recorded. */
   tryEnroll(row: Row): never {
     if (!this.ctx) throw new Error("No contract deployed yet");
     const r = toRecord(row);
-    this.set({ employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(row.nonce) });
     try {
-      this.contract.impureCircuits.enroll(this.ctx);
+      this.c.enroll(this.with(this.ctx, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(row.nonce) }));
     } catch (e) {
       throw new Error(circuitMessage(e));
     }
-    throw new Error("the circuit accepted this enrollment — it was not actually a cheat");
+    throw new Error("the circuit accepted this enrollment: it was not actually a cheat");
   }
 
   /** Real checkReceipt circuit over the Merkle path from the current tree. */
