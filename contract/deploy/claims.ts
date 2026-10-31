@@ -19,6 +19,7 @@ export interface PayRecord {
   variable: bigint; // annual variable / complementary pay; 0n if none
   gender: bigint; // 0 = woman, 1 = man
   category: bigint; // 0..3
+  level: bigint; // job level 0..3 (v4 level report); 0n when the payroll has no levels
   sk: Uint8Array;
 }
 
@@ -76,11 +77,11 @@ export function buildClaim(records: PayRecord[]): ReportClaim {
   return { meanGapBps: mean.bps, medianWomen, medianMen, medianGapBps: median.bps, catMeanWomen, catMeanMen, catGapBps };
 }
 
-export const EMPTY_SLOT = { salary: 0n, variable: 0n, gender: 0n, category: 0n, sk: new Uint8Array(32), active: false, band: 0n };
+export const EMPTY_SLOT = { salary: 0n, variable: 0n, gender: 0n, category: 0n, level: 0n, sk: new Uint8Array(32), active: false, band: 0n };
 
 /** Pads to the circuit's 16 slots. `bands` (from assignBands) is only needed for publishVariablePay. */
 export const padRecords = (records: PayRecord[], bands?: bigint[]) => [
-  ...records.map((r, i) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, sk: r.sk, active: true, band: bands?.[i] ?? 0n })),
+  ...records.map((r, i) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, level: r.level, sk: r.sk, active: true, band: bands?.[i] ?? 0n })),
   ...Array(SLOTS - records.length).fill(EMPTY_SLOT),
 ];
 
@@ -136,10 +137,10 @@ export function assignBands(records: PayRecord[]): bigint[] {
 }
 
 /** What the works council opens for confirmPayroll, padded to 16. */
-export interface RowOpening { salary: bigint; variable: bigint; gender: bigint; category: bigint; nonce: Uint8Array; active: boolean }
+export interface RowOpening { salary: bigint; variable: bigint; gender: bigint; category: bigint; level: bigint; nonce: Uint8Array; active: boolean }
 export const padOpenings = (rows: Omit<RowOpening, "active">[]): RowOpening[] => [
   ...rows.map((r) => ({ ...r, active: true })),
-  ...Array.from({ length: SLOTS - rows.length }, () => ({ salary: 0n, variable: 0n, gender: 0n, category: 0n, nonce: new Uint8Array(32), active: false })),
+  ...Array.from({ length: SLOTS - rows.length }, () => ({ salary: 0n, variable: 0n, gender: 0n, category: 0n, level: 0n, nonce: new Uint8Array(32), active: false })),
 ];
 
 /** The provider's payroll-row hashes, padded to the circuit's Vector<16>. */
@@ -236,5 +237,47 @@ export function addVarBatch(t: VarTotals, claim: VariableClaim, batch: PayRecord
     bandW: t.bandW.map((x, b) => x + BigInt(banded.filter(({ r, b: rb }) => W(r) && rb === BigInt(b)).length)),
     bandM: t.bandM.map((x, b) => x + BigInt(banded.filter(({ r, b: rb }) => M(r) && rb === BigInt(b)).length)),
     below: t.below.map((x, i) => x + BigInt(banded.filter(({ b }) => b < BigInt(i + 1)).length)),
+  };
+}
+
+// ── v4: the level report (the gap inside equal job levels) ────────────────────
+
+export const LEVELS = 4;
+
+export interface LevelClaim { gapBps: bigint[]; adjustedGapBps: bigint }
+export interface LevelTotals { n: bigint; levW: bigint[]; levM: bigint[]; levSumW: bigint[]; levSumM: bigint[] }
+export const zeroLevelTotals = (): LevelTotals => ({ n: 0n, levW: z4(), levM: z4(), levSumW: z4(), levSumM: z4() });
+
+/**
+ * Honest level claim, mirroring finishLevelReport: each level's gap where both groups have ≥ K people,
+ * and the adjusted gap ⌊|Σ ±nₗ·gₗ| / Σ nₗ⌋ over those levels (+ toward men, − toward women).
+ */
+export function buildLevelClaim(records: PayRecord[]): LevelClaim {
+  const gapBpsOut: bigint[] = [];
+  let towardMen = 0n, towardWomen = 0n, covers = 0n;
+  for (let l = 0; l < LEVELS; l++) {
+    const w = records.filter((r) => r.level === BigInt(l) && r.gender === 0n).map((r) => r.salary);
+    const m = records.filter((r) => r.level === BigInt(l) && r.gender === 1n).map((r) => r.salary);
+    if (w.length >= K_ANONYMITY && m.length >= K_ANONYMITY) {
+      const g = gapBps(sum(w), BigInt(w.length), sum(m), BigInt(m.length));
+      gapBpsOut.push(g.bps);
+      const n = BigInt(w.length + m.length);
+      if (g.favorsMen) towardMen += n * g.bps; else towardWomen += n * g.bps;
+      covers += n;
+    } else gapBpsOut.push(0n);
+  }
+  const d = towardMen >= towardWomen ? towardMen - towardWomen : towardWomen - towardMen;
+  return { gapBps: gapBpsOut, adjustedGapBps: covers > 0n ? d / covers : 0n };
+}
+
+/** The totals after one level-report batch: mirrors levelBatch. */
+export function addLevelBatch(t: LevelTotals, batch: PayRecord[]): LevelTotals {
+  const at = (l: number, g: bigint) => (r: PayRecord) => r.level === BigInt(l) && r.gender === g;
+  return {
+    n: t.n + BigInt(batch.length),
+    levW: t.levW.map((x, l) => x + count(batch, at(l, 0n))),
+    levM: t.levM.map((x, l) => x + count(batch, at(l, 1n))),
+    levSumW: t.levSumW.map((x, l) => x + total(batch, at(l, 0n), (r) => r.salary)),
+    levSumM: t.levSumM.map((x, l) => x + total(batch, at(l, 1n), (r) => r.salary)),
   };
 }

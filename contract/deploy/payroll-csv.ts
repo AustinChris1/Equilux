@@ -21,11 +21,13 @@ export interface PayrollRow {
   gender: 0 | 1;
   category: number;
   categoryLabel: string;
+  level: number; // job level 0..3 (lowest first); 0 for everyone when the export has no level column
 }
 
 export interface ParsedPayroll {
   rows: PayrollRow[];
   categories: string[];
+  levels: string[]; // the export's level labels, lowest first, as grouped into this instance's 4 levels
   errors: string[];
 }
 
@@ -58,7 +60,7 @@ function parseAmount(raw: string): number {
 export function parsePayrollCsv(csv: string, maxCategories = 4): ParsedPayroll {
   const lines = csv.replace(/^﻿/, "").split(/\r?\n/).filter((l) => l.trim().length > 0);
   const errors: string[] = [];
-  if (lines.length < 2) return { rows: [], categories: [], errors: ["CSV needs a header row and at least one employee"] };
+  if (lines.length < 2) return { rows: [], categories: [], levels: [], errors: ["CSV needs a header row and at least one employee"] };
 
   const sep = (lines[0].match(/;/g)?.length ?? 0) > (lines[0].match(/,/g)?.length ?? 0) ? ";" : ",";
   const headers = splitLine(lines[0], sep).map((h) => h.toLowerCase());
@@ -73,7 +75,9 @@ export function parsePayrollCsv(csv: string, maxCategories = 4): ParsedPayroll {
 
   if (iGender < 0) errors.push("no gender column (gender / sex / geschlecht)");
   if (iSalary < 0) errors.push("no salary column (salary / annual salary / jahresbrutto)");
-  if (errors.length) return { rows: [], categories: [], errors };
+  if (errors.length) return { rows: [], categories: [], levels: [], errors };
+  const iLevel = find(headers, ["level", "job level", "career level", "grade", "pay grade", "salary grade", "band", "stufe", "entgeltstufe", "entgeltgruppe", "karrierestufe"]);
+  const rawLevels: string[] = [];
 
   const categories: string[] = [];
   const rows: PayrollRow[] = [];
@@ -96,8 +100,21 @@ export function parsePayrollCsv(csv: string, maxCategories = 4): ParsedPayroll {
       categories.push(label);
       category = categories.length - 1;
     }
-    rows.push({ name, salary, variable, gender, category, categoryLabel: label });
+    rows.push({ name, salary, variable, gender, category, categoryLabel: label, level: 0 });
+    rawLevels.push(iLevel >= 0 ? (cells[iLevel] ?? "").trim() : "");
   });
 
-  return { rows, categories, errors };
+  // Job levels: numeric grades are ordered by value, text labels by first appearance; more than four
+  // distinct levels are grouped evenly into this instance's four (lowest first).
+  let levels: string[] = [];
+  if (iLevel >= 0) {
+    const distinct = [...new Set(rawLevels.filter((l) => l !== ""))];
+    const numeric = distinct.length > 0 && distinct.every((l) => Number.isFinite(Number(l.replace(",", "."))));
+    if (numeric) distinct.sort((a, b) => Number(a.replace(",", ".")) - Number(b.replace(",", ".")));
+    const group = (rank: number) => (distinct.length <= 4 ? rank : Math.min(3, Math.floor((rank * 4) / distinct.length)));
+    rows.forEach((r, i) => { const rank = distinct.indexOf(rawLevels[i]); r.level = rank < 0 ? 0 : group(rank); });
+    levels = [0, 1, 2, 3].map((g) => distinct.filter((_, rank) => group(rank) === g).join(" / ")).filter((x) => x !== "");
+  }
+
+  return { rows, categories, levels, errors };
 }

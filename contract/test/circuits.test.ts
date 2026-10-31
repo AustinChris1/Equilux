@@ -18,16 +18,16 @@ import {
 } from "@midnight-ntwrk/compact-runtime";
 import { Contract, ledger, pureCircuits, type Ledger, type Witnesses } from "../build/contract/index.js";
 import {
-  addPayBatch, addVarBatch, assignBands, buildClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows,
-  zeroPayTotals, zeroVarTotals,
-  type PayRecord, type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
+  addLevelBatch, addPayBatch, addVarBatch, assignBands, buildClaim, buildLevelClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows,
+  zeroLevelTotals, zeroPayTotals, zeroVarTotals,
+  type LevelClaim, type LevelTotals, type PayRecord, type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
 } from "../deploy/claims.js";
 
 type Slot = ReturnType<typeof padRecords>[number];
 
 interface PrivateState {
   employeeSecret: Uint8Array;
-  employeeRecord: [bigint, bigint, bigint, bigint];
+  employeeRecord: [bigint, bigint, bigint, bigint, bigint];
   rowNonce: Uint8Array;
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
@@ -38,6 +38,8 @@ interface PrivateState {
   variableClaim: VariableClaim;
   paySeal: { totals: PayTotals; claim: ReportClaim; salt: Uint8Array };
   variableSeal: { totals: VarTotals; claim: VariableClaim; salt: Uint8Array };
+  levelClaim: LevelClaim;
+  levelSeal: { totals: LevelTotals; claim: LevelClaim; salt: Uint8Array };
   nextSalt: Uint8Array;
 }
 
@@ -52,20 +54,22 @@ const PROVIDER_SK = bytes32("payroll-provider-secret");
 const COUNCIL_SK = bytes32("works-council-secret");
 const COIN_PK = "0".repeat(64);
 
-const rec = (name: string, salary: number, gender: 0 | 1, category: number, variable = 0): PayRecord => ({
-  salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), sk: bytes32(name),
+const rec = (name: string, salary: number, gender: 0 | 1, category: number, variable = 0, level = 0): PayRecord => ({
+  salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), level: BigInt(level), sk: bytes32(name),
 });
 
 // Basic pay: Engineering (0) and Sales (1) have ≥3 of each gender → disclosed;
 // Operations (2) has one woman and one man → suppressed.
 // Variable pay: 5 women and 7 men receive it. In Sales both groups have 3
 // recipients → disclosed; in Engineering only 2 women do → suppressed.
+// Job levels (for the level report): 0 under 50k, 1 for 50-59k, 2 for 60-69k, 3 from 70k. Engineering's
+// women all sit on level 2 and its men on level 3: the level mix shows it, which is the point of publishing it.
 const TEAM: PayRecord[] = [
-  rec("ada", 60_000, 0, 0, 3_000), rec("bea", 62_000, 0, 0, 4_000), rec("cai", 64_000, 0, 0),
-  rec("dan", 70_000, 1, 0, 6_000), rec("eli", 72_000, 1, 0, 7_000), rec("fox", 74_000, 1, 0, 5_000),
-  rec("gia", 50_000, 0, 1, 2_000), rec("hal", 52_000, 0, 1, 2_500), rec("ivy", 54_000, 0, 1, 3_000),
-  rec("jon", 53_000, 1, 1, 2_500), rec("kai", 54_000, 1, 1, 3_500), rec("leo", 55_000, 1, 1, 3_000),
-  rec("mia", 40_000, 0, 2), rec("ned", 45_000, 1, 2, 1_000),
+  rec("ada", 60_000, 0, 0, 3_000, 2), rec("bea", 62_000, 0, 0, 4_000, 2), rec("cai", 64_000, 0, 0, 0, 2),
+  rec("dan", 70_000, 1, 0, 6_000, 3), rec("eli", 72_000, 1, 0, 7_000, 3), rec("fox", 74_000, 1, 0, 5_000, 3),
+  rec("gia", 50_000, 0, 1, 2_000, 1), rec("hal", 52_000, 0, 1, 2_500, 1), rec("ivy", 54_000, 0, 1, 3_000, 1),
+  rec("jon", 53_000, 1, 1, 2_500, 1), rec("kai", 54_000, 1, 1, 3_500, 1), rec("leo", 55_000, 1, 1, 3_000, 1),
+  rec("mia", 40_000, 0, 2, 0, 0), rec("ned", 45_000, 1, 2, 1_000, 0),
 ];
 
 /** A deterministic company of n people across four categories, men paid a little more on average. */
@@ -78,7 +82,8 @@ function company(n: number): PayRecord[] {
     const gender = (i * 7 + (i >> 3)) % 2 as 0 | 1;
     const salary = Math.round((base[category] * (0.85 + rnd() * 0.3) * (gender ? 1.06 : 1)) / 100) * 100;
     const variable = rnd() < 0.6 ? Math.round((salary * (0.03 + rnd() * 0.07)) / 50) * 50 : 0;
-    return rec(`emp-${i}`, salary, gender, category, variable);
+    const level = Math.min(3, Math.floor(rnd() * 3.2 + (gender ? 0.5 : 0)));
+    return rec(`emp-${i}`, salary, gender, category, variable, level);
   });
 }
 
@@ -89,8 +94,8 @@ const nonceOf = (r: PayRecord) => {
   n.set([0x72, 0x6f, 0x77, 0x3a]); // "row:"
   return n;
 };
-const row = (r: PayRecord, nonce = nonceOf(r)) => pureCircuits.payrollRow(r.salary, r.variable, r.gender, r.category, nonce);
-const openingsOf = (team: PayRecord[]) => padOpenings(team.map((r) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, nonce: nonceOf(r) })));
+const row = (r: PayRecord, nonce = nonceOf(r)) => pureCircuits.payrollRow(r.salary, r.variable, r.gender, r.category, r.level, nonce);
+const openingsOf = (team: PayRecord[]) => padOpenings(team.map((r) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, level: r.level, nonce: nonceOf(r) })));
 
 const witnesses: Witnesses<PrivateState> = {
   employeeSecret: ({ privateState }) => [privateState, privateState.employeeSecret],
@@ -106,6 +111,8 @@ const witnesses: Witnesses<PrivateState> = {
   paySeal: ({ privateState }) => [privateState, privateState.paySeal],
   variableSeal: ({ privateState }) => [privateState, privateState.variableSeal],
   freshSalt: ({ privateState }) => [privateState, privateState.nextSalt],
+  levelClaim: ({ privateState }) => [privateState, privateState.levelClaim],
+  levelSeal: ({ privateState }) => [privateState, privateState.levelSeal],
 };
 
 let saltCounter = 0;
@@ -118,7 +125,7 @@ class Harness {
   constructor() {
     const initialPS: PrivateState = {
       employeeSecret: new Uint8Array(32),
-      employeeRecord: [0n, 0n, 0n, 0n],
+      employeeRecord: [0n, 0n, 0n, 0n, 0n],
       rowNonce: new Uint8Array(32),
       employerSecret: EMPLOYER_SK,
       providerSecret: PROVIDER_SK,
@@ -129,6 +136,8 @@ class Harness {
       variableClaim: buildVariableClaim([]),
       paySeal: { totals: zeroPayTotals(), claim: buildClaim([]), salt: new Uint8Array(32) },
       variableSeal: { totals: zeroVarTotals(), claim: buildVariableClaim([]), salt: new Uint8Array(32) },
+      levelClaim: buildLevelClaim([]),
+      levelSeal: { totals: zeroLevelTotals(), claim: buildLevelClaim([]), salt: new Uint8Array(32) },
       nextSalt: new Uint8Array(32),
     };
     const { currentContractState, currentPrivateState, currentZswapLocalState } = this.contract.initialState(
@@ -173,7 +182,7 @@ class Harness {
 
   /** The employee seals their record, opening it against their payroll row. */
   enroll(r: PayRecord, nonce: Uint8Array = nonceOf(r)): Uint8Array {
-    this.setPS({ employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: nonce });
+    this.setPS({ employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: nonce });
     const res = this.contract.impureCircuits.enroll(this.ctx);
     this.ctx = res.context;
     return res.result;
@@ -237,6 +246,25 @@ class Harness {
     const batches = chunk(records), bandBatches = chunk(bands);
     batches.forEach((b, i) => this.varBatch(b, bandBatches[i]));
     return this.finishVar();
+  }
+
+  // ── the level report ──
+
+  publishLevels(records: PayRecord[], claim: LevelClaim = buildLevelClaim(records), employerSk = EMPLOYER_SK) {
+    let salt = nextSalt();
+    this.setPS({ levelClaim: claim, employerSecret: employerSk, nextSalt: salt });
+    this.ctx = this.contract.impureCircuits.beginLevelReport(this.ctx).context;
+    let seal = { totals: zeroLevelTotals(), claim, salt };
+    for (const b of chunk(records)) {
+      salt = nextSalt();
+      this.setPS({ payroll: padRecords(b), levelSeal: seal, nextSalt: salt });
+      this.ctx = this.contract.impureCircuits.levelBatch(this.ctx).context;
+      seal = { totals: addLevelBatch(seal.totals, b), claim, salt };
+    }
+    this.setPS({ levelSeal: seal });
+    const res = this.contract.impureCircuits.finishLevelReport(this.ctx);
+    this.ctx = res.context;
+    return res.result;
   }
 
   checkReceipt(cm: Uint8Array): boolean {
@@ -339,9 +367,10 @@ describe("binding: every counted record is a provider payroll row", () => {
     expect(() => h.enroll({ ...TEAM[0], salary: 65_000n })).toThrow(/does not match any payroll row/);
   });
 
-  it("gender and category are bound too", () => {
+  it("gender, category and job level are bound too", () => {
     expect(() => h.enroll({ ...TEAM[0], category: 1n })).toThrow(/does not match any payroll row/);
     expect(() => h.enroll({ ...TEAM[0], gender: 1n })).toThrow(/does not match any payroll row/);
+    expect(() => h.enroll({ ...TEAM[0], level: 3n })).toThrow(/does not match any payroll row/);
   });
 
   it("the right salary without the payslip nonce does not open the row", () => {
@@ -706,6 +735,45 @@ describe("variable-pay report: the rest of Article 9", () => {
   });
 });
 
+describe("level report: the gap inside equal job levels", () => {
+  let h: Harness;
+  beforeEach(() => { h = new Harness(); h.onboard(TEAM); });
+
+  it("publishes each level's mix, the gaps where both groups reach k = 3, and the adjusted gap", () => {
+    const claim = buildLevelClaim(TEAM);
+    const r = h.publishLevels(TEAM, claim);
+    const mix = r.levels.map((l) => [Number(l.women), Number(l.men)]);
+    expect(mix).toEqual([[1, 1], [3, 3], [3, 0], [0, 3]]); // Engineering's women on level 2, its men on level 3
+    expect(r.levels[1].disclosed).toBe(true);
+    expect(r.levels[1].gapBps).toBe(370n); // 52k vs 54k: 3.70%
+    expect(r.levels[2].disclosed).toBe(false); // no men on level 2: no gap can be shown
+    expect(r.adjustedGapBps).toBe(370n);
+    expect(r.adjustedCovers).toBe(6n); // only level 1 enters the adjusted gap
+    expect(r.adjustedFavorsMen).toBe(true);
+    expect(h.ledger.latestLevelReport.is_some).toBe(true);
+  });
+
+  it("rejects a false level gap or a false adjusted gap", () => {
+    const claim = buildLevelClaim(TEAM);
+    const bad = [...claim.gapBps];
+    bad[1] = 0n;
+    expect(() => h.publishLevels(TEAM, { ...claim, gapBps: bad })).toThrow(/claimed gap too low/);
+    expect(() => h.publishLevels(TEAM, { ...claim, adjustedGapBps: 0n })).toThrow(/level-adjusted gap is wrong/);
+  });
+
+  it("refuses a gap for a level with fewer than three women or men", () => {
+    const claim = buildLevelClaim(TEAM);
+    const bad = [...claim.gapBps];
+    bad[2] = 100n;
+    expect(() => h.publishLevels(TEAM, { ...claim, gapBps: bad })).toThrow(/fewer than three women or men/);
+  });
+
+  it("rejects a batch that moves anyone to another level", () => {
+    const moved = [{ ...TEAM[0], level: 3n }, ...TEAM.slice(1)];
+    expect(() => h.publishLevels(moved)).toThrow(/does not match what its employee enrolled/);
+  });
+});
+
 describe("company size: 250 employees, the Directive's annual-report threshold", () => {
   it("roster, council, 250 enrollments and both reports, in batches of 16", () => {
     const staff = company(250);
@@ -727,5 +795,10 @@ describe("company size: 250 employees, the Directive's annual-report threshold",
     expect(variable.meanGapBps).toBe(vclaim.meanGapBps);
     const sizes = variable.quartiles.map((q) => Number(q.women + q.men));
     expect(sizes).toEqual([62, 63, 62, 63]); // ⌊b·250/4⌋ boundaries
+
+    const lclaim = buildLevelClaim(staff);
+    const levels = h.publishLevels(staff, lclaim);
+    expect(levels.adjustedGapBps).toBe(lclaim.adjustedGapBps);
+    expect(levels.levels.reduce((a, l) => a + l.women + l.men, 0n)).toBe(250n);
   }, 600_000);
 });

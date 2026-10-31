@@ -10,15 +10,16 @@
  */
 import type { Witnesses } from "../build/contract/index.js";
 import {
-  addPayBatch, addVarBatch, buildClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows, zeroPayTotals, zeroVarTotals,
-  type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
+  addLevelBatch, addPayBatch, addVarBatch, buildClaim, buildLevelClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows,
+  zeroLevelTotals, zeroPayTotals, zeroVarTotals,
+  type LevelClaim, type LevelTotals, type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
 } from "./claims.js";
 
 export type PayrollSlot = ReturnType<typeof padRecords>[number];
 
 export interface EquiluxPrivateState {
   employeeSecret: Uint8Array;
-  employeeRecord: [bigint, bigint, bigint, bigint]; // salary, variable pay, gender (0 = woman, 1 = man), category 0..3
+  employeeRecord: [bigint, bigint, bigint, bigint, bigint]; // salary, variable pay, gender (0 = woman, 1 = man), category 0..3, level 0..3
   rowNonce: Uint8Array; // blinds the employee's payroll row; delivered with the payslip
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
@@ -30,6 +31,8 @@ export interface EquiluxPrivateState {
   // v4: the employer's sealed running totals for the report in progress, and the salt for the next seal
   paySeal: { totals: PayTotals; claim: ReportClaim; salt: Uint8Array };
   variableSeal: { totals: VarTotals; claim: VariableClaim; salt: Uint8Array };
+  levelClaim: LevelClaim;
+  levelSeal: { totals: LevelTotals; claim: LevelClaim; salt: Uint8Array };
   nextSalt: Uint8Array;
 }
 
@@ -41,7 +44,7 @@ export const bytes32 = (seed: string): Uint8Array => {
 
 export const initialPrivateState = (employerSecret: Uint8Array, providerSecret: Uint8Array, councilSecret: Uint8Array): EquiluxPrivateState => ({
   employeeSecret: new Uint8Array(32),
-  employeeRecord: [0n, 0n, 0n, 0n],
+  employeeRecord: [0n, 0n, 0n, 0n, 0n],
   rowNonce: new Uint8Array(32),
   employerSecret,
   providerSecret,
@@ -52,6 +55,8 @@ export const initialPrivateState = (employerSecret: Uint8Array, providerSecret: 
   variableClaim: buildVariableClaim([]),
   paySeal: { totals: zeroPayTotals(), claim: buildClaim([]), salt: new Uint8Array(32) },
   variableSeal: { totals: zeroVarTotals(), claim: buildVariableClaim([]), salt: new Uint8Array(32) },
+  levelClaim: buildLevelClaim([]),
+  levelSeal: { totals: zeroLevelTotals(), claim: buildLevelClaim([]), salt: new Uint8Array(32) },
   nextSalt: new Uint8Array(32),
 });
 
@@ -69,6 +74,8 @@ export const witnesses: Witnesses<EquiluxPrivateState> = {
   paySeal: ({ privateState }) => [privateState, privateState.paySeal],
   variableSeal: ({ privateState }) => [privateState, privateState.variableSeal],
   freshSalt: ({ privateState }) => [privateState, privateState.nextSalt],
+  levelClaim: ({ privateState }) => [privateState, privateState.levelClaim],
+  levelSeal: ({ privateState }) => [privateState, privateState.levelSeal],
 };
 
 export { padRecords, buildClaim };
@@ -80,7 +87,8 @@ export { padRecords, buildClaim };
 
 export type Circuit =
   | "declareRoster" | "addPayrollRows" | "confirmPayroll" | "enroll" | "checkReceipt"
-  | "beginReport" | "reportBatch" | "finishReport" | "beginVariableReport" | "variableBatch" | "finishVariableReport";
+  | "beginReport" | "reportBatch" | "finishReport" | "beginVariableReport" | "variableBatch" | "finishVariableReport"
+  | "beginLevelReport" | "levelBatch" | "finishLevelReport";
 
 export interface Step { circuit: Circuit; ps: EquiluxPrivateState; args: unknown[]; label: string }
 
@@ -128,5 +136,20 @@ export function variableReportSteps(base: EquiluxPrivateState, recs: Parameters<
     seal = { totals: addVarBatch(seal.totals, claim, b, bandBatches[i]), claim, salt: s1 };
   });
   steps.push({ circuit: "finishVariableReport", ps: { ...base, variableSeal: seal }, args: [], label: "finish: verify every figure and publish" });
+  return steps;
+}
+
+/** The level report: begin, one batch per 16 records over sealed totals, finish. */
+export function levelReportSteps(base: EquiluxPrivateState, recs: Parameters<typeof padRecords>[0], claim: LevelClaim, salt = randomSalt): Step[] {
+  const s0 = salt();
+  const steps: Step[] = [{ circuit: "beginLevelReport", ps: { ...base, levelClaim: claim, nextSalt: s0 }, args: [], label: "begin the level report" }];
+  let seal = { totals: zeroLevelTotals(), claim, salt: s0 };
+  const batches = chunk(recs);
+  batches.forEach((b, i) => {
+    const s1 = salt();
+    steps.push({ circuit: "levelBatch", ps: { ...base, payroll: padRecords(b), levelSeal: seal, nextSalt: s1 }, args: [], label: `level report, batch ${i + 1} of ${batches.length}` });
+    seal = { totals: addLevelBatch(seal.totals, b), claim, salt: s1 };
+  });
+  steps.push({ circuit: "finishLevelReport", ps: { ...base, levelSeal: seal }, args: [], label: "finish: verify every level and publish" });
   return steps;
 }

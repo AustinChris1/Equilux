@@ -44,10 +44,39 @@ export type VariablePayReport = { round: bigint;
                                   categories: VariableCategoryStats[]
                                 };
 
+export type LevelStats = { women: bigint;
+                           men: bigint;
+                           disclosed: boolean;
+                           gapBps: bigint;
+                           gapFavorsMen: boolean
+                         };
+
+export type LevelReport = { round: bigint;
+                            levels: LevelStats[];
+                            adjustedGapBps: bigint;
+                            adjustedFavorsMen: boolean;
+                            adjustedCovers: bigint
+                          };
+
+export type LevelClaim = { gapBps: bigint[]; adjustedGapBps: bigint };
+
+export type LevelTotals = { n: bigint;
+                            levW: bigint[];
+                            levM: bigint[];
+                            levSumW: bigint[];
+                            levSumM: bigint[]
+                          };
+
+export type LevelSeal = { totals: LevelTotals;
+                          claim: LevelClaim;
+                          salt: Uint8Array
+                        };
+
 export type EnrolledRecord = { salary: bigint;
                                variable: bigint;
                                gender: bigint;
                                category: bigint;
+                               level: bigint;
                                sk: Uint8Array;
                                active: boolean;
                                band: bigint
@@ -57,6 +86,7 @@ export type RowOpening = { salary: bigint;
                            variable: bigint;
                            gender: bigint;
                            category: bigint;
+                           level: bigint;
                            nonce: Uint8Array;
                            active: boolean
                          };
@@ -126,6 +156,7 @@ export type Witnesses<PS> = {
   employeeRecord(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, [bigint,
                                                                               bigint,
                                                                               bigint,
+                                                                              bigint,
                                                                               bigint]];
   payrollRowNonce(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
   employerSecret(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
@@ -137,6 +168,8 @@ export type Witnesses<PS> = {
   variableClaim(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, VariableClaim];
   paySeal(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, PaySeal];
   variableSeal(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, VarSeal];
+  levelClaim(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, LevelClaim];
+  levelSeal(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, LevelSeal];
   freshSalt(context: __compactRuntime.WitnessContext<Ledger, PS>): [PS, Uint8Array];
 }
 
@@ -159,6 +192,9 @@ export type ImpureCircuits<PS> = {
   beginVariableReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   variableBatch(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   finishVariableReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, VariablePayReport>;
+  beginLevelReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  levelBatch(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  finishLevelReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, LevelReport>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -180,6 +216,9 @@ export type ProvableCircuits<PS> = {
   beginVariableReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   variableBatch(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   finishVariableReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, VariablePayReport>;
+  beginLevelReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  levelBatch(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  finishLevelReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, LevelReport>;
 }
 
 export type PureCircuits = {
@@ -188,6 +227,7 @@ export type PureCircuits = {
              variable_0: bigint,
              gender_0: bigint,
              category_0: bigint,
+             level_0: bigint,
              nonce_0: Uint8Array): Uint8Array;
 }
 
@@ -198,6 +238,7 @@ export type Circuits<PS> = {
              variable_0: bigint,
              gender_0: bigint,
              category_0: bigint,
+             level_0: bigint,
              nonce_0: Uint8Array): __compactRuntime.CircuitResults<PS, Uint8Array>;
   declareRoster(context: __compactRuntime.CircuitContext<PS>,
                 headcount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
@@ -217,6 +258,9 @@ export type Circuits<PS> = {
   beginVariableReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   variableBatch(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
   finishVariableReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, VariablePayReport>;
+  beginLevelReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  levelBatch(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, []>;
+  finishLevelReport(context: __compactRuntime.CircuitContext<PS>): __compactRuntime.CircuitResults<PS, LevelReport>;
 }
 
 export type Ledger = {
@@ -283,6 +327,10 @@ export type Ledger = {
   readonly varProcessed: bigint;
   readonly latestReport: { is_some: boolean, value: PayReport };
   readonly latestVariableReport: { is_some: boolean, value: VariablePayReport };
+  readonly levelOpen: boolean;
+  readonly levelSealed: Uint8Array;
+  readonly levelProcessed: bigint;
+  readonly latestLevelReport: { is_some: boolean, value: LevelReport };
 }
 
 export type ContractReferenceLocations = any;

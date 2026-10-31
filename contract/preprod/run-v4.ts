@@ -24,9 +24,9 @@ import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-p
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
 import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
 import { Contract, ledger, pureCircuits } from "../build/contract/index.js";
-import { assignBands, buildClaim, buildVariableClaim, type PayRecord } from "../deploy/claims.js";
+import { assignBands, buildClaim, buildLevelClaim, buildVariableClaim, type PayRecord } from "../deploy/claims.js";
 import {
-  bytes32, confirmSteps, initialPrivateState, payReportSteps, rosterSteps, variableReportSteps, witnesses,
+  bytes32, confirmSteps, initialPrivateState, levelReportSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses,
   type Circuit, type EquiluxPrivateState, type Step,
 } from "../deploy/witnesses.js";
 import { PREPROD, openWallet, redact } from "./wallet.js";
@@ -49,16 +49,17 @@ function company(n: number) {
     const gender = ((i * 7 + (i >> 3)) % 2) as 0 | 1;
     const salary = Math.round((base[category] * (0.85 + rnd() * 0.3) * (gender ? 1.06 : 1)) / 100) * 100;
     const variable = rnd() < 0.6 ? Math.round((salary * (0.03 + rnd() * 0.07)) / 50) * 50 : 0;
+    const level = Math.min(3, Math.floor(rnd() * 3.2 + (gender ? 0.5 : 0)));
     const name = `p${String(i).padStart(3, "0")}`;
     return {
       name,
-      rec: { salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), sk: bytes32(`preprod-v4:${name}`) } as PayRecord,
+      rec: { salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), level: BigInt(level), sk: bytes32(`preprod-v4:${name}`) } as PayRecord,
       nonce: bytes32(`preprod-v4-payslip:${name}`),
     };
   });
 }
 const TEAM = company(SIZE);
-const rowOf = ({ rec, nonce }: (typeof TEAM)[number]) => pureCircuits.payrollRow(rec.salary, rec.variable, rec.gender, rec.category, nonce);
+const rowOf = ({ rec, nonce }: (typeof TEAM)[number]) => pureCircuits.payrollRow(rec.salary, rec.variable, rec.gender, rec.category, rec.level, nonce);
 
 const EMPLOYER_SK = bytes32("preprod-v4:acme-employer");
 const PROVIDER_SK = bytes32("preprod-v4:payroll-provider");
@@ -163,7 +164,7 @@ async function main() {
     await simulate([st]);
     await send(st, name);
   }
-  const council = confirmSteps(base, TEAM.map(({ rec, nonce }) => ({ salary: rec.salary, variable: rec.variable, gender: rec.gender, category: rec.category, nonce })));
+  const council = confirmSteps(base, TEAM.map(({ rec, nonce }) => ({ salary: rec.salary, variable: rec.variable, gender: rec.gender, category: rec.category, level: rec.level, nonce })));
   for (const [i, st] of council.entries()) {
     const name = `confirmPayroll:${i + 1}`;
     if (done(name)) continue;
@@ -175,7 +176,7 @@ async function main() {
   for (const t of TEAM) {
     const name = `enroll:${t.name}`;
     if (done(name)) continue;
-    await send({ circuit: "enroll", ps: { ...base, employeeSecret: t.rec.sk, employeeRecord: [t.rec.salary, t.rec.variable, t.rec.gender, t.rec.category], rowNonce: t.nonce }, args: [], label: name }, name);
+    await send({ circuit: "enroll", ps: { ...base, employeeSecret: t.rec.sk, employeeRecord: [t.rec.salary, t.rec.variable, t.rec.gender, t.rec.category, t.rec.level], rowNonce: t.nonce }, args: [], label: name }, name);
   }
 
   // ── the reports: whole phases, simulated first, restarted if interrupted ───
@@ -194,6 +195,7 @@ async function main() {
   };
   await phase("payReport", payReportSteps(base, records, buildClaim(records)));
   await phase("variableReport", variableReportSteps(base, records, buildVariableClaim(records), assignBands(records)));
+  await phase("levelReport", levelReportSteps(base, records, buildLevelClaim(records)));
 
   const cs = await providers.publicDataProvider.queryContractState(record.contract!);
   const l: any = ledger(cs!.data);
@@ -201,6 +203,8 @@ async function main() {
   log("──────────────────────────────────────────────");
   log(`preprod contract ${record.contract} (v4, ${SIZE} people, ${Math.ceil(SIZE / 16)} batches)`);
   log(`mean ${Number(r.meanGapBps) / 100}% · median ${Number(r.medianGapBps) / 100}% · variable mean ${Number(v.meanGapBps) / 100}%`);
+  const lv = l.latestLevelReport.value;
+  log(`level-adjusted gap ${Number(lv.adjustedGapBps) / 100}% over ${lv.adjustedCovers} people · level mix ${lv.levels.map((x: any) => `${x.women}W/${x.men}M`).join(" ")}`);
   log(`payroll rows ${l.payrollRows.size()} · council opened ${l.openedRows} · enrolled ${l.enrolled} · salaries on chain: NONE`);
   log(`verify: https://equilux-lac.vercel.app/verify?network=preprod&contract=${record.contract}`);
   log("──────────────────────────────────────────────");

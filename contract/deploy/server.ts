@@ -23,8 +23,8 @@ import { Buffer } from "node:buffer";
 import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
 import { Contract, pureCircuits } from "../build/contract/index.js";
 import { connectMidnight, initialPrivateState } from "./client.js";
-import { assignBands, buildClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "./claims.js";
-import { bytes32, confirmSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses, type EquiluxPrivateState, type Step } from "./witnesses.js";
+import { assignBands, buildClaim, buildLevelClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "./claims.js";
+import { bytes32, confirmSteps, levelReportSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses, type EquiluxPrivateState, type Step } from "./witnesses.js";
 import { parsePayrollCsv } from "./payroll-csv.js";
 
 /**
@@ -179,9 +179,9 @@ const requireReady = () => { if (!ready || !mn) throw new Error("Midnight connec
 const requireDeployed = () => { requireReady(); if (!deployed) throw new Error("No contract deployed yet — deploy from the Employer tab"); };
 const isHex32 = (s: string) => /^[0-9a-f]{64}$/.test(s);
 
-type Row = { salary: number | string; variable?: number | string; gender: number; category?: number; secret: string };
+type Row = { salary: number | string; variable?: number | string; gender: number; category?: number; level?: number; secret: string };
 const toRecord = (r: Row): PayRecord => ({
-  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), sk: bytes32(String(r.secret)),
+  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), level: BigInt(r.level ?? 0), sk: bytes32(String(r.secret)),
 });
 
 /** Adversarial edits for the variable-pay report. */
@@ -256,11 +256,11 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
 
   if (method === "POST" && p === "/api/confirm") {
     requireDeployed();
-    const raw = (body?.openings ?? []) as { salary: number; variable?: number; gender: number; category: number; nonce: string }[];
+    const raw = (body?.openings ?? []) as { salary: number; variable?: number; gender: number; category: number; level?: number; nonce: string }[];
     if (raw.length === 0 || raw.length > 512 || !raw.every((o) => isHex32(String(o.nonce)))) {
       return { status: 400, data: { error: "openings must be 1 to 512 rows, each with a 32-byte hex nonce" } };
     }
-    const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), nonce: fromHex(String(o.nonce)) }));
+    const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), level: BigInt(o.level ?? 0), nonce: fromHex(String(o.nonce)) }));
     const job = runJob("confirm", async (j) => {
       const res: any = await runPhase(confirmSteps(baseState(), openings), j.jlog);
       j.jlog(`the works council opened ${raw.length} rows`);
@@ -275,9 +275,9 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
     const rowNonce = String(body?.rowNonce ?? "");
     if (!secret) return { status: 400, data: { error: "secret required" } };
     if (!isHex32(rowNonce)) return { status: 400, data: { error: "rowNonce (from the payslip) must be 32-byte hex" } };
-    const r = toRecord({ salary: body?.salary ?? 0, variable: body?.variable ?? 0, gender: body?.gender ?? 0, category: body?.category ?? 0, secret });
+    const r = toRecord({ salary: body?.salary ?? 0, variable: body?.variable ?? 0, gender: body?.gender ?? 0, category: body?.category ?? 0, level: body?.level ?? 0, secret });
     const job = runJob("enroll", async (j) => {
-      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(rowNonce) };
+      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(rowNonce) };
       await dryRun("enroll", ps);
       await mn!.setPrivateState(ps);
       j.jlog("local execution ok — proving enroll…");
@@ -299,6 +299,21 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
       j.jlog(`checking ${recs.length} record(s) in batches of 16 against on-chain state (mean gap claim ${n(claim.meanGapBps) / 100}%)…`);
       const res: any = await runPhase(payReportSteps(baseState(), recs, claim), j.jlog);
       j.jlog("pay report published");
+      return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
+    });
+    return { status: 202, data: { jobId: job.id } };
+  }
+
+  if (method === "POST" && p === "/api/publish-levels") {
+    requireDeployed();
+    const rows = (body?.payroll ?? []) as Row[];
+    if (rows.length === 0 || rows.length > 512) return { status: 400, data: { error: "payroll must have 1 to 512 records" } };
+    const recs = rows.map(toRecord);
+    const claim = buildLevelClaim(recs);
+    if (body?.tamper?.adjustedGapBps != null) claim.adjustedGapBps = BigInt(body.tamper.adjustedGapBps);
+    const job = runJob("publish-levels", async (j) => {
+      const res: any = await runPhase(levelReportSteps(baseState(), recs, claim), j.jlog);
+      j.jlog("level report published");
       return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
     });
     return { status: 202, data: { jobId: job.id } };

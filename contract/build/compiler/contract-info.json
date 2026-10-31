@@ -55,6 +55,13 @@
           }
         },
         {
+          "name": "level",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 3
+          }
+        },
+        {
           "name": "nonce",
           "type": {
             "type-name": "Bytes",
@@ -531,6 +538,116 @@
           }
         ]
       }
+    },
+    {
+      "name": "beginLevelReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "levelBatch",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "finishLevelReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Struct",
+        "name": "LevelReport",
+        "elements": [
+          {
+            "name": "round",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 4294967295
+            }
+          },
+          {
+            "name": "levels",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Struct",
+                "name": "LevelStats",
+                "elements": [
+                  {
+                    "name": "women",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "men",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "disclosed",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  },
+                  {
+                    "name": "gapBps",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "gapFavorsMen",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "adjustedGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "adjustedFavorsMen",
+            "type": {
+              "type-name": "Boolean"
+            }
+          },
+          {
+            "name": "adjustedCovers",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          }
+        ]
+      }
     }
   ],
   "witnesses": [
@@ -561,6 +678,10 @@
           {
             "type-name": "Uint",
             "maxval": 1
+          },
+          {
+            "type-name": "Uint",
+            "maxval": 3
           },
           {
             "type-name": "Uint",
@@ -645,6 +766,13 @@
               }
             },
             {
+              "name": "level",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 3
+              }
+            },
+            {
               "name": "nonce",
               "type": {
                 "type-name": "Bytes",
@@ -695,6 +823,13 @@
             },
             {
               "name": "category",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 3
+              }
+            },
+            {
+              "name": "level",
               "type": {
                 "type-name": "Uint",
                 "maxval": 3
@@ -1286,6 +1421,140 @@
                       "type-name": "Uint",
                       "maxval": 8589934591
                     }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "salt",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "levelClaim",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "LevelClaim",
+        "elements": [
+          {
+            "name": "gapBps",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Uint",
+                "maxval": 65535
+              }
+            }
+          },
+          {
+            "name": "adjustedGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "levelSeal",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "LevelSeal",
+        "elements": [
+          {
+            "name": "totals",
+            "type": {
+              "type-name": "Struct",
+              "name": "LevelTotals",
+              "elements": [
+                {
+                  "name": "n",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "levW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "levM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "levSumW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                },
+                {
+                  "name": "levSumM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "claim",
+            "type": {
+              "type-name": "Struct",
+              "name": "LevelClaim",
+              "elements": [
+                {
+                  "name": "gapBps",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "adjustedGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
                   }
                 }
               ]
