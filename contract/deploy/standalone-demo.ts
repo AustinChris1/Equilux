@@ -21,8 +21,11 @@ import { Buffer } from "node:buffer";
 import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
 import { Contract, pureCircuits } from "../build/contract/index.js";
 import { connectMidnight, initialPrivateState } from "./client.js";
-import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord } from "./claims.js";
-import { bytes32, witnesses } from "./witnesses.js";
+import { assignBands, buildClaim, buildLevelClaim, buildVariableClaim, type PayRecord } from "./claims.js";
+
+/** Job levels for the sample company: 0 under 50k, 1 for 50-59k, 2 for 60-69k, 3 from 70k. */
+const levelOf = (salary: number) => (salary < 50_000 ? 0 : salary < 60_000 ? 1 : salary < 70_000 ? 2 : 3);
+import { bytes32, confirmSteps, levelReportSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses, type Step } from "./witnesses.js";
 
 const EMPLOYER_SK = bytes32("acme:employer-root-secret");
 const PROVIDER_SK = bytes32("payroll-provider:personio");
@@ -31,10 +34,10 @@ const CATEGORY = ["Engineering", "Sales", "Operations", "—"];
 
 const person = (name: string, salary: number, gender: 0 | 1, category: number, variable = 0) => ({
   name,
-  rec: { salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), sk: bytes32(`demo:${name}`) } as PayRecord,
+  rec: { salary: BigInt(salary), variable: BigInt(variable), gender: BigInt(gender), category: BigInt(category), level: BigInt(levelOf(salary)), sk: bytes32(`demo:${name}`) } as PayRecord,
   nonce: bytes32(`payslip-nonce:${name}`), // printed on the payslip by the provider
 });
-const rowOf = ({ rec, nonce }: (typeof TEAM)[number]) => pureCircuits.payrollRow(rec.salary, rec.variable, rec.gender, rec.category, nonce);
+const rowOf = ({ rec, nonce }: (typeof TEAM)[number]) => pureCircuits.payrollRow(rec.salary, rec.variable, rec.gender, rec.category, rec.level, nonce);
 
 // The same company as the live site: Engineering and Sales have ≥3 of each
 // gender, Operations one of each. Variable pay: 5 of 7 women, 7 of 7 men.
@@ -58,25 +61,31 @@ async function main() {
   const address = d.deployTxData.public.contractAddress;
   log(`deployed at ${address} (block ${d.deployTxData.public.blockHeight})`);
 
-  await mn.setPrivateState(base);
-  const roster: any = await d.callTx.declareRoster(padRows(TEAM.map(rowOf)), BigInt(TEAM.length));
-  log(`payroll provider committed ${TEAM.length} payroll rows (block ${roster.public.blockHeight})`);
-
-  const openings = padOpenings(TEAM.map(({ rec, nonce }) => ({ salary: rec.salary, variable: rec.variable, gender: rec.gender, category: rec.category, nonce })));
-  await mn.setPrivateState({ ...base, openings });
-  const confirmed: any = await d.callTx.confirmPayroll();
-  log(`works council opened all ${TEAM.length} rows and confirmed the payroll (block ${confirmed.public.blockHeight})`);
+  // v4: each phase is a list of transactions (batches of 16), proven and finalized in order
+  const send = async (steps: Step[]) => {
+    let res: any = null;
+    for (const st of steps) {
+      await mn.setPrivateState(st.ps);
+      res = await d.callTx[st.circuit](...st.args);
+      log(`${st.label} (block ${res.public.blockHeight})`);
+    }
+    return res;
+  };
+  await send(rosterSteps(base, TEAM.map(rowOf)));
+  log(`payroll provider committed ${TEAM.length} payroll rows`);
+  await send(confirmSteps(base, TEAM.map(({ rec, nonce }) => ({ salary: rec.salary, variable: rec.variable, gender: rec.gender, category: rec.category, level: rec.level, nonce }))));
+  log(`works council opened all ${TEAM.length} rows and confirmed the payroll`);
 
   for (const t of TEAM) {
     const { name, rec, nonce } = t;
-    await mn.setPrivateState({ ...base, employeeSecret: rec.sk, employeeRecord: [rec.salary, rec.variable, rec.gender, rec.category], rowNonce: nonce });
+    await mn.setPrivateState({ ...base, employeeSecret: rec.sk, employeeRecord: [rec.salary, rec.variable, rec.gender, rec.category, rec.level], rowNonce: nonce });
     const res: any = await d.callTx.enroll();
     log(`enrolled ${name.padEnd(3)} — opens payroll row ${short(rowOf(t))} · commitment ${short(res.private.result)} (block ${res.public.blockHeight})`);
     if (name === "ada") {
       // the same employee (fresh secret) claims a higher salary: no payroll row matches.
       // Executed against the live on-chain state; a rejected witness never reaches the prover.
       const cs = await mn.providers.publicDataProvider.queryContractState(address);
-      const inflated: [bigint, bigint, bigint, bigint] = [rec.salary + 5_000n, rec.variable, rec.gender, rec.category];
+      const inflated: [bigint, bigint, bigint, bigint, bigint] = [rec.salary + 5_000n, rec.variable, rec.gender, rec.category, rec.level];
       const ps = { ...base, employeeSecret: bytes32("demo:ada-2"), employeeRecord: inflated, rowNonce: nonce };
       const ctx = createCircuitContext(address, mn.providers.walletProvider.getCoinPublicKey(), cs as any, ps);
       try {
@@ -91,13 +100,14 @@ async function main() {
   }
 
   const records = TEAM.map((t) => t.rec);
-  await mn.setPrivateState({ ...base, payroll: padRecords(records), claim: buildClaim(records) });
-  const pub: any = await d.callTx.publishReport();
-  log(`publishReport proven & finalized (tx ${pub.public.txId}, block ${pub.public.blockHeight})`);
+  const pub: any = await send(payReportSteps(base, records, buildClaim(records)));
+  log(`pay report proven & finalized (tx ${pub.public.txId}, block ${pub.public.blockHeight})`);
 
-  await mn.setPrivateState({ ...base, payroll: padRecords(records, assignBands(records)), variableClaim: buildVariableClaim(records) });
-  const pubV: any = await d.callTx.publishVariablePay();
-  log(`publishVariablePay proven & finalized (tx ${pubV.public.txId}, block ${pubV.public.blockHeight})`);
+  const pubV: any = await send(variableReportSteps(base, records, buildVariableClaim(records), assignBands(records)));
+  log(`variable-pay report proven & finalized (tx ${pubV.public.txId}, block ${pubV.public.blockHeight})`);
+
+  const pubL: any = await send(levelReportSteps(base, records, buildLevelClaim(records)));
+  log(`level report proven & finalized (tx ${pubL.public.txId}, block ${pubL.public.blockHeight})`);
 
   const l: any = await mn.readLedger(address);
   const r = l.latestReport.value;

@@ -14,6 +14,7 @@ import { buildFilingPack, downloadFilingPack } from "../lib/filing";
 import { listWallets, type WalletChoice } from "../lib/wallet-detect";
 import type { WalletSession } from "../lib/wallet-chain";
 import { AppHeader } from "./AppHeader";
+import { approvalsFor } from "../lib/approvals";
 import { Avatar } from "./app/Avatar";
 import { WalletButton, type WalletState } from "./app/WalletButton";
 import { ReportSummary } from "./app/ReportSummary";
@@ -33,6 +34,7 @@ interface Person {
   variable: number; // annual bonus; 0 if none
   gender: 0 | 1;
   category: number;
+  level: number; // job level 0..3, for the level report
   secret: string;
   nonce: string; // payslip nonce from the payroll company; blinds this person's payroll row
   commitment?: string;
@@ -40,7 +42,7 @@ interface Person {
   receipt?: boolean;
 }
 
-const STORAGE = "equilux.workspace.v4";
+const STORAGE = "equilux.workspace.v5";
 const newSecret = () => (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 24);
 const DEFAULT_CATEGORIES = ["Engineering", "Sales", "Operations", "Design"];
 
@@ -54,11 +56,35 @@ const SEED: [string, number, number, 0 | 1, number][] = [
   ["Mia Costa", 40_000, 0, 0, 2], ["Ned Fischer", 45_000, 1_000, 1, 2],
 ];
 
-const SAMPLE_CSV = `First name,Last name,Gender,Department,Annual salary,Bonus
-${SEED.map(([n, sal, v, g, c]) => `${n.replace(" ", ",")},${g === 0 ? "female" : "male"},${["Engineering", "Sales", "Operations"][c]},${sal},${v || ""}`).join("\n")}`;
+/** Sample job levels by pay band (1 to 4 in the sample export): under 50k, 50-59k, 60-69k, from 70k. */
+const levelOf = (salary: number) => (salary < 50_000 ? 0 : salary < 60_000 ? 1 : salary < 70_000 ? 2 : 3);
+
+const SAMPLE_CSV = `First name,Last name,Gender,Department,Annual salary,Bonus,Grade
+${SEED.map(([n, sal, v, g, c]) => `${n.replace(" ", ",")},${g === 0 ? "female" : "male"},${["Engineering", "Sales", "Operations"][c]},${sal},${v || ""},${levelOf(sal) + 1}`).join("\n")}`;
+
+const FIRST_W = ["Ana", "Bea", "Chidi", "Gia", "Hana", "Ivy", "Mia", "Nora", "Olga", "Pia", "Rosa", "Sara", "Tara", "Uma", "Vera", "Wen", "Yara", "Zoe", "Lena", "Ines"];
+const FIRST_M = ["Dan", "Eli", "Felix", "Jon", "Kai", "Leo", "Ned", "Omar", "Paul", "Raj", "Sam", "Tom", "Ugo", "Vik", "Will", "Yusuf", "Zane", "Marc", "Lars", "Ivo"];
+const LAST = ["Serrano", "Keller", "Okafor", "Novak", "Laurent", "Braun", "Diallo", "Vidal", "Moreau", "Weber", "Sato", "Rossi", "Costa", "Fischer", "Nowak", "Silva", "Berg", "Haas", "Lind", "Meyer"];
+
+/** A sample company of n invented people (default 250, the Directive's annual-report threshold). */
+export const sampleCompany = (n = 250): Person[] => {
+  let st = 0x5eed;
+  const rnd = () => ((st = (Math.imul(st, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  const base = [64_000, 52_000, 41_000, 58_000];
+  return Array.from({ length: n }, (_, i) => {
+    const category = i % 4;
+    const gender = ((i * 7 + (i >> 3)) % 2) as 0 | 1;
+    const salary = Math.round((base[category] * (0.85 + rnd() * 0.3) * (gender ? 1.06 : 1)) / 100) * 100;
+    const variable = rnd() < 0.6 ? Math.round((salary * (0.03 + rnd() * 0.07)) / 50) * 50 : 0;
+    const name = `${(gender ? FIRST_M : FIRST_W)[i % 20]} ${LAST[(i * 3 + 7) % 20]}`;
+    const level = Math.min(3, Math.floor(rnd() * 3.2 + (gender ? 0.5 : 0)));
+    return { id: `c${i}-${newSecret().slice(0, 4)}`, name, salary, variable, gender, category, level, secret: newSecret(), nonce: newNonce() };
+  });
+};
+
 
 const seedPeople = (): Person[] =>
-  SEED.map(([name, salary, variable, gender, category]) => ({ id: newSecret().slice(0, 8), name, salary, variable, gender, category, secret: newSecret(), nonce: newNonce() }));
+  SEED.map(([name, salary, variable, gender, category]) => ({ id: newSecret().slice(0, 8), name, salary, variable, gender, category, level: levelOf(salary), secret: newSecret(), nonce: newNonce() }));
 
 interface Saved { people: Person[]; categories: string[] }
 function load(): Saved {
@@ -68,10 +94,10 @@ function load(): Saved {
   } catch { /* ignore */ }
   return { people: seedPeople(), categories: DEFAULT_CATEGORIES };
 }
-const stripProgress = (ps: Person[]) => ps.map(({ id, name, salary, variable, gender, category, secret, nonce }) => ({ id, name, salary, variable, gender, category, secret, nonce }));
+const stripProgress = (ps: Person[]) => ps.map(({ id, name, salary, variable, gender, category, level, secret, nonce }) => ({ id, name, salary, variable, gender, category, level: level ?? 0, secret, nonce }));
 
-const toRow = (p: Person): Row => ({ salary: p.salary, variable: p.variable, gender: p.gender, category: p.category, secret: p.secret, nonce: p.nonce });
-const openingOf = (r: Row) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, nonce: r.nonce });
+const toRow = (p: Person): Row => ({ salary: p.salary, variable: p.variable, gender: p.gender, category: p.category, level: p.level ?? 0, secret: p.secret, nonce: p.nonce });
+const openingOf = (r: Row) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, level: r.level ?? 0, nonce: r.nonce });
 const enrollBody = (r: Row) => ({ ...r, rowNonce: r.nonce });
 const first = (name: string) => name.split(" ")[0];
 const euro = (n: number) => `€${n.toLocaleString("en-US")}`;
@@ -280,7 +306,7 @@ export function Workspace() {
         if (j.status === "error") throw new Error(j.error ?? "rejected");
         value = j.result as T;
       } else {
-        await new Promise((r) => setTimeout(r, reduce ? 0 : 260));
+        await new Promise((r) => setTimeout(r, reduce || peopleRef.current.length > 20 ? 0 : 260));
         value = browser();
         push(["ran the contract code in this browser: every check passed"]);
         setTick((t) => t + 1);
@@ -346,7 +372,8 @@ export function Workspace() {
     await new Promise((r) => setTimeout(r, 0));
     const rows = peopleRef.current.filter((p) => p.commitment).map(toRow);
     if (!rep && (await step("Publishing the pay gap…", () => bc.apply({ k: "publish", rows }), { path: "/api/publish", body: { payroll: rows } })) === undefined) return false;
-    if ((await step("Publishing the bonus figures…", () => bc.apply({ k: "publishVariable", rows }), { path: "/api/publish-variable", body: { payroll: rows } })) === undefined) return false;
+    if (!vrep && (await step("Publishing the bonus figures…", () => bc.apply({ k: "publishVariable", rows }), { path: "/api/publish-variable", body: { payroll: rows } })) === undefined) return false;
+    if ((await step("Publishing the gap inside job levels…", () => bc.apply({ k: "publishLevels", rows }), { path: "/api/publish-levels", body: { payroll: rows } })) === undefined) return false;
     setView("report");
     return true;
   };
@@ -440,14 +467,15 @@ export function Workspace() {
   const importCsv = (text: string, source: string) => {
     const { rows, categories: cats, errors } = parsePayrollCsv(text);
     if (rows.length === 0) { setCsvNote(`Nothing imported: ${errors.join("; ")}`); return; }
-    const capped = rows.slice(0, 16);
-    setPeople(capped.map((r) => ({ id: newSecret().slice(0, 8), name: r.name, salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, secret: newSecret(), nonce: newNonce() })));
+    const capped = rows.slice(0, 512);
+    setPeople(capped.map((r) => ({ id: newSecret().slice(0, 8), name: r.name, salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, level: r.level, secret: newSecret(), nonce: newNonce() })));
     setCategories([...cats, ...DEFAULT_CATEGORIES.slice(cats.length)].slice(0, 4));
-    setCsvNote(`${capped.length} people imported from ${source}${rows.length > 16 ? " (this demo holds 16)" : ""}${errors.length ? ` · ${errors.length} row(s) skipped` : ""}`);
+    setCsvNote(`${capped.length} people imported from ${source}${rows.length > 512 ? " (this instance holds 512)" : ""}${errors.length ? ` · ${errors.length} row(s) skipped` : ""}`);
     push([`imported ${capped.length} payroll rows from ${source}: read in this browser, nothing sent anywhere`]);
   };
   const onFile = (f: File | undefined) => { if (f) f.text().then((t) => importCsv(t, f.name)); };
-  const smallTeam = () => { setPeople(seedPeople().slice(0, 6)); setCategories(DEFAULT_CATEGORIES); setCsvNote("A 6-person team: 11 steps in total"); };
+  const smallTeam = () => { setPeople(seedPeople().slice(0, 6)); setCategories(DEFAULT_CATEGORIES); setCsvNote(`A 6-person team: ${approvalsFor(6)} steps in total`); };
+  const bigCompany = () => { setPeople(sampleCompany(250)); setCategories(DEFAULT_CATEGORIES); setCsvNote("A 250-person sample company: invented people, proven in batches of 16"); };
 
   const startOver = () => {
     if (mode === "wallet") { session?.forget(); setWalletLedger(null); } // a fresh contract on preprod; the old one stays on the chain
@@ -568,10 +596,10 @@ export function Workspace() {
               <ReportSummary rep={rep} vrep={vrep} categories={categories} />
               <details className="group rounded-xl bg-night-deep/60 ring-1 ring-gold/10">
                 <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-[14px] font-medium text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
-                  <ScrollText size={16} className="shrink-0 text-gold" /> See all seven figures the law asks for
+                  <ScrollText size={16} className="shrink-0 text-gold" /> See all seven figures, and the gap inside job levels
                   <ChevronDown size={16} className="ml-auto shrink-0 text-sage transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="flex flex-col gap-4 p-4 pt-1"><ReportView rep={rep} vrep={vrep} categories={categories} /></div>
+                <div className="flex flex-col gap-4 p-4 pt-1"><ReportView rep={rep} vrep={vrep} lrep={ledger?.latestLevelReport} categories={categories} /></div>
               </details>
             </div>
           ) : null,
@@ -725,6 +753,7 @@ export function Workspace() {
                 <Ghost onClick={() => fileRef.current?.click()} disabled={locked || !!busy}><Upload size={14} /> Upload a CSV</Ghost>
                 <Ghost onClick={() => importCsv(SAMPLE_CSV, "a sample Personio export")} disabled={locked || !!busy}><FileSpreadsheet size={14} /> Sample export</Ghost>
                 <Ghost onClick={smallTeam} disabled={locked || !!busy}><Users size={14} /> 6-person team</Ghost>
+                <Ghost onClick={bigCompany} disabled={locked || !!busy}><Building2 size={14} /> 250-person company</Ghost>
               </div>
               <p className="text-[13px] text-sage">{locked ? "The salaries are locked for this run. Start over to change them." : csvNote ?? "Personio or DATEV exports work. The file is read in this browser and never sent anywhere."}</p>
               {!deployed && (
@@ -772,12 +801,23 @@ export function Workspace() {
 }
 
 /** The payroll as people: a salary each, sealed into a code once locked, checked once the council approves. */
+/** How many people the grids draw; larger companies show a count instead of every face. */
+const SHOWN = 23;
+function MoreTile({ n }: { n: number }) {
+  return (
+    <li className="grid place-items-center rounded-xl bg-night-deep/40 p-2.5 text-center ring-1 ring-gold/8">
+      <span className="text-[13px] font-medium text-cream">+{n} more</span>
+      <span className="text-[11px] text-sage">same treatment</span>
+    </li>
+  );
+}
+
 function PayrollGrid({ people, locked, checked, categories, sample, onSetup }: { people: Person[]; locked: boolean; checked: boolean; categories: string[]; sample: boolean; onSetup?: () => void }) {
   return (
     <div>
       {sample && <p className="mb-3 text-[13px] text-sage">A sample team: invented people and salaries.</p>}
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        {people.map((p, i) => (
+        {people.slice(0, SHOWN).map((p, i) => (
           <li key={p.id} className="flex items-center gap-2.5 rounded-xl bg-night-deep/70 p-2.5 ring-1 ring-gold/8">
             <div className="relative">
               <Avatar seed={p.name} size={36} />
@@ -797,6 +837,7 @@ function PayrollGrid({ people, locked, checked, categories, sample, onSetup }: {
             </div>
           </li>
         ))}
+        {people.length > SHOWN && <MoreTile n={people.length - SHOWN} />}
       </ul>
       {onSetup && (
         <button onClick={onSetup} className="mt-3 inline-flex items-center gap-1.5 rounded text-[13px] text-sage underline decoration-gold/30 underline-offset-4 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
@@ -813,7 +854,8 @@ function TeamGrid({ people, categories, open, busy, onEnroll, onReceipt }: {
 }) {
   return (
     <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-      {people.map((p) => {
+      {people.length > SHOWN && <li className="col-span-full -mb-1 text-[13px] text-sage">{people.filter((p) => p.commitment).length} of {people.length} confirmed · showing the first {SHOWN - 2}</li>}
+      {people.slice(0, people.length > SHOWN ? SHOWN - 2 : SHOWN).map((p) => {
         const joined = !!p.commitment;
         return (
           <li key={p.id} className="flex flex-col items-center text-center">

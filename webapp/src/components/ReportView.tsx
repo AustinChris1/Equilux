@@ -1,11 +1,12 @@
-import type { PayReportOnChain, VariablePayReportOnChain } from "../lib/api";
+import type { LevelReportOnChain, PayReportOnChain, VariablePayReportOnChain } from "../lib/api";
+import { LevelView } from "./LevelView";
 import { motion } from "framer-motion";
 import { fmtPct } from "../lib/api";
 
 const pctOf = (a: number, b: number) => (b === 0 ? "—" : `${Math.round((a / b) * 100)}%`);
 
 /** The published figures — all seven Article 9 indicators when both reports are on-chain. */
-export function ReportView({ rep, vrep, categories }: { rep: PayReportOnChain; vrep: VariablePayReportOnChain | null; categories: string[] }) {
+export function ReportView({ rep, vrep, lrep, categories }: { rep: PayReportOnChain; vrep: VariablePayReportOnChain | null; lrep?: LevelReportOnChain | null; categories: string[] }) {
   return (
     <>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -120,6 +121,7 @@ export function ReportView({ rep, vrep, categories }: { rep: PayReportOnChain; v
           </tbody>
         </table>
       </div>
+      {lrep && <LevelView lrep={lrep} />}
     </>
   );
 }

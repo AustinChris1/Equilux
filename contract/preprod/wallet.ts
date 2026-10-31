@@ -21,14 +21,21 @@ import { WalletSeeds } from "@midnight-ntwrk/wallet-sdk-hd";
 // @ts-expect-error node global for the indexer subscriptions
 globalThis.WebSocket = WebSocket;
 
+// Midnight closed its own preprod indexer and RPC on 2026-10-09; Blockfrost serves both now, keyed per
+// project (env BLOCKFROST_PROJECT_ID, a GitHub Actions secret). The key rides as a query parameter
+// because the SDK's providers and browser-style WebSockets take plain URLs.
+const BF = process.env.BLOCKFROST_PROJECT_ID ?? "";
 export const PREPROD = {
   networkId: "preprod",
-  indexer: "https://indexer.preprod.midnight.network/api/v4/graphql",
-  indexerWS: "wss://indexer.preprod.midnight.network/api/v4/graphql/ws",
-  node: "wss://rpc.preprod.midnight.network",
+  indexer: process.env.PREPROD_INDEXER ?? `https://midnight-preprod.blockfrost.io/api/v0?project_id=${BF}`,
+  indexerWS: process.env.PREPROD_INDEXER_WS ?? `wss://midnight-preprod.blockfrost.io/api/v0/ws?project_id=${BF}`,
+  node: process.env.PREPROD_NODE ?? `wss://rpc.midnight-preprod.blockfrost.io?project_id=${BF}`,
   proofServer: process.env.PROOF_SERVER ?? "http://127.0.0.1:6300",
   faucet: "https://faucet.preprod.midnight.network",
 };
+if (!BF && !process.env.PREPROD_INDEXER) console.warn("[preprod] BLOCKFROST_PROJECT_ID is not set: the indexer and RPC will refuse every request");
+/** For logs: never print the key. */
+export const redact = (s: string) => (BF ? s.split(BF).join("***") : s);
 
 const DIR = import.meta.dirname;
 const SEED_FILE = join(DIR, ".seed");

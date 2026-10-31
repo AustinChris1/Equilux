@@ -23,8 +23,8 @@ import { Buffer } from "node:buffer";
 import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
 import { Contract, pureCircuits } from "../build/contract/index.js";
 import { connectMidnight, initialPrivateState } from "./client.js";
-import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord, type ReportClaim, type VariableClaim } from "./claims.js";
-import { bytes32, witnesses, type EquiluxPrivateState } from "./witnesses.js";
+import { assignBands, buildClaim, buildLevelClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "./claims.js";
+import { bytes32, confirmSteps, levelReportSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses, type EquiluxPrivateState, type Step } from "./witnesses.js";
 import { parsePayrollCsv } from "./payroll-csv.js";
 
 /**
@@ -34,12 +34,33 @@ import { parsePayrollCsv } from "./payroll-csv.js";
  * balancing pipeline (which does not recover cleanly from a mid-flight throw).
  */
 const localContract = new Contract<EquiluxPrivateState, typeof witnesses>(witnesses);
-type CircuitName = "declareRoster" | "confirmPayroll" | "enroll" | "publishReport" | "publishVariablePay" | "checkReceipt";
+type CircuitName = "enroll" | "checkReceipt";
 async function dryRun(circuit: CircuitName, ps: EquiluxPrivateState, ...args: unknown[]) {
   const cs = await mn!.providers.publicDataProvider.queryContractState(contractAddress!);
   if (!cs) throw new Error("contract state not found via indexer");
   const ctx = createCircuitContext(contractAddress!, mn!.providers.walletProvider.getCoinPublicKey(), cs as any, ps);
   return (localContract.impureCircuits as any)[circuit](ctx, ...args); // throws `failed assert: …`
+}
+
+/**
+ * Contract v4 phases (roster, council, a report) are several transactions. All of a phase's steps run
+ * locally first, chained on the live state, so a witness that would only fail at the final check is
+ * refused before anything is proven; then each step is proven and submitted in order.
+ */
+async function runPhase(steps: Step[], jlog: (m: string) => void) {
+  const cs = await mn!.providers.publicDataProvider.queryContractState(contractAddress!);
+  if (!cs) throw new Error("contract state not found via indexer");
+  let ctx = createCircuitContext(contractAddress!, mn!.providers.walletProvider.getCoinPublicKey(), cs as any, steps[0].ps);
+  for (const st of steps) ctx = (localContract.impureCircuits as any)[st.circuit]({ ...ctx, currentPrivateState: st.ps }, ...st.args).context;
+  jlog(`local execution ok: all ${steps.length} steps passed`);
+  let res: any = null;
+  for (const [i, st] of steps.entries()) {
+    await mn!.setPrivateState(st.ps);
+    jlog(`proving ${i + 1}/${steps.length}: ${st.label}…`);
+    res = await deployed.callTx[st.circuit](...st.args);
+    jlog(`${i + 1}/${steps.length} ${st.label} (block ${res.public.blockHeight})`);
+  }
+  return res;
 }
 
 const PORT = Number(process.env.PORT ?? 8787);
@@ -158,9 +179,9 @@ const requireReady = () => { if (!ready || !mn) throw new Error("Midnight connec
 const requireDeployed = () => { requireReady(); if (!deployed) throw new Error("No contract deployed yet — deploy from the Employer tab"); };
 const isHex32 = (s: string) => /^[0-9a-f]{64}$/.test(s);
 
-type Row = { salary: number | string; variable?: number | string; gender: number; category?: number; secret: string };
+type Row = { salary: number | string; variable?: number | string; gender: number; category?: number; level?: number; secret: string };
 const toRecord = (r: Row): PayRecord => ({
-  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), sk: bytes32(String(r.secret)),
+  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), level: BigInt(r.level ?? 0), sk: bytes32(String(r.secret)),
 });
 
 /** Adversarial edits for the variable-pay report. */
@@ -222,36 +243,27 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
     requireDeployed();
     // The provider hashes its payroll rows locally; only the hashes arrive here.
     const hashes = ((body?.rows ?? []) as string[]).map(String);
-    if (hashes.length === 0 || hashes.length > 16 || !hashes.every(isHex32)) {
-      return { status: 400, data: { error: "rows must be 1–16 payroll-row hashes (32-byte hex)" } };
+    if (hashes.length === 0 || hashes.length > 512 || !hashes.every(isHex32)) {
+      return { status: 400, data: { error: "rows must be 1 to 512 payroll-row hashes (32-byte hex)" } };
     }
-    const rows = padRows(hashes.map(fromHex));
-    const headcount = BigInt(hashes.length);
     const job = runJob("roster", async (j) => {
-      await dryRun("declareRoster", baseState(), rows, headcount);
-      await mn!.setPrivateState(baseState());
-      j.jlog(`local execution ok — proving declareRoster (${headcount} payroll rows)…`);
-      const res: any = await deployed.callTx.declareRoster(rows, headcount);
-      j.jlog(`${headcount} payroll rows committed by the payroll provider (block ${res.public.blockHeight})`);
-      return { headcount: n(headcount), txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
+      const res: any = await runPhase(rosterSteps(baseState(), hashes.map(fromHex)), j.jlog);
+      j.jlog(`${hashes.length} payroll rows committed by the payroll provider`);
+      return { headcount: hashes.length, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
   }
 
   if (method === "POST" && p === "/api/confirm") {
     requireDeployed();
-    const raw = (body?.openings ?? []) as { salary: number; variable?: number; gender: number; category: number; nonce: string }[];
-    if (raw.length === 0 || raw.length > 16 || !raw.every((o) => isHex32(String(o.nonce)))) {
-      return { status: 400, data: { error: "openings must be 1–16 rows, each with a 32-byte hex nonce" } };
+    const raw = (body?.openings ?? []) as { salary: number; variable?: number; gender: number; category: number; level?: number; nonce: string }[];
+    if (raw.length === 0 || raw.length > 512 || !raw.every((o) => isHex32(String(o.nonce)))) {
+      return { status: 400, data: { error: "openings must be 1 to 512 rows, each with a 32-byte hex nonce" } };
     }
-    const openings = padOpenings(raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), nonce: fromHex(String(o.nonce)) })));
+    const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), level: BigInt(o.level ?? 0), nonce: fromHex(String(o.nonce)) }));
     const job = runJob("confirm", async (j) => {
-      const ps: EquiluxPrivateState = { ...baseState(), openings };
-      await dryRun("confirmPayroll", ps);
-      await mn!.setPrivateState(ps);
-      j.jlog(`local execution ok — proving confirmPayroll (${raw.length} rows opened by the works council)…`);
-      const res: any = await deployed.callTx.confirmPayroll();
-      j.jlog(`payroll confirmed by the works council (block ${res.public.blockHeight})`);
+      const res: any = await runPhase(confirmSteps(baseState(), openings), j.jlog);
+      j.jlog(`the works council opened ${raw.length} rows`);
       return { txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
     });
     return { status: 202, data: { jobId: job.id } };
@@ -263,9 +275,9 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
     const rowNonce = String(body?.rowNonce ?? "");
     if (!secret) return { status: 400, data: { error: "secret required" } };
     if (!isHex32(rowNonce)) return { status: 400, data: { error: "rowNonce (from the payslip) must be 32-byte hex" } };
-    const r = toRecord({ salary: body?.salary ?? 0, variable: body?.variable ?? 0, gender: body?.gender ?? 0, category: body?.category ?? 0, secret });
+    const r = toRecord({ salary: body?.salary ?? 0, variable: body?.variable ?? 0, gender: body?.gender ?? 0, category: body?.category ?? 0, level: body?.level ?? 0, secret });
     const job = runJob("enroll", async (j) => {
-      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(rowNonce) };
+      const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(rowNonce) };
       await dryRun("enroll", ps);
       await mn!.setPrivateState(ps);
       j.jlog("local execution ok — proving enroll…");
@@ -280,17 +292,28 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
   if (method === "POST" && p === "/api/publish") {
     requireDeployed();
     const rows = (body?.payroll ?? []) as Row[];
-    if (rows.length === 0 || rows.length > 16) return { status: 400, data: { error: "payroll must have 1–16 records" } };
+    if (rows.length === 0 || rows.length > 512) return { status: 400, data: { error: "payroll must have 1 to 512 records" } };
     const recs = rows.map(toRecord);
     const claim = applyTamper(buildClaim(recs), body?.tamper);
     const job = runJob("publish", async (j) => {
-      const ps: EquiluxPrivateState = { ...baseState(), payroll: padRecords(recs), claim };
-      j.jlog(`checking the witness against on-chain state (${recs.length} record(s), mean gap claim ${n(claim.meanGapBps) / 100}%)…`);
-      await dryRun("publishReport", ps);
-      await mn!.setPrivateState(ps);
-      j.jlog("local execution ok — proving publishReport…");
-      const res: any = await deployed.callTx.publishReport();
-      j.jlog(`published (block ${res.public.blockHeight})`);
+      j.jlog(`checking ${recs.length} record(s) in batches of 16 against on-chain state (mean gap claim ${n(claim.meanGapBps) / 100}%)…`);
+      const res: any = await runPhase(payReportSteps(baseState(), recs, claim), j.jlog);
+      j.jlog("pay report published");
+      return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
+    });
+    return { status: 202, data: { jobId: job.id } };
+  }
+
+  if (method === "POST" && p === "/api/publish-levels") {
+    requireDeployed();
+    const rows = (body?.payroll ?? []) as Row[];
+    if (rows.length === 0 || rows.length > 512) return { status: 400, data: { error: "payroll must have 1 to 512 records" } };
+    const recs = rows.map(toRecord);
+    const claim = buildLevelClaim(recs);
+    if (body?.tamper?.adjustedGapBps != null) claim.adjustedGapBps = BigInt(body.tamper.adjustedGapBps);
+    const job = runJob("publish-levels", async (j) => {
+      const res: any = await runPhase(levelReportSteps(baseState(), recs, claim), j.jlog);
+      j.jlog("level report published");
       return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
     });
     return { status: 202, data: { jobId: job.id } };
@@ -299,7 +322,7 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
   if (method === "POST" && p === "/api/publish-variable") {
     requireDeployed();
     const rows = (body?.payroll ?? []) as Row[];
-    if (rows.length === 0 || rows.length > 16) return { status: 400, data: { error: "payroll must have 1–16 records" } };
+    if (rows.length === 0 || rows.length > 512) return { status: 400, data: { error: "payroll must have 1 to 512 records" } };
     const recs = rows.map(toRecord);
     const bands = assignBands(recs);
     if (body?.tamper?.swapBands) {
@@ -308,13 +331,9 @@ async function handle(method: string, url: URL, body: any): Promise<{ status: nu
     }
     const claim = applyVariableTamper(buildVariableClaim(recs), body?.tamper);
     const job = runJob("publish-variable", async (j) => {
-      const ps: EquiluxPrivateState = { ...baseState(), payroll: padRecords(recs, bands), variableClaim: claim };
-      j.jlog(`checking the variable-pay witness against on-chain state (${recs.length} record(s))…`);
-      await dryRun("publishVariablePay", ps);
-      await mn!.setPrivateState(ps);
-      j.jlog("local execution ok — proving publishVariablePay…");
-      const res: any = await deployed.callTx.publishVariablePay();
-      j.jlog(`variable-pay report published (block ${res.public.blockHeight})`);
+      j.jlog(`checking the variable-pay witness in batches of 16 (${recs.length} record(s))…`);
+      const res: any = await runPhase(variableReportSteps(baseState(), recs, claim, bands), j.jlog);
+      j.jlog("variable-pay report published");
       return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
     });
     return { status: 202, data: { jobId: job.id } };

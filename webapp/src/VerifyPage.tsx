@@ -167,7 +167,7 @@ export default function VerifyPage() {
             {view.latestReport && (
               <section aria-labelledby="figures" className="flex flex-col gap-4">
                 <h2 id="figures" className="text-[12px] font-semibold uppercase tracking-[0.08em] text-sage">The published figures</h2>
-                <ReportView rep={view.latestReport} vrep={view.latestVariableReport} categories={labels} />
+                <ReportView rep={view.latestReport} vrep={view.latestVariableReport} lrep={view.latestLevelReport} categories={labels} />
                 {!pack && <p className="text-[12px] text-sage">Category names are not stored on-chain; load the employer's filing pack to see them.</p>}
               </section>
             )}

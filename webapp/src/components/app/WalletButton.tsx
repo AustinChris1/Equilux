@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, CircleDashed, Cpu, ExternalLink, Fuel, Globe, Loader2, LogOut, Users, Wallet, X } from "lucide-react";
 import type { WalletChoice } from "../../lib/wallet-detect";
+import { approvalsFor } from "../../lib/approvals";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
@@ -114,7 +115,7 @@ export function WalletButton({ wallets, wallet, connecting, onConnect, onDisconn
                   <button onClick={onSmallTeam}
                     className="mt-3 flex w-full items-center gap-3 rounded-xl bg-cream/6 p-3 text-left text-[13px] text-cream transition-colors hover:bg-cream/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
                     <Users size={18} className="shrink-0 text-gold" />
-                    <span className="flex-1">Use a 6-person team <span className="block text-[12px] text-sage">11 approvals instead of {teamSize + 5}</span></span>
+                    <span className="flex-1">Use a 6-person team <span className="block text-[12px] text-sage">{approvalsFor(6)} approvals instead of {approvalsFor(teamSize)}</span></span>
                   </button>
                 )}
                 <button onClick={() => { onDisconnect(); setOpen(false); }}

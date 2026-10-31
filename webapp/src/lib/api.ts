@@ -68,7 +68,15 @@ export interface VariablePayReportOnChain {
   categories: VariableCategoryStats[];
 }
 
+export interface LevelReportOnChain {
+  levels: { women: number; men: number; disclosed: boolean; gapBps: number; gapFavorsMen: boolean }[];
+  adjustedGapBps: number;
+  adjustedFavorsMen: boolean;
+  adjustedCovers: number;
+}
+
 export interface LedgerView {
+  contractVersion?: "v3" | "v4"; // v3 = the Wave 2 layout (16 people), v4 = batched
   contractAddress: string;
   rosterDeclared: boolean;
   payrollConfirmed: boolean;
@@ -83,6 +91,8 @@ export interface LedgerView {
   councilPk: string;
   latestReport: PayReportOnChain | null;
   latestVariableReport: VariablePayReportOnChain | null;
+  /** v4 only: the gap inside equal job levels. */
+  latestLevelReport?: LevelReportOnChain | null;
 }
 
 /** Adversarial edits for the "try to cheat" toggles. */

@@ -55,6 +55,13 @@
           }
         },
         {
+          "name": "level",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 3
+          }
+        },
+        {
           "name": "nonce",
           "type": {
             "type-name": "Bytes",
@@ -73,6 +80,25 @@
       "proof": true,
       "arguments": [
         {
+          "name": "headcount",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 65535
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "addPayrollRows",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+        {
           "name": "rows",
           "type": {
             "type-name": "Vector",
@@ -84,10 +110,10 @@
           }
         },
         {
-          "name": "headcount",
+          "name": "count",
           "type": {
             "type-name": "Uint",
-            "maxval": 65535
+            "maxval": 255
           }
         }
       ],
@@ -142,7 +168,7 @@
                 "name": "path",
                 "type": {
                   "type-name": "Vector",
-                  "length": 5,
+                  "length": 10,
                   "type": {
                     "type-name": "Struct",
                     "name": "MerkleTreePathEntry",
@@ -181,7 +207,31 @@
       }
     },
     {
-      "name": "publishReport",
+      "name": "beginReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "reportBatch",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "finishReport",
       "pure": false,
       "proof": true,
       "arguments": [
@@ -201,14 +251,14 @@
             "name": "headcountWomen",
             "type": {
               "type-name": "Uint",
-              "maxval": 255
+              "maxval": 65535
             }
           },
           {
             "name": "headcountMen",
             "type": {
               "type-name": "Uint",
-              "maxval": 255
+              "maxval": 65535
             }
           },
           {
@@ -256,14 +306,14 @@
                     "name": "headcountWomen",
                     "type": {
                       "type-name": "Uint",
-                      "maxval": 255
+                      "maxval": 65535
                     }
                   },
                   {
                     "name": "headcountMen",
                     "type": {
                       "type-name": "Uint",
-                      "maxval": 255
+                      "maxval": 65535
                     }
                   },
                   {
@@ -313,7 +363,31 @@
       }
     },
     {
-      "name": "publishVariablePay",
+      "name": "beginVariableReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "variableBatch",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "finishVariableReport",
       "pure": false,
       "proof": true,
       "arguments": [
@@ -333,28 +407,28 @@
             "name": "headcountWomen",
             "type": {
               "type-name": "Uint",
-              "maxval": 255
+              "maxval": 65535
             }
           },
           {
             "name": "headcountMen",
             "type": {
               "type-name": "Uint",
-              "maxval": 255
+              "maxval": 65535
             }
           },
           {
             "name": "recipientsWomen",
             "type": {
               "type-name": "Uint",
-              "maxval": 255
+              "maxval": 65535
             }
           },
           {
             "name": "recipientsMen",
             "type": {
               "type-name": "Uint",
-              "maxval": 255
+              "maxval": 65535
             }
           },
           {
@@ -402,14 +476,14 @@
                     "name": "women",
                     "type": {
                       "type-name": "Uint",
-                      "maxval": 255
+                      "maxval": 65535
                     }
                   },
                   {
                     "name": "men",
                     "type": {
                       "type-name": "Uint",
-                      "maxval": 255
+                      "maxval": 65535
                     }
                   }
                 ]
@@ -429,14 +503,14 @@
                     "name": "recipientsWomen",
                     "type": {
                       "type-name": "Uint",
-                      "maxval": 255
+                      "maxval": 65535
                     }
                   },
                   {
                     "name": "recipientsMen",
                     "type": {
                       "type-name": "Uint",
-                      "maxval": 255
+                      "maxval": 65535
                     }
                   },
                   {
@@ -460,6 +534,116 @@
                   }
                 ]
               }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "beginLevelReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "levelBatch",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "finishLevelReport",
+      "pure": false,
+      "proof": true,
+      "arguments": [
+      ],
+      "result-type": {
+        "type-name": "Struct",
+        "name": "LevelReport",
+        "elements": [
+          {
+            "name": "round",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 4294967295
+            }
+          },
+          {
+            "name": "levels",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Struct",
+                "name": "LevelStats",
+                "elements": [
+                  {
+                    "name": "women",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "men",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "disclosed",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  },
+                  {
+                    "name": "gapBps",
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  },
+                  {
+                    "name": "gapFavorsMen",
+                    "type": {
+                      "type-name": "Boolean"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "adjustedGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          },
+          {
+            "name": "adjustedFavorsMen",
+            "type": {
+              "type-name": "Boolean"
+            }
+          },
+          {
+            "name": "adjustedCovers",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
             }
           }
         ]
@@ -494,6 +678,10 @@
           {
             "type-name": "Uint",
             "maxval": 1
+          },
+          {
+            "type-name": "Uint",
+            "maxval": 3
           },
           {
             "type-name": "Uint",
@@ -578,6 +766,13 @@
               }
             },
             {
+              "name": "level",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 3
+              }
+            },
+            {
               "name": "nonce",
               "type": {
                 "type-name": "Bytes",
@@ -628,6 +823,13 @@
             },
             {
               "name": "category",
+              "type": {
+                "type-name": "Uint",
+                "maxval": 3
+              }
+            },
+            {
+              "name": "level",
               "type": {
                 "type-name": "Uint",
                 "maxval": 3
@@ -775,8 +977,606 @@
                 "maxval": 65535
               }
             }
+          },
+          {
+            "name": "cuts",
+            "type": {
+              "type-name": "Vector",
+              "length": 3,
+              "type": {
+                "type-name": "Uint",
+                "maxval": 8589934591
+              }
+            }
           }
         ]
+      }
+    },
+    {
+      "name": "paySeal",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "PaySeal",
+        "elements": [
+          {
+            "name": "totals",
+            "type": {
+              "type-name": "Struct",
+              "name": "PayTotals",
+              "elements": [
+                {
+                  "name": "n",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "nW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "nM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "sumW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 281474976710655
+                  }
+                },
+                {
+                  "name": "sumM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 281474976710655
+                  }
+                },
+                {
+                  "name": "belowW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "upToW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "belowM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "upToM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "catW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "catM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "catSumW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                },
+                {
+                  "name": "catSumM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "claim",
+            "type": {
+              "type-name": "Struct",
+              "name": "ReportClaim",
+              "elements": [
+                {
+                  "name": "meanGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "medianWomen",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 4294967295
+                  }
+                },
+                {
+                  "name": "medianMen",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 4294967295
+                  }
+                },
+                {
+                  "name": "medianGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "catMeanWomen",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 4294967295
+                    }
+                  }
+                },
+                {
+                  "name": "catMeanMen",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 4294967295
+                    }
+                  }
+                },
+                {
+                  "name": "catGapBps",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "salt",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "variableSeal",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "VarSeal",
+        "elements": [
+          {
+            "name": "totals",
+            "type": {
+              "type-name": "Struct",
+              "name": "VarTotals",
+              "elements": [
+                {
+                  "name": "n",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "nW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "nM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "rW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "rM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "sW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 281474976710655
+                  }
+                },
+                {
+                  "name": "sM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 281474976710655
+                  }
+                },
+                {
+                  "name": "belowW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "upToW",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "belowM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "upToM",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "catRW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "catRM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "catSW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                },
+                {
+                  "name": "catSM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                },
+                {
+                  "name": "bandW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "bandM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "below",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 3,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "claim",
+            "type": {
+              "type-name": "Struct",
+              "name": "VariableClaim",
+              "elements": [
+                {
+                  "name": "meanGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "medianWomen",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 4294967295
+                  }
+                },
+                {
+                  "name": "medianMen",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 4294967295
+                  }
+                },
+                {
+                  "name": "medianGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "catGapBps",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "cuts",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 3,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 8589934591
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "salt",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "levelClaim",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "LevelClaim",
+        "elements": [
+          {
+            "name": "gapBps",
+            "type": {
+              "type-name": "Vector",
+              "length": 4,
+              "type": {
+                "type-name": "Uint",
+                "maxval": 65535
+              }
+            }
+          },
+          {
+            "name": "adjustedGapBps",
+            "type": {
+              "type-name": "Uint",
+              "maxval": 65535
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "levelSeal",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Struct",
+        "name": "LevelSeal",
+        "elements": [
+          {
+            "name": "totals",
+            "type": {
+              "type-name": "Struct",
+              "name": "LevelTotals",
+              "elements": [
+                {
+                  "name": "n",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                },
+                {
+                  "name": "levW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "levM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "levSumW",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                },
+                {
+                  "name": "levSumM",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 281474976710655
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "claim",
+            "type": {
+              "type-name": "Struct",
+              "name": "LevelClaim",
+              "elements": [
+                {
+                  "name": "gapBps",
+                  "type": {
+                    "type-name": "Vector",
+                    "length": 4,
+                    "type": {
+                      "type-name": "Uint",
+                      "maxval": 65535
+                    }
+                  }
+                },
+                {
+                  "name": "adjustedGapBps",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 65535
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "name": "salt",
+            "type": {
+              "type-name": "Bytes",
+              "length": 32
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "freshSalt",
+      "arguments": [
+      ],
+      "result type": {
+        "type-name": "Bytes",
+        "length": 32
       }
     }
   ],

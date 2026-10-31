@@ -9,19 +9,22 @@
  * Pages (.github/workflows/keys.yml). Loaded only when a visitor connects.
  */
 import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
-import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
+import { createCircuitContext, sampleSigningKey } from "@midnight-ntwrk/compact-runtime";
 import { CompiledContract } from "@midnight-ntwrk/compact-js";
-import { CostModel, Transaction, type FinalizedTransaction } from "@midnight-ntwrk/ledger-v8";
-import { deployContract, findDeployedContract } from "@midnight-ntwrk/midnight-js/contracts";
-import { setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
+import { CostModel, LedgerParameters, Transaction, type FinalizedTransaction } from "@midnight-ntwrk/ledger-v8";
+import { createUnprovenDeployTx, findDeployedContract, submitInsertVerifierKeyTx, submitTx } from "@midnight-ntwrk/midnight-js/contracts";
+import { getNetworkId, setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
 import type { MidnightProvider, PrivateStateProvider, ProofProvider, WalletProvider } from "@midnight-ntwrk/midnight-js/types";
 import { dappConnectorProofProvider } from "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider";
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { Contract, ledger, pureCircuits } from "../../../contract/build/contract/index.js";
-import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord, type ReportClaim, type VariableClaim } from "../../../contract/deploy/claims";
-import { bytes32, initialPrivateState, witnesses, type EquiluxPrivateState } from "../../../contract/deploy/witnesses";
+import { assignBands, buildClaim, buildLevelClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "../../../contract/deploy/claims";
+import {
+  bytes32, confirmSteps, initialPrivateState, levelReportSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses,
+  type Circuit, type EquiluxPrivateState, type Step,
+} from "../../../contract/deploy/witnesses";
 import { ledgerView } from "./browser-contract";
 import type { LedgerView, Tamper, VariableTamper } from "./api";
 import type { WalletChoice } from "./wallet-detect";
@@ -42,10 +45,9 @@ export class WalletStop extends Error {
   readonly kind: typeof NO_DUST | typeof NO_ANSWER;
   constructor(kind: typeof NO_DUST | typeof NO_ANSWER, message: string) { super(message); this.kind = kind; }
 }
-const STORAGE = "equilux.wallet-chain.v1";
+const STORAGE = "equilux.wallet-chain.v2"; // v2: contract v4, with its maintenance key
 const PRIVATE_STATE_ID = "equiluxPrivateState";
 
-type Circuit = "declareRoster" | "confirmPayroll" | "enroll" | "checkReceipt" | "publishReport" | "publishVariablePay";
 type Log = (lines: string[]) => void;
 
 const toHex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -98,13 +100,14 @@ const circuitMessage = (e: unknown): string => {
   return idx >= 0 ? m.slice(idx + "failed assert:".length).trim() : m;
 };
 
-interface Saved { address: string; employerSecret: string; providerSecret: string; councilSecret: string }
+/** signingKey: the contract's maintenance key, needed to add the verifier keys the deploy did not carry. */
+interface Saved { address: string; employerSecret: string; providerSecret: string; councilSecret: string; signingKey: string }
 const loadSaved = (): Saved | null => { try { return JSON.parse(localStorage.getItem(STORAGE) ?? "null"); } catch { return null; } };
 const save = (s: Saved | null) => { try { s ? localStorage.setItem(STORAGE, JSON.stringify(s)) : localStorage.removeItem(STORAGE); } catch { /* ignore */ } };
 
-type Row = { salary: number; variable?: number; gender: number; category?: number; secret: string };
+type Row = { salary: number; variable?: number; gender: number; category?: number; level?: number; secret: string };
 const toRecord = (r: Row): PayRecord => ({
-  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), sk: bytes32(String(r.secret)),
+  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), level: BigInt(r.level ?? 0), sk: bytes32(String(r.secret)),
 });
 
 function applyTamper(claim: ReportClaim, tamper?: Tamper): ReportClaim {
@@ -235,12 +238,56 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
   let secrets: { e: Uint8Array; p: Uint8Array; c: Uint8Array } | null = null;
   const baseState = () => initialPrivateState(secrets!.e, secrets!.p, secrets!.c);
 
+  /**
+   * A deploy writes the whole contract state, verifier keys included (~2.5 KB each), and a preprod block takes
+   * 50,000 written bytes: with all 14 keys the node refuses the deploy ("would exhaust the block limits").
+   * So the deploy carries keys up to 20,000 bytes written (6 of 14) and the rest are added one per
+   * maintenance transaction, signed with the contract's maintenance key (saved first, so a reload can resume).
+   */
+  const circuits = Object.keys(localContract.impureCircuits) as Circuit[];
+  async function deployInParts(args: unknown[], ps: EquiluxPrivateState, keep: (address: string, signingKey: string) => void) {
+    const signingKey = sampleSigningKey();
+    const full: any = await createUnprovenDeployTx(providers as never, { compiledContract, args, signingKey, privateStateId: PRIVATE_STATE_ID, initialPrivateState: ps } as never);
+    const tx = full.private.unprovenTx, intent = tx.intents.get(1), deploy = intent.actions[0], st = deploy.initialState;
+    const build = (ids: string[]) => {
+      const s = new st.constructor();
+      s.data = st.data;
+      s.maintenanceAuthority = st.maintenanceAuthority;
+      for (const id of ids) s.setOperation(id, st.operation(id));
+      const dep = new deploy.constructor(s);
+      return { address: dep.address as string, tx: tx.constructor.fromParts(getNetworkId(), tx.guaranteedOffer, undefined, intent.constructor.new(intent.ttl).addDeploy(dep)) };
+    };
+    const params = LedgerParameters.initialParameters();
+    const ids: string[] = [];
+    for (const id of circuits) if (Number(build([...ids, id]).tx.cost(params).bytesWritten) <= 20_000) ids.push(id); else break;
+    log([`the contract is deployed in ${1 + circuits.length - ids.length} transactions: one block cannot hold all ${circuits.length} circuits' keys`]);
+    const part = build(ids);
+    const res: any = await submitTx(providers as never, { unprovenTx: part.tx } as never);
+    if (res.status !== "SucceedEntirely") throw new Error(`the deploy failed on chain: ${res.status}`);
+    keep(part.address, signingKey as string);
+    log([`deployed at ${part.address} (block ${res.blockHeight}); now adding the remaining circuits`]);
+    return { address: part.address, res };
+  }
+  /** Adds every verifier key the contract does not have yet: one wallet approval each. */
+  async function completeKeys(address: string, signingKey: string) {
+    await providers.privateStateProvider.setSigningKey(address as never, signingKey as never);
+    const cs = await providers.publicDataProvider.queryContractState(address);
+    const missing = circuits.filter((id) => !cs?.operation(id));
+    for (const [i, id] of missing.entries()) {
+      await requireDust();
+      log([`circuit ${i + 1}/${missing.length} · ${id}: approve in ${choice.name}`]);
+      const r: any = await submitInsertVerifierKeyTx(providers as never, compiledContract as never, address as never, id as never, await zk.getVerifierKey(id));
+      log([`circuit ${i + 1}/${missing.length} · ${id} added (block ${r.blockHeight})`]);
+    }
+  }
+
   if (saved) {
     secrets = { e: bytes32(saved.employerSecret), p: bytes32(saved.providerSecret), c: bytes32(saved.councilSecret) };
     try {
       log([`rejoining your contract ${saved.address.slice(0, 12)}…`]);
+      await completeKeys(saved.address, saved.signingKey);
       deployed = await findDeployedContract(providers as never, {
-        contractAddress: saved.address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: baseState(),
+        contractAddress: saved.address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: baseState(), signingKey: saved.signingKey,
       } as never);
     } catch (e) {
       log([`could not rejoin it (${circuitMessage(e)}); deploy a new one from the Employer tab`]);
@@ -266,6 +313,28 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
     return deployed.callTx[circuit](...args);
   }
 
+  /**
+   * A multi-transaction phase (roster, council, a report). Every step runs in this page first, chained on the
+   * live state: a cheat that would only fail at the final check is refused before a single fee is paid.
+   * Then the steps are submitted in order, one wallet approval each.
+   */
+  async function phase(steps: Step[], log: Log) {
+    const cs = await providers.publicDataProvider.queryContractState(saved!.address);
+    if (!cs) throw new Error("contract state not found via the indexer");
+    let ctx = createCircuitContext(saved!.address, coinPk, cs as never, steps[0].ps);
+    for (const st of steps) ctx = (localContract.impureCircuits as any)[st.circuit]({ ...ctx, currentPrivateState: st.ps }, ...st.args).context;
+    log([`all ${steps.length} steps ran in this page: every check passed`]);
+    let res: any = null;
+    for (const [i, st] of steps.entries()) {
+      await requireDust();
+      await providers.privateStateProvider.set(PRIVATE_STATE_ID, st.ps);
+      log([`${i + 1}/${steps.length} · ${st.label}: approve in ${choice.name}`]);
+      res = await deployed.callTx[st.circuit](...st.args);
+      log([`${i + 1}/${steps.length} · ${st.label} (block ${res.public.blockHeight})`]);
+    }
+    return res;
+  }
+
   const n = (x: unknown) => Number(x);
   const readLedger = async (): Promise<LedgerView | null> => {
     if (!saved) return null;
@@ -286,35 +355,43 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
       switch (path) {
         case "/api/deploy": {
           if (deployed && saved) return { contractAddress: saved.address, alreadyDeployed: true };
+          if (saved) { // deployed, but stopped before every circuit was added: finish that contract
+            await completeKeys(saved.address, saved.signingKey);
+            deployed = await findDeployedContract(providers as never, {
+              contractAddress: saved.address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: baseState(), signingKey: saved.signingKey,
+            } as never);
+            log([`all ${circuits.length} circuits on chain: the contract is ready`]);
+            return { contractAddress: saved.address, alreadyDeployed: true };
+          }
           const s = { employerSecret: String(body.employerSecret), providerSecret: String(body.providerSecret), councilSecret: String(body.councilSecret) };
           const e = bytes32(s.employerSecret), p = bytes32(s.providerSecret), c = bytes32(s.councilSecret);
           await requireDust();
           log([`deploying: employer ${toHex(pureCircuits.publicKey(e)).slice(0, 10)}…, payroll provider ${toHex(pureCircuits.publicKey(p)).slice(0, 10)}…, works council ${toHex(pureCircuits.publicKey(c)).slice(0, 10)}…`]);
-          const d: any = await deployContract(providers as never, {
-            compiledContract, args: [pureCircuits.publicKey(e), pureCircuits.publicKey(p), pureCircuits.publicKey(c)],
-            privateStateId: PRIVATE_STATE_ID, initialPrivateState: initialPrivateState(e, p, c),
+          secrets = { e, p, c };
+          const { address, res } = await deployInParts(
+            [pureCircuits.publicKey(e), pureCircuits.publicKey(p), pureCircuits.publicKey(c)], initialPrivateState(e, p, c),
+            (address, signingKey) => { saved = { address, ...s, signingKey }; save(saved); },
+          );
+          await completeKeys(address, saved!.signingKey);
+          deployed = await findDeployedContract(providers as never, {
+            contractAddress: address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: initialPrivateState(e, p, c), signingKey: saved!.signingKey,
           } as never);
-          deployed = d; secrets = { e, p, c };
-          saved = { address: d.deployTxData.public.contractAddress, ...s };
-          save(saved);
-          log([`deployed at ${saved.address} (block ${d.deployTxData.public.blockHeight})`]);
-          return { contractAddress: saved.address, txId: d.deployTxData.public.txId, blockHeight: n(d.deployTxData.public.blockHeight) };
+          log([`all ${circuits.length} circuits on chain: the contract is ready`]);
+          return { contractAddress: address, txId: res.txId, blockHeight: n(res.blockHeight) };
         }
         case "/api/roster": {
           requireDeployed();
           const hashes = (body.rows as string[]).map(String);
-          if (hashes.length === 0 || hashes.length > 16 || !hashes.every(isHex32)) throw new Error("rows must be 1–16 payroll-row hashes");
-          const rows = padRows(hashes.map(fromHex));
-          const headcount = BigInt(hashes.length);
-          const res: any = await call("declareRoster", baseState(), [rows, headcount], log);
-          log([`${headcount} payroll rows committed by the payroll provider (block ${res.public.blockHeight})`]);
-          return { headcount: n(headcount), txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
+          if (hashes.length === 0 || hashes.length > 512 || !hashes.every(isHex32)) throw new Error("rows must be 1 to 512 payroll-row hashes");
+          const res: any = await phase(rosterSteps(baseState(), hashes.map(fromHex)), log);
+          log([`${hashes.length} payroll rows committed by the payroll provider`]);
+          return { headcount: hashes.length, txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
         }
         case "/api/confirm": {
           requireDeployed();
-          const raw = body.openings as { salary: number; variable?: number; gender: number; category: number; nonce: string }[];
-          const openings = padOpenings(raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), nonce: fromHex(String(o.nonce)) })));
-          const res: any = await call("confirmPayroll", { ...baseState(), openings }, [], log);
+          const raw = body.openings as { salary: number; variable?: number; gender: number; category: number; level?: number; nonce: string }[];
+          const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), level: BigInt(o.level ?? 0), nonce: fromHex(String(o.nonce)) }));
+          const res: any = await phase(confirmSteps(baseState(), openings), log);
           log([`payroll confirmed by the works council (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
         }
@@ -322,7 +399,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           requireDeployed();
           if (!isHex32(String(body.rowNonce))) throw new Error("rowNonce (from the payslip) must be 32-byte hex");
           const r = toRecord(body);
-          const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(body.rowNonce) };
+          const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(body.rowNonce) };
           const res: any = await call("enroll", ps, [], log);
           const cm = toHex(res.private.result);
           log([`enrolled · commitment ${cm.slice(0, 12)}… (block ${res.public.blockHeight})`]);
@@ -332,7 +409,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           requireDeployed();
           const recs = (body.payroll as Row[]).map(toRecord);
           const claim = applyTamper(buildClaim(recs), body.tamper);
-          const res: any = await call("publishReport", { ...baseState(), payroll: padRecords(recs), claim }, [], log);
+          const res: any = await phase(payReportSteps(baseState(), recs, claim), log);
           log([`report published (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
         }
@@ -345,8 +422,15 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
             if (top >= 0 && bottom >= 0) [bands[top], bands[bottom]] = [bands[bottom], bands[top]];
           }
           const claim = applyVariableTamper(buildVariableClaim(recs), body.tamper);
-          const res: any = await call("publishVariablePay", { ...baseState(), payroll: padRecords(recs, bands), variableClaim: claim }, [], log);
+          const res: any = await phase(variableReportSteps(baseState(), recs, claim, bands), log);
           log([`variable-pay report published (block ${res.public.blockHeight})`]);
+          return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
+        }
+        case "/api/publish-levels": {
+          requireDeployed();
+          const recs = (body.payroll as Row[]).map(toRecord);
+          const res: any = await phase(levelReportSteps(baseState(), recs, buildLevelClaim(recs)), log);
+          log([`level report published (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
         }
         case "/api/receipt": {

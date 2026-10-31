@@ -14,9 +14,9 @@ describe("payroll CSV import (HRIS exports)", () => {
     expect(errors).toEqual([]);
     expect(categories).toEqual(["Engineering", "Sales"]);
     expect(rows).toEqual([
-      { name: "Ada Serrano", salary: 62000, variable: 0, gender: 0, category: 0, categoryLabel: "Engineering" },
-      { name: "Ben Keller", salary: 71000, variable: 0, gender: 1, category: 0, categoryLabel: "Engineering" },
-      { name: "Cai Okafor", salary: 55000, variable: 0, gender: 0, category: 1, categoryLabel: "Sales" },
+      { name: "Ada Serrano", salary: 62000, variable: 0, gender: 0, category: 0, categoryLabel: "Engineering", level: 0 },
+      { name: "Ben Keller", salary: 71000, variable: 0, gender: 1, category: 0, categoryLabel: "Engineering", level: 0 },
+      { name: "Cai Okafor", salary: 55000, variable: 0, gender: 0, category: 1, categoryLabel: "Sales", level: 0 },
     ]);
   });
 
@@ -84,5 +84,19 @@ describe("claim arithmetic mirrors the circuit", () => {
     const recs = [60, 10, 50, 20, 40, 30].map((x) => ({ salary: BigInt(x), variable: 0n, gender: 0n, category: 0n, sk }));
     // sorted 10,20,30,40,50,60 → cuts at 1, 3, 4 → bands 0 | 1 1 | 2 | 3 3
     expect(assignBands(recs)).toEqual([3n, 0n, 3n, 1n, 2n, 1n]);
+  });
+});
+
+describe("job levels (v4 level report)", () => {
+  it("orders numeric grades by value and groups more than four into four", () => {
+    const csv = "Name,Gender,Salary,Grade\nA,female,50000,7\nB,male,52000,3\nC,female,60000,12\nD,male,61000,5\nE,female,40000,1\n";
+    const { rows, levels } = parsePayrollCsv(csv);
+    expect(rows.map((r) => r.level)).toEqual([2, 0, 3, 1, 0]);
+    expect(levels).toEqual(["1 / 3", "5", "7", "12"]);
+  });
+  it("puts everyone on level 0 when the export has no level column", () => {
+    const { rows, levels } = parsePayrollCsv("Name,Gender,Salary\nA,female,50000\nB,male,52000\n");
+    expect(rows.map((r) => r.level)).toEqual([0, 0]);
+    expect(levels).toEqual([]);
   });
 });

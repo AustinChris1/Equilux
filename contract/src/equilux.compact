@@ -3,44 +3,56 @@ pragma language_version >= 0.16;
 import CompactStandardLibrary;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Equilux v3 — employee-verifiable pay-equity reporting.
+// Equilux v4: employee-verifiable pay-equity reporting, batched to company size.
 //
 // Four parties, four keys:
-//   PROVIDER  — the payroll provider / HRIS (Personio, DATEV, Workday …).
-//               Before anyone enrolls, commits one hiding hash per payroll row —
-//               hash(salary, variable pay, gender, category, rowNonce) — and
-//               hands each employee their row's nonce with their payslip.
-//   COUNCIL   — the works council. Proves it holds the contents of every
-//               committed row, and so has checked the payroll, before
-//               enrollment opens.
-//   EMPLOYEE  — seals their own record as a commitment + nullifier, proving it
-//               opens to an unclaimed payroll row.
-//   EMPLOYER  — publishes the mandated report, proven over the full set.
+//   PROVIDER  the payroll provider / HRIS (Personio, DATEV, Workday ...). Before
+//             anyone enrolls, commits one hiding hash per payroll row,
+//             hash(salary, variable pay, gender, category, rowNonce), in batches
+//             of 16, and hands each employee their row's nonce with their payslip.
+//   COUNCIL   the works council. Opens every committed row, 16 per transaction,
+//             before enrollment opens.
+//   EMPLOYEE  seals their own record as a commitment + nullifier, proving it
+//             opens to an unclaimed payroll row.
+//   EMPLOYER  publishes the mandated reports, proven over the whole company.
 //
-// Binding: every counted record is a provider payroll row, confirmed by the
-// works council and by the employee it belongs to. The employer cannot invent
-// people or pay, an employee cannot inflate their own, and no salary reaches
-// the ledger.
+// Binding: every counted record is a provider payroll row, opened by the works
+// council and enrolled by the employee it belongs to. The employer cannot invent
+// people or pay, leave anyone out, or count anyone twice; no salary reaches the
+// ledger.
 //
-// Dual-ledger layout:
-//   PUBLIC  — role keys (hashes), headcount, payroll-row hashes, commitment
-//             Merkle tree, nullifiers, and the two proven reports.
-//   PRIVATE — every salary, variable pay, gender marker, category and secret.
+// Reports at company size (v4). A report is proven in three steps:
+//   begin   the employer fixes its claimed figures and opens a SEALED running
+//           total: the ledger holds only hash(totals, claim, salt);
+//   batch   one transaction per 16 records: opens the current seal, verifies the
+//           records (bound, enrolled, not yet counted in this report), adds them,
+//           and writes a new seal with a fresh salt;
+//   finish  opens the seal and verifies every claimed figure over the whole
+//           company, then publishes only the verified figures.
+// Partial totals never appear in public state: they would reveal far more than
+// the final report (for example the pay of the first sixteen people).
 //
 // All seven indicators of Directive (EU) 2023/970, Art. 9(1):
-//   publishReport      (a) mean gap · (c) median gap · (g) per-category gap on
-//                      basic pay, with Art. 7 category pay at k = 3
-//   publishVariablePay (b) mean gap in variable pay · (d) median gap in variable
-//                      pay · (e) share of each gender receiving variable pay ·
-//                      (f) share of each gender in each pay quartile ·
-//                      (g) per-category gap on variable pay, at k = 3
+//   pay report       (a) mean gap · (c) median gap · (g) per-category gap on basic
+//                    pay, with Art. 7 category pay at k = 3
+//   variable report  (b) mean gap in variable pay · (d) median gap in variable
+//                    pay · (e) share of each gender receiving variable pay ·
+//                    (f) share of each gender in each pay quartile ·
+//                    (g) per-category gap on variable pay, at k = 3
 //
-// Sized instance: 16-record witness, 32 commitment slots, 4 categories.
+// And one more, beyond Article 9: the level report. The gap inside each job
+// level (k = 3), a headcount-weighted level-adjusted gap, and the women/men mix
+// of every level. The mix is published on purpose: a small gap inside levels is
+// evidence, not proof that the levels themselves are fair (a company could put
+// its men on the senior level). Judging that remains a human task.
+//
+// Sized instance: up to 512 employees, batches of 16, 1024 commitment slots,
+// 4 categories.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export struct CategoryStats {
-  headcountWomen: Uint<8>;
-  headcountMen: Uint<8>;
+  headcountWomen: Uint<16>;
+  headcountMen: Uint<16>;
   // true only when BOTH cohorts have ≥ 3 people; otherwise every pay figure
   // below is 0 so no individual salary can be inferred from a small group.
   disclosed: Boolean;
@@ -49,15 +61,15 @@ export struct CategoryStats {
   meanGapBps: Uint<16>;
   gapFavorsMen: Boolean;
   // Category mean gap ≥ 5%. Article 10 triggers a joint pay assessment when
-  // such a gap is ALSO unjustified by objective, gender-neutral criteria —
+  // such a gap is ALSO unjustified by objective, gender-neutral criteria;
   // justification is a human judgement the circuit does not make.
   gapAtOrAbove5pct: Boolean;
 }
 
 export struct PayReport {
   round: Uint<32>;
-  headcountWomen: Uint<8>;
-  headcountMen: Uint<8>;
+  headcountWomen: Uint<16>;
+  headcountMen: Uint<16>;
   meanGapBps: Uint<16>;
   gapFavorsMen: Boolean;
   meanGapAtOrAbove5pct: Boolean;
@@ -70,24 +82,24 @@ export struct PayReport {
 // Gaps are measured among the workers who receive variable pay. A gap is
 // `defined` only when both genders have recipients.
 export struct VariableCategoryStats {
-  recipientsWomen: Uint<8>;
-  recipientsMen: Uint<8>;
+  recipientsWomen: Uint<16>;
+  recipientsMen: Uint<16>;
   disclosed: Boolean;          // both recipient groups ≥ 3, else suppressed
   meanGapBps: Uint<16>;
   gapFavorsMen: Boolean;
 }
 
 export struct QuartileBand {
-  women: Uint<8>;
-  men: Uint<8>;
+  women: Uint<16>;
+  men: Uint<16>;
 }
 
 export struct VariablePayReport {
   round: Uint<32>;
-  headcountWomen: Uint<8>;
-  headcountMen: Uint<8>;
-  recipientsWomen: Uint<8>;    // (e): share = recipients / headcount
-  recipientsMen: Uint<8>;
+  headcountWomen: Uint<16>;
+  headcountMen: Uint<16>;
+  recipientsWomen: Uint<16>;   // (e): share = recipients / headcount
+  recipientsMen: Uint<16>;
   gapDefined: Boolean;
   meanGapBps: Uint<16>;        // (b)
   meanFavorsMen: Boolean;
@@ -97,15 +109,53 @@ export struct VariablePayReport {
   categories: Vector<4, VariableCategoryStats>;
 }
 
-// One private payroll record as supplied by the reporting witness.
+// One job level in the level report. Pay figures only when both groups have ≥ 3 people.
+export struct LevelStats {
+  women: Uint<16>;
+  men: Uint<16>;
+  disclosed: Boolean;
+  gapBps: Uint<16>;
+  gapFavorsMen: Boolean;
+}
+
+export struct LevelReport {
+  round: Uint<32>;
+  levels: Vector<4, LevelStats>;     // lowest level first; the women/men mix is always shown
+  adjustedGapBps: Uint<16>;          // within-level gaps weighted by level headcount, disclosed levels only
+  adjustedFavorsMen: Boolean;
+  adjustedCovers: Uint<16>;          // people in the levels that entered the adjusted gap
+}
+
+// The level-report claim: each level's gap and the weighted average of them.
+export struct LevelClaim {
+  gapBps: Vector<4, Uint<16>>;
+  adjustedGapBps: Uint<16>;
+}
+
+export struct LevelTotals {
+  n: Uint<16>;
+  levW: Vector<4, Uint<16>>;
+  levM: Vector<4, Uint<16>>;
+  levSumW: Vector<4, Uint<48>>;
+  levSumM: Vector<4, Uint<48>>;
+}
+
+export struct LevelSeal {
+  totals: LevelTotals;
+  claim: LevelClaim;
+  salt: Bytes<32>;
+}
+
+// One private payroll record as supplied by a reporting batch.
 export struct EnrolledRecord {
   salary: Uint<32>;   // annualized basic pay, whole currency units
   variable: Uint<32>; // annual variable / complementary pay (bonus); 0 if none
   gender: Uint<1>;    // 0 = woman, 1 = man (reporting categories per the Directive's annex)
   category: Uint<2>;  // worker category 0..3 (work of equal value)
+  level: Uint<2>;     // job level 0..3 (e.g. junior to senior), for the level report
   sk: Bytes<32>;      // employee enrollment secret
-  active: Boolean;    // padding flag — inactive slots are ignored
-  band: Uint<2>;      // quartile band claimed for publishVariablePay (0 = lowest); unused by publishReport
+  active: Boolean;    // padding flag: inactive slots are ignored
+  band: Uint<2>;      // quartile band for the variable-pay report (0 = lowest); unused by the pay report
 }
 
 // What the works council opens: one payroll row's contents and its nonce.
@@ -114,20 +164,13 @@ export struct RowOpening {
   variable: Uint<32>;
   gender: Uint<1>;
   category: Uint<2>;
+  level: Uint<2>;
   nonce: Bytes<32>;
   active: Boolean;
 }
 
-// The variable-pay figures the employer claims. Quartile bands ride on the records.
-export struct VariableClaim {
-  meanGapBps: Uint<16>;
-  medianWomen: Uint<32>;
-  medianMen: Uint<32>;
-  medianGapBps: Uint<16>;
-  catGapBps: Vector<4, Uint<16>>;
-}
-
-// The figures the employer claims. Every one is verified, none is trusted.
+// The figures the employer claims for the pay report. Every one is verified,
+// none is trusted. Fixed at begin, so batches can count against the medians.
 export struct ReportClaim {
   meanGapBps: Uint<16>;
   medianWomen: Uint<32>;
@@ -138,48 +181,140 @@ export struct ReportClaim {
   catGapBps: Vector<4, Uint<16>>;
 }
 
+// The variable-pay claim. `cuts` are the quartile cut points on total pay
+// (basic + variable): a record in band b has cuts[b-1] ≤ total ≤ cuts[b].
+export struct VariableClaim {
+  meanGapBps: Uint<16>;
+  medianWomen: Uint<32>;
+  medianMen: Uint<32>;
+  medianGapBps: Uint<16>;
+  catGapBps: Vector<4, Uint<16>>;
+  cuts: Vector<3, Uint<33>>;
+}
+
+// Running totals of the pay report in progress. Never public: sealed.
+export struct PayTotals {
+  n: Uint<16>;
+  nW: Uint<16>;
+  nM: Uint<16>;
+  sumW: Uint<48>;
+  sumM: Uint<48>;
+  belowW: Uint<16>;   // women strictly below the claimed women's median
+  upToW: Uint<16>;    // women at or below it
+  belowM: Uint<16>;
+  upToM: Uint<16>;
+  catW: Vector<4, Uint<16>>;
+  catM: Vector<4, Uint<16>>;
+  catSumW: Vector<4, Uint<48>>;
+  catSumM: Vector<4, Uint<48>>;
+}
+
+export struct PaySeal {
+  totals: PayTotals;
+  claim: ReportClaim;
+  salt: Bytes<32>;
+}
+
+// Running totals of the variable-pay report in progress. Never public: sealed.
+export struct VarTotals {
+  n: Uint<16>;
+  nW: Uint<16>;
+  nM: Uint<16>;
+  rW: Uint<16>;       // recipients of variable pay
+  rM: Uint<16>;
+  sW: Uint<48>;       // variable pay summed over recipients
+  sM: Uint<48>;
+  belowW: Uint<16>;   // recipients strictly below the claimed variable median
+  upToW: Uint<16>;
+  belowM: Uint<16>;
+  upToM: Uint<16>;
+  catRW: Vector<4, Uint<16>>;
+  catRM: Vector<4, Uint<16>>;
+  catSW: Vector<4, Uint<48>>;
+  catSM: Vector<4, Uint<48>>;
+  bandW: Vector<4, Uint<16>>;
+  bandM: Vector<4, Uint<16>>;
+  below: Vector<3, Uint<16>>;   // records with band < b, for b = 1..3
+}
+
+export struct VarSeal {
+  totals: VarTotals;
+  claim: VariableClaim;
+  salt: Bytes<32>;
+}
+
 // ── public state ─────────────────────────────────────────────────────────────
 
 export sealed ledger employerPk: Bytes<32>;
 export sealed ledger providerPk: Bytes<32>;
 export sealed ledger councilPk: Bytes<32>;
 export ledger round: Counter;
-export ledger rosterDeclared: Boolean;
-export ledger payrollConfirmed: Boolean;     // the works council has checked every row
 export ledger declaredHeadcount: Uint<16>;
+export ledger committedRows: Uint<16>;       // payroll rows committed so far
+export ledger rosterDeclared: Boolean;       // every declared row is committed
+export ledger openedRows: Uint<16>;          // rows the works council has opened so far
+export ledger payrollConfirmed: Boolean;     // the works council has opened every row
 export ledger enrolled: Counter;
-export ledger commitments: MerkleTree<5, Bytes<32>>;
+export ledger commitments: MerkleTree<10, Bytes<32>>;
 export ledger nullifiers: Set<Bytes<32>>;
 export ledger payrollRows: Set<Bytes<32>>;   // provider's hiding hash per payroll row
+export ledger councilOpened: Set<Bytes<32>>; // rows the works council has opened
 export ledger claimedRows: Set<Bytes<32>>;   // rows an employee has enrolled against
 export ledger bound: Set<Bytes<32>>;         // record commitments bound to a payroll row
+export ledger reportSeq: Uint<32>;           // one per report begun, of either kind
+export ledger counted: Set<Bytes<32>>;       // tag(seq, kind, commitment) of records counted
+export ledger payOpen: Boolean;
+export ledger paySealed: Bytes<32>;          // hash(totals, claim, salt) of the pay report in progress
+export ledger payProcessed: Uint<16>;        // records counted so far (already public: commitments are)
+export ledger varOpen: Boolean;
+export ledger varSealed: Bytes<32>;
+export ledger varProcessed: Uint<16>;
 export ledger latestReport: Maybe<PayReport>;
 export ledger latestVariableReport: Maybe<VariablePayReport>;
+export ledger levelOpen: Boolean;
+export ledger levelSealed: Bytes<32>;
+export ledger levelProcessed: Uint<16>;
+export ledger latestLevelReport: Maybe<LevelReport>;
 
 constructor(employerPkInit: Bytes<32>, providerPkInit: Bytes<32>, councilPkInit: Bytes<32>) {
   employerPk = disclose(employerPkInit);
   providerPk = disclose(providerPkInit);
   councilPk = disclose(councilPkInit);
   round.increment(1);
-  rosterDeclared = false;
-  payrollConfirmed = false;
   declaredHeadcount = 0;
+  committedRows = 0;
+  rosterDeclared = false;
+  openedRows = 0;
+  payrollConfirmed = false;
+  reportSeq = 0;
+  payOpen = false;
+  varOpen = false;
+  payProcessed = 0;
+  varProcessed = 0;
   latestReport = none<PayReport>();
   latestVariableReport = none<VariablePayReport>();
+  levelOpen = false;
+  levelProcessed = 0;
+  latestLevelReport = none<LevelReport>();
 }
 
 // ── witnesses (private state, provided by the local TypeScript driver) ───────
 
 witness employeeSecret(): Bytes<32>;
-witness employeeRecord(): [Uint<32>, Uint<32>, Uint<1>, Uint<2>];   // salary, variable, gender, category
+witness employeeRecord(): [Uint<32>, Uint<32>, Uint<1>, Uint<2>, Uint<2>];   // salary, variable, gender, category, level
 witness payrollRowNonce(): Bytes<32>;                      // from the employee's payslip
 witness employerSecret(): Bytes<32>;
 witness providerSecret(): Bytes<32>;
 witness councilSecret(): Bytes<32>;
 witness payrollOpenings(): Vector<16, RowOpening>;          // held by the works council
-witness payrollRecords(): Vector<16, EnrolledRecord>;
+witness payrollRecords(): Vector<16, EnrolledRecord>;       // one reporting batch
 witness reportClaim(): ReportClaim;
 witness variableClaim(): VariableClaim;
+witness paySeal(): PaySeal;                                 // the employer's current sealed totals
+witness variableSeal(): VarSeal;
+witness levelClaim(): LevelClaim;
+witness levelSeal(): LevelSeal;
+witness freshSalt(): Bytes<32>;
 
 // ── hashing helpers ──────────────────────────────────────────────────────────
 
@@ -187,21 +322,21 @@ export circuit publicKey(sk: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<2, Bytes<32>>>([pad(32, "equilux:pk:"), sk]);
 }
 
-circuit recordCommitment(salary: Uint<32>, variable: Uint<32>, gender: Uint<1>, category: Uint<2>, sk: Bytes<32>, r: Field): Bytes<32> {
+circuit recordCommitment(salary: Uint<32>, variable: Uint<32>, gender: Uint<1>, category: Uint<2>, level: Uint<2>, sk: Bytes<32>, r: Field): Bytes<32> {
   return persistentHash<Vector<5, Bytes<32>>>(
-    [pad(32, "equilux:rec:v3:"),
+    [pad(32, "equilux:rec:v4:"),
      r as Bytes<32>,
-     ((salary as Field) * 8 + (category as Field) * 2 + (gender as Field)) as Bytes<32>,
+     ((salary as Field) * 32 + (level as Field) * 8 + (category as Field) * 2 + (gender as Field)) as Bytes<32>,
      (variable as Field) as Bytes<32>,
      sk]);
 }
 
 // The provider's hiding hash of one payroll row. The nonce blinds it: salaries
 // span a small range, so an unblinded hash could be brute-forced.
-export circuit payrollRow(salary: Uint<32>, variable: Uint<32>, gender: Uint<1>, category: Uint<2>, nonce: Bytes<32>): Bytes<32> {
+export circuit payrollRow(salary: Uint<32>, variable: Uint<32>, gender: Uint<1>, category: Uint<2>, level: Uint<2>, nonce: Bytes<32>): Bytes<32> {
   return persistentHash<Vector<4, Bytes<32>>>(
-    [pad(32, "equilux:row:v3:"),
-     ((salary as Field) * 8 + (category as Field) * 2 + (gender as Field)) as Bytes<32>,
+    [pad(32, "equilux:row:v4:"),
+     ((salary as Field) * 32 + (level as Field) * 8 + (category as Field) * 2 + (gender as Field)) as Bytes<32>,
      (variable as Field) as Bytes<32>,
      nonce]);
 }
@@ -210,34 +345,60 @@ circuit enrollmentNullifier(sk: Bytes<32>, r: Field): Bytes<32> {
   return persistentHash<Vector<3, Bytes<32>>>([pad(32, "equilux:nul:"), r as Bytes<32>, sk]);
 }
 
+// Marks a record as counted in one report (kind 0 = pay, 1 = variable pay, 2 = levels).
+circuit countTag(kind: Uint<2>, cm: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<4, Bytes<32>>>(
+    [pad(32, "equilux:cnt:v4:"), (reportSeq as Field) as Bytes<32>, (kind as Field) as Bytes<32>, cm]);
+}
+
+circuit sealPay(s: PaySeal): Bytes<32> {
+  return persistentHash<PaySeal>(s);
+}
+circuit sealVar(s: VarSeal): Bytes<32> {
+  return persistentHash<VarSeal>(s);
+}
+circuit sealLevel(s: LevelSeal): Bytes<32> {
+  return persistentHash<LevelSeal>(s);
+}
+
 // ── roster and enrollment ────────────────────────────────────────────────────
 
-// The payroll provider commits its payroll, one hiding hash per row, in one
-// transaction — before anyone enrolls. The report must later cover exactly
-// `headcount` records, each bound to one of these rows, so nobody can be left
-// out, invented, or have their pay changed. Slots at or past `headcount` are
-// padding and ignored.
-export circuit declareRoster(rows: Vector<16, Bytes<32>>, headcount: Uint<16>): [] {
+// The payroll provider declares how many payroll rows it will commit. The
+// reports must later cover exactly this many records.
+export circuit declareRoster(headcount: Uint<16>): [] {
   assert(publicKey(providerSecret()) == providerPk, "not the payroll provider");
-  assert(!rosterDeclared, "roster already declared this round");
+  assert(declaredHeadcount == 0, "roster already declared this round");
   const n = disclose(headcount);
   assert(n > 0, "roster must not be empty");
-  assert(n <= 16, "roster exceeds this instance's 16-record size");
+  assert(n <= 512, "roster exceeds this instance's 512-person size");
+  declaredHeadcount = n;
+}
+
+// The provider commits up to 16 payroll rows per transaction, one hiding hash
+// each, until every declared row is committed. Slots at or past `count` are
+// padding and ignored.
+export circuit addPayrollRows(rows: Vector<16, Bytes<32>>, count: Uint<8>): [] {
+  assert(publicKey(providerSecret()) == providerPk, "not the payroll provider");
+  assert(declaredHeadcount > 0, "roster not yet declared by the payroll provider");
+  assert(!rosterDeclared, "every payroll row is already committed");
+  const k = disclose(count);
+  assert(k > 0 && k <= 16, "a batch holds 1 to 16 payroll rows");
+  const after = (committedRows + k) as Uint<16>;
+  assert(after <= declaredHeadcount, "more payroll rows than the declared headcount");
   for (const i of 0..16) {
-    if (i < n) {
+    if (i < k) {
       assert(!payrollRows.member(disclose(rows[i])), "duplicate payroll row");
       payrollRows.insert(disclose(rows[i]));
     }
   }
-  rosterDeclared = true;
-  declaredHeadcount = n;
+  committedRows = after;
+  rosterDeclared = after == declaredHeadcount;
 }
 
-// The works council confirms the committed payroll. It must open EVERY committed
-// row — recompute each hash from salary, variable pay, gender, category and
-// nonce — so the provider cannot commit a row the council has not seen, and the
-// council checks the headcount against the workforce it represents. Enrollment
-// opens only after this.
+// The works council opens up to 16 committed rows per transaction: it recomputes
+// each hash from salary, variable pay, gender, category and nonce, so the
+// provider cannot commit a row the council has not seen. Each row is opened
+// once; enrollment opens when every committed row has been opened.
 export circuit confirmPayroll(): [] {
   assert(publicKey(councilSecret()) == councilPk, "not the works council");
   assert(rosterDeclared, "roster not yet declared by the payroll provider");
@@ -246,21 +407,17 @@ export circuit confirmPayroll(): [] {
   const rows = payrollOpenings();
   for (const i of 0..16) {
     if (disclose(rows[i].active)) {
-      const h = payrollRow(rows[i].salary, rows[i].variable, rows[i].gender, rows[i].category, rows[i].nonce);
+      const h = payrollRow(rows[i].salary, rows[i].variable, rows[i].gender, rows[i].category, rows[i].level, rows[i].nonce);
       assert(payrollRows.member(disclose(h)), "an opened row is not in the committed payroll");
-    }
-  }
-  // distinct nonces make distinct rows, so the openings cover distinct members
-  for (const i of 0..16) {
-    for (const j of 0..16) {
-      if (i < j && rows[i].active && rows[j].active) {
-        assert(rows[i].nonce != rows[j].nonce, "the same payroll row was opened twice");
-      }
+      assert(!councilOpened.member(disclose(h)), "the same payroll row was opened twice");
+      councilOpened.insert(disclose(h));
     }
   }
   const opened = fold((acc, o) => (acc + (o.active ? 1 : 0)) as Uint<16>, 0 as Uint<16>, rows);
-  assert(opened == declaredHeadcount, "the council must open every committed payroll row");
-  payrollConfirmed = true;
+  assert(opened > 0, "the council opened no rows");
+  const after = (openedRows + opened) as Uint<16>;
+  openedRows = disclose(after);
+  payrollConfirmed = disclose(after == declaredHeadcount);
 }
 
 // An employee seals their pay record into the reporting set.
@@ -273,7 +430,7 @@ export circuit enroll(): Bytes<32> {
   // so at most `declaredHeadcount` enrollments can ever succeed.
 
   const sk = employeeSecret();
-  const [salary, variable, gender, category] = employeeRecord();
+  const [salary, variable, gender, category, level] = employeeRecord();
   assert(salary > 0, "salary must be positive");
   const r = round as Field;
 
@@ -281,11 +438,11 @@ export circuit enroll(): Bytes<32> {
   assert(!nullifiers.member(disclose(nul)), "already enrolled this round");
 
   // binding: the sealed record must open to an unclaimed provider payroll row
-  const row = payrollRow(salary, variable, gender, category, payrollRowNonce());
+  const row = payrollRow(salary, variable, gender, category, level, payrollRowNonce());
   assert(payrollRows.member(disclose(row)), "record does not match any payroll row from the provider");
   assert(!claimedRows.member(disclose(row)), "this payroll row is already enrolled");
 
-  const cm = recordCommitment(salary, variable, gender, category, sk, r);
+  const cm = recordCommitment(salary, variable, gender, category, level, sk, r);
   claimedRows.insert(disclose(row));
   bound.insert(disclose(cm));
   nullifiers.insert(disclose(nul));
@@ -296,8 +453,8 @@ export circuit enroll(): Bytes<32> {
 
 // An employee (or an auditor they delegate to) proves a commitment is inside
 // the reporting set without revealing which leaf it is.
-export circuit checkReceipt(path: MerkleTreePath<5, Bytes<32>>): Boolean {
-  return commitments.checkRoot(disclose(merkleTreePathRoot<5, Bytes<32>>(path)));
+export circuit checkReceipt(path: MerkleTreePath<10, Bytes<32>>): Boolean {
+  return commitments.checkRoot(disclose(merkleTreePathRoot<10, Bytes<32>>(path)));
 }
 
 // ── per-record selectors ─────────────────────────────────────────────────────
@@ -348,54 +505,45 @@ circuit variableBelow(rec: EnrolledRecord, g: Uint<1>, m: Uint<32>): Uint<1> {
 circuit variableAtOrBelow(rec: EnrolledRecord, g: Uint<1>, m: Uint<32>): Uint<1> {
   if (rec.active && rec.gender == g && rec.variable > 0 && rec.variable <= m) return 1; else return 0;
 }
-
 circuit inBand(rec: EnrolledRecord, b: Uint<2>, g: Uint<1>): Uint<1> {
   if (rec.active && rec.gender == g && rec.band == b) return 1; else return 0;
 }
 circuit belowBand(rec: EnrolledRecord, b: Uint<3>): Uint<1> {
   if (rec.active && (rec.band as Uint<3>) < b) return 1; else return 0;
 }
-circuit bandCount(recs: Vector<16, EnrolledRecord>, b: Uint<2>, g: Uint<1>): Uint<8> {
-  return fold((acc, rec) => (acc + inBand(rec, b, g)) as Uint<8>, 0 as Uint<8>, recs);
+
+// The quartile band's floor and ceiling on total pay under the claimed cut points.
+circuit bandFloor(b: Uint<2>, cuts: Vector<3, Uint<33>>): Uint<33> {
+  if (b == 0) return 0; else if (b == 1) return cuts[0]; else if (b == 2) return cuts[1]; else return cuts[2];
+}
+circuit bandCeilingOk(b: Uint<2>, total: Uint<33>, cuts: Vector<3, Uint<33>>): Boolean {
+  if (b == 0) return total <= cuts[0];
+  else if (b == 1) return total <= cuts[1];
+  else if (b == 2) return total <= cuts[2];
+  else return true;
 }
 
 // ── verified statistics ──────────────────────────────────────────────────────
 
-// Verifies that `m` is the LOWER median of gender `g`'s salaries:
-//   fewer than half the cohort is strictly below m, and at least half is ≤ m.
-// For a sorted cohort x[0..n-1] this pins m = x[(n-1)/2] exactly — no sort
-// needed in-circuit, and a wrong value fails one of the two counts.
-circuit verifyMedian(recs: Vector<16, EnrolledRecord>, g: Uint<1>, m: Uint<32>, n: Uint<8>): [] {
-  const below = fold((acc, rec) => (acc + strictlyBelow(rec, g, m)) as Uint<8>, 0 as Uint<8>, recs);
-  const upTo = fold((acc, rec) => (acc + atOrBelow(rec, g, m)) as Uint<8>, 0 as Uint<8>, recs);
-  assert(below * 2 < n, "claimed median is too high");
-  assert(upTo * 2 >= n, "claimed median is too low");
-}
-
 // Verifies a claimed gap in basis points between two group figures given as
 // (sum, count) pairs, without division:  gap = |a/na − b/nb| / max-side mean.
 // Returns whether the gap favors the men's side (m).
-circuit verifyGap(sumW: Uint<40>, nW: Uint<8>, sumM: Uint<40>, nM: Uint<8>, g: Uint<16>): Boolean {
+circuit verifyGap(sumW: Uint<48>, nW: Uint<16>, sumM: Uint<48>, nM: Uint<16>, g: Uint<16>): Boolean {
   const favorsMen = sumM * nW >= sumW * nM;
-  const diff = (favorsMen ? sumM * nW - sumW * nM : sumW * nM - sumM * nW) as Uint<48>;
-  const base = (favorsMen ? sumM * nW : sumW * nM) as Uint<48>;
+  const diff = (favorsMen ? sumM * nW - sumW * nM : sumW * nM - sumM * nW) as Uint<64>;
+  const base = (favorsMen ? sumM * nW : sumW * nM) as Uint<64>;
   assert(g * base <= diff * 10000, "claimed gap too high");
   assert(diff * 10000 < (g + 1) * base, "claimed gap too low");
   return favorsMen;
 }
 
 // Verifies a claimed integer mean: mean·n ≤ sum < (mean+1)·n.
-circuit verifyMean(sum: Uint<40>, n: Uint<8>, mean: Uint<32>): [] {
+circuit verifyMean(sum: Uint<48>, n: Uint<16>, mean: Uint<32>): [] {
   assert(mean * n <= sum, "claimed category mean too high");
   assert(sum < (mean + 1) * n, "claimed category mean too low");
 }
 
-circuit categoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, meanW: Uint<32>, meanM: Uint<32>, g: Uint<16>): CategoryStats {
-  const nW = fold((acc, rec) => (acc + inCategory(rec, c, 0)) as Uint<8>, 0 as Uint<8>, recs);
-  const nM = fold((acc, rec) => (acc + inCategory(rec, c, 1)) as Uint<8>, 0 as Uint<8>, recs);
-  const sW = fold((acc, rec) => (acc + salaryInCategory(rec, c, 0)) as Uint<40>, 0 as Uint<40>, recs);
-  const sM = fold((acc, rec) => (acc + salaryInCategory(rec, c, 1)) as Uint<40>, 0 as Uint<40>, recs);
-
+circuit categoryStats(nW: Uint<16>, nM: Uint<16>, sW: Uint<48>, sM: Uint<48>, meanW: Uint<32>, meanM: Uint<32>, g: Uint<16>): CategoryStats {
   if (nW >= 3 && nM >= 3) {
     verifyMean(sW, nW, meanW);
     verifyMean(sM, nM, meanM);
@@ -406,7 +554,7 @@ circuit categoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, meanW: Uint<
       meanGapBps: g, gapFavorsMen: favorsMen, gapAtOrAbove5pct: g >= 500
     };
   } else {
-    // suppressed: small cohort — publish headcounts only, no pay figures
+    // suppressed: small cohort; publish headcounts only, no pay figures
     return CategoryStats {
       headcountWomen: nW, headcountMen: nM, disclosed: false,
       meanWomen: 0, meanMen: 0, meanGapBps: 0, gapFavorsMen: false, gapAtOrAbove5pct: false
@@ -414,19 +562,7 @@ circuit categoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, meanW: Uint<
   }
 }
 
-// The lower median of gender g's variable pay, among its recipients.
-circuit verifyVariableMedian(recs: Vector<16, EnrolledRecord>, g: Uint<1>, m: Uint<32>, n: Uint<8>): [] {
-  const below = fold((acc, rec) => (acc + variableBelow(rec, g, m)) as Uint<8>, 0 as Uint<8>, recs);
-  const upTo = fold((acc, rec) => (acc + variableAtOrBelow(rec, g, m)) as Uint<8>, 0 as Uint<8>, recs);
-  assert(below * 2 < n, "claimed variable-pay median is too high");
-  assert(upTo * 2 >= n, "claimed variable-pay median is too low");
-}
-
-circuit variableCategoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, g: Uint<16>): VariableCategoryStats {
-  const nW = fold((acc, rec) => (acc + receivesIn(rec, c, 0)) as Uint<8>, 0 as Uint<8>, recs);
-  const nM = fold((acc, rec) => (acc + receivesIn(rec, c, 1)) as Uint<8>, 0 as Uint<8>, recs);
-  const sW = fold((acc, rec) => (acc + variableIn(rec, c, 0)) as Uint<40>, 0 as Uint<40>, recs);
-  const sM = fold((acc, rec) => (acc + variableIn(rec, c, 1)) as Uint<40>, 0 as Uint<40>, recs);
+circuit variableCategoryStats(nW: Uint<16>, nM: Uint<16>, sW: Uint<48>, sM: Uint<48>, g: Uint<16>): VariableCategoryStats {
   if (nW >= 3 && nM >= 3) {
     const favorsMen = verifyGap(sW, nW, sM, nM, g);
     return VariableCategoryStats { recipientsWomen: nW, recipientsMen: nM, disclosed: true, meanGapBps: g, gapFavorsMen: favorsMen };
@@ -435,32 +571,21 @@ circuit variableCategoryStats(recs: Vector<16, EnrolledRecord>, c: Uint<2>, g: U
   }
 }
 
-// (b) and (d): verified only when both genders have recipients; otherwise the
-// employer must claim no gap. Returns [mean favors men, median favors men].
-circuit variableGaps(recs: Vector<16, EnrolledRecord>, claim: VariableClaim, rW: Uint<8>, rM: Uint<8>, sW: Uint<40>, sM: Uint<40>): [Boolean, Boolean] {
-  if (rW > 0 && rM > 0) {
-    const meanFavorsMen = verifyGap(sW, rW, sM, rM, claim.meanGapBps);
-    verifyVariableMedian(recs, 0, claim.medianWomen, rW);
-    verifyVariableMedian(recs, 1, claim.medianMen, rM);
-    const medianFavorsMen = verifyGap(claim.medianWomen as Uint<40>, 1, claim.medianMen as Uint<40>, 1, claim.medianGapBps);
-    return [meanFavorsMen, medianFavorsMen];
-  } else {
-    assert(claim.meanGapBps == 0 && claim.medianGapBps == 0, "no variable-pay gap exists without recipients of both genders");
-    return [false, false];
-  }
-}
-
-// Shared by both reports: the witness is exactly the enrolled, payroll-bound
-// set of the declared headcount, with no record counted twice.
-circuit verifyPayrollWitness(recs: Vector<16, EnrolledRecord>): [] {
+// One reporting batch: every active record re-derives a commitment bound to a
+// payroll row, is enrolled, appears once in the batch, and has not already been
+// counted in this report. Returns how many records the batch holds.
+circuit countBatch(recs: Vector<16, EnrolledRecord>, kind: Uint<2>): Uint<16> {
   const r = round as Field;
   // Disclosing the per-slot activity flag is deliberate: slot order is local
-  // to the prover and the active count is already public via `enrolled`.
+  // to the prover and the processed count is public anyway.
   for (const i of 0..16) {
     if (disclose(recs[i].active)) {
-      const cm = recordCommitment(recs[i].salary, recs[i].variable, recs[i].gender, recs[i].category, recs[i].sk, r);
+      const cm = recordCommitment(recs[i].salary, recs[i].variable, recs[i].gender, recs[i].category, recs[i].level, recs[i].sk, r);
       assert(bound.member(disclose(cm)), "record does not match what its employee enrolled");
       assert(nullifiers.member(disclose(enrollmentNullifier(recs[i].sk, r))), "record not enrolled");
+      const tag = countTag(kind, cm);
+      assert(!counted.member(disclose(tag)), "record already counted in this report");
+      counted.insert(disclose(tag));
     }
   }
   for (const i of 0..16) {
@@ -470,135 +595,379 @@ circuit verifyPayrollWitness(recs: Vector<16, EnrolledRecord>): [] {
       }
     }
   }
-  const nActive = fold((acc, rec) => (acc + activeCount(rec)) as Uint<16>, 0 as Uint<16>, recs);
-  assert(nActive as Field == enrolled as Field, "payroll witness must cover every enrolled employee");
-  assert(nActive == declaredHeadcount, "reporting set does not match the payroll provider's roster");
+  const k = fold((acc, rec) => (acc + activeCount(rec)) as Uint<16>, 0 as Uint<16>, recs);
+  assert(k > 0, "an empty reporting batch");
+  return k;
 }
 
-// ── the report ───────────────────────────────────────────────────────────────
+// ── the pay report: begin, batches, finish ───────────────────────────────────
 
-// The employer publishes the mandated report. The circuit proves:
-//   roster        — the set matches the payroll provider's declared headcount;
-//   completeness  — the witness is exactly the enrolled set;
-//   integrity     — every record re-derives a commitment bound to a payroll row;
-//   distinctness  — no record is counted twice;
-//   correctness   — every disclosed figure is verified, none is trusted.
-export circuit publishReport(): PayReport {
+export circuit beginReport(): [] {
   assert(publicKey(employerSecret()) == employerPk, "not the employer");
-  assert(rosterDeclared, "roster not yet declared by the payroll provider");
+  assert(payrollConfirmed, "payroll not yet confirmed by the works council");
+  reportSeq = (reportSeq + 1) as Uint<32>;
+  const zero = PayTotals {
+    n: 0, nW: 0, nM: 0, sumW: 0, sumM: 0, belowW: 0, upToW: 0, belowM: 0, upToM: 0,
+    catW: [0, 0, 0, 0], catM: [0, 0, 0, 0], catSumW: [0, 0, 0, 0], catSumM: [0, 0, 0, 0]
+  };
+  paySealed = disclose(sealPay(PaySeal { totals: zero, claim: reportClaim(), salt: freshSalt() }));
+  payOpen = true;
+  payProcessed = 0;
+}
 
+circuit catCount(recs: Vector<16, EnrolledRecord>, c: Uint<2>, g: Uint<1>): Uint<16> {
+  return fold((acc, rec) => (acc + inCategory(rec, c, g)) as Uint<16>, 0 as Uint<16>, recs);
+}
+circuit catSum(recs: Vector<16, EnrolledRecord>, c: Uint<2>, g: Uint<1>): Uint<48> {
+  return fold((acc, rec) => (acc + salaryInCategory(rec, c, g)) as Uint<48>, 0 as Uint<48>, recs);
+}
+
+export circuit reportBatch(): [] {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(payOpen, "no pay report in progress");
+  const prev = paySeal();
+  assert(sealPay(prev) == paySealed, "sealed totals do not match the report in progress");
   const recs = payrollRecords();
-  const claim = reportClaim();
-  verifyPayrollWitness(recs);
+  const k = countBatch(recs, 0);
+  const t = prev.totals;
+  const c = prev.claim;
 
-  const cntW = fold((acc, rec) => (acc + womenCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
-  const cntM = fold((acc, rec) => (acc + menCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
-  assert(cntW as Field != 0, "no women in reporting set");
-  assert(cntM as Field != 0, "no men in reporting set");
+  const next = PayTotals {
+    n: (t.n + k) as Uint<16>,
+    nW: (t.nW + fold((acc, rec) => (acc + womenCount(rec)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    nM: (t.nM + fold((acc, rec) => (acc + menCount(rec)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    sumW: (t.sumW + fold((acc, rec) => (acc + womenSalary(rec)) as Uint<48>, 0 as Uint<48>, recs)) as Uint<48>,
+    sumM: (t.sumM + fold((acc, rec) => (acc + menSalary(rec)) as Uint<48>, 0 as Uint<48>, recs)) as Uint<48>,
+    belowW: (t.belowW + fold((acc, rec) => (acc + strictlyBelow(rec, 0, c.medianWomen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    upToW: (t.upToW + fold((acc, rec) => (acc + atOrBelow(rec, 0, c.medianWomen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    belowM: (t.belowM + fold((acc, rec) => (acc + strictlyBelow(rec, 1, c.medianMen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    upToM: (t.upToM + fold((acc, rec) => (acc + atOrBelow(rec, 1, c.medianMen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    catW: [(t.catW[0] + catCount(recs, 0, 0)) as Uint<16>, (t.catW[1] + catCount(recs, 1, 0)) as Uint<16>,
+           (t.catW[2] + catCount(recs, 2, 0)) as Uint<16>, (t.catW[3] + catCount(recs, 3, 0)) as Uint<16>],
+    catM: [(t.catM[0] + catCount(recs, 0, 1)) as Uint<16>, (t.catM[1] + catCount(recs, 1, 1)) as Uint<16>,
+           (t.catM[2] + catCount(recs, 2, 1)) as Uint<16>, (t.catM[3] + catCount(recs, 3, 1)) as Uint<16>],
+    catSumW: [(t.catSumW[0] + catSum(recs, 0, 0)) as Uint<48>, (t.catSumW[1] + catSum(recs, 1, 0)) as Uint<48>,
+              (t.catSumW[2] + catSum(recs, 2, 0)) as Uint<48>, (t.catSumW[3] + catSum(recs, 3, 0)) as Uint<48>],
+    catSumM: [(t.catSumM[0] + catSum(recs, 0, 1)) as Uint<48>, (t.catSumM[1] + catSum(recs, 1, 1)) as Uint<48>,
+              (t.catSumM[2] + catSum(recs, 2, 1)) as Uint<48>, (t.catSumM[3] + catSum(recs, 3, 1)) as Uint<48>]
+  };
+  assert(next.n <= declaredHeadcount, "more records than the declared headcount");
+  paySealed = disclose(sealPay(PaySeal { totals: next, claim: c, salt: freshSalt() }));
+  payProcessed = disclose(next.n);
+}
 
-  const sumW = fold((acc, rec) => (acc + womenSalary(rec)) as Uint<40>, 0 as Uint<40>, recs);
-  const sumM = fold((acc, rec) => (acc + menSalary(rec)) as Uint<40>, 0 as Uint<40>, recs);
+// The employer publishes the pay report. The circuit proves:
+//   roster        the counted set matches the payroll provider's declared headcount;
+//   completeness  every enrolled employee is counted, once (the counted tags);
+//   integrity     every record re-derived a commitment bound to a payroll row;
+//   correctness   every disclosed figure is verified, none is trusted.
+export circuit finishReport(): PayReport {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(payOpen, "no pay report in progress");
+  const s = paySeal();
+  assert(sealPay(s) == paySealed, "sealed totals do not match the report in progress");
+  const t = s.totals;
+  const claim = s.claim;
 
-  // company-wide mean gap
-  const favorsMen = verifyGap(sumW, cntW, sumM, cntM, claim.meanGapBps);
+  assert(t.n == declaredHeadcount, "reporting set does not match the payroll provider's roster");
+  assert(t.n as Field == enrolled as Field, "payroll witness must cover every enrolled employee");
+  assert(t.nW as Field != 0, "no women in reporting set");
+  assert(t.nM as Field != 0, "no men in reporting set");
 
-  // company-wide median gap: verify each median, then the gap between them
-  verifyMedian(recs, 0, claim.medianWomen, cntW);
-  verifyMedian(recs, 1, claim.medianMen, cntM);
-  const medianFavorsMen = verifyGap(claim.medianWomen as Uint<40>, 1, claim.medianMen as Uint<40>, 1, claim.medianGapBps);
-
-  // per worker category (Art. 10 unit; Art. 7 figures under k-anonymity)
-  const categories = [
-    categoryStats(recs, 0, claim.catMeanWomen[0], claim.catMeanMen[0], claim.catGapBps[0]),
-    categoryStats(recs, 1, claim.catMeanWomen[1], claim.catMeanMen[1], claim.catGapBps[1]),
-    categoryStats(recs, 2, claim.catMeanWomen[2], claim.catMeanMen[2], claim.catGapBps[2]),
-    categoryStats(recs, 3, claim.catMeanWomen[3], claim.catMeanMen[3], claim.catGapBps[3])
-  ];
+  const favorsMen = verifyGap(t.sumW, t.nW, t.sumM, t.nM, claim.meanGapBps);
+  assert(t.belowW * 2 < t.nW, "claimed median is too high");
+  assert(t.upToW * 2 >= t.nW, "claimed median is too low");
+  assert(t.belowM * 2 < t.nM, "claimed median is too high");
+  assert(t.upToM * 2 >= t.nM, "claimed median is too low");
+  const medianFavorsMen = verifyGap(claim.medianWomen as Uint<48>, 1, claim.medianMen as Uint<48>, 1, claim.medianGapBps);
 
   const report = PayReport {
     round: (round as Field) as Uint<32>,
-    headcountWomen: cntW,
-    headcountMen: cntM,
+    headcountWomen: t.nW,
+    headcountMen: t.nM,
     meanGapBps: claim.meanGapBps,
     gapFavorsMen: favorsMen,
     meanGapAtOrAbove5pct: claim.meanGapBps >= 500,
     medianGapBps: claim.medianGapBps,
     medianFavorsMen: medianFavorsMen,
-    categories: categories
+    categories: [
+      categoryStats(t.catW[0], t.catM[0], t.catSumW[0], t.catSumM[0], claim.catMeanWomen[0], claim.catMeanMen[0], claim.catGapBps[0]),
+      categoryStats(t.catW[1], t.catM[1], t.catSumW[1], t.catSumM[1], claim.catMeanWomen[1], claim.catMeanMen[1], claim.catGapBps[1]),
+      categoryStats(t.catW[2], t.catM[2], t.catSumW[2], t.catSumM[2], claim.catMeanWomen[2], claim.catMeanMen[2], claim.catGapBps[2]),
+      categoryStats(t.catW[3], t.catM[3], t.catSumW[3], t.catSumM[3], claim.catMeanWomen[3], claim.catMeanMen[3], claim.catGapBps[3])
+    ]
   };
-
   latestReport = disclose(some<PayReport>(report));
+  payOpen = false;
   return disclose(report);
 }
 
-// The rest of Article 9: variable pay and quartile bands, proven over the same
-// complete, payroll-bound set as publishReport.
-//   (b)/(d) mean and lower-median gaps in variable pay, among recipients;
-//   (e)     recipients of each gender (the share is recipients / headcount);
-//   (f)     women and men in each quartile band of total pay (basic + variable).
-//           The employer assigns each record a band; the circuit checks the
-//           bands are in pay order and each holds a quarter of the workforce;
-//   (g)     the variable-pay gap in each worker category, at k = 3.
-export circuit publishVariablePay(): VariablePayReport {
+// ── the variable-pay report: begin, batches, finish ──────────────────────────
+
+export circuit beginVariableReport(): [] {
   assert(publicKey(employerSecret()) == employerPk, "not the employer");
-  assert(rosterDeclared, "roster not yet declared by the payroll provider");
-
-  const recs = payrollRecords();
+  assert(payrollConfirmed, "payroll not yet confirmed by the works council");
   const claim = variableClaim();
-  verifyPayrollWitness(recs);
+  assert(claim.cuts[0] <= claim.cuts[1] && claim.cuts[1] <= claim.cuts[2], "quartile cut points are out of order");
+  reportSeq = (reportSeq + 1) as Uint<32>;
+  const zero = VarTotals {
+    n: 0, nW: 0, nM: 0, rW: 0, rM: 0, sW: 0, sM: 0, belowW: 0, upToW: 0, belowM: 0, upToM: 0,
+    catRW: [0, 0, 0, 0], catRM: [0, 0, 0, 0], catSW: [0, 0, 0, 0], catSM: [0, 0, 0, 0],
+    bandW: [0, 0, 0, 0], bandM: [0, 0, 0, 0], below: [0, 0, 0]
+  };
+  varSealed = disclose(sealVar(VarSeal { totals: zero, claim: claim, salt: freshSalt() }));
+  varOpen = true;
+  varProcessed = 0;
+}
 
-  const cntW = fold((acc, rec) => (acc + womenCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
-  const cntM = fold((acc, rec) => (acc + menCount(rec)) as Uint<8>, 0 as Uint<8>, recs);
-  const rW = fold((acc, rec) => (acc + receives(rec, 0)) as Uint<8>, 0 as Uint<8>, recs);
-  const rM = fold((acc, rec) => (acc + receives(rec, 1)) as Uint<8>, 0 as Uint<8>, recs);
-  const sW = fold((acc, rec) => (acc + variableOf(rec, 0)) as Uint<40>, 0 as Uint<40>, recs);
-  const sM = fold((acc, rec) => (acc + variableOf(rec, 1)) as Uint<40>, 0 as Uint<40>, recs);
+circuit recvCount(recs: Vector<16, EnrolledRecord>, c: Uint<2>, g: Uint<1>): Uint<16> {
+  return fold((acc, rec) => (acc + receivesIn(rec, c, g)) as Uint<16>, 0 as Uint<16>, recs);
+}
+circuit recvSum(recs: Vector<16, EnrolledRecord>, c: Uint<2>, g: Uint<1>): Uint<48> {
+  return fold((acc, rec) => (acc + variableIn(rec, c, g)) as Uint<48>, 0 as Uint<48>, recs);
+}
+circuit bandCount(recs: Vector<16, EnrolledRecord>, b: Uint<2>, g: Uint<1>): Uint<16> {
+  return fold((acc, rec) => (acc + inBand(rec, b, g)) as Uint<16>, 0 as Uint<16>, recs);
+}
+circuit belowCount(recs: Vector<16, EnrolledRecord>, b: Uint<3>): Uint<16> {
+  return fold((acc, rec) => (acc + belowBand(rec, b)) as Uint<16>, 0 as Uint<16>, recs);
+}
 
-  // (b), (d): defined only when both genders have recipients
-  const defined = rW > 0 && rM > 0;
-  const [meanFavorsMen, medianFavorsMen] = variableGaps(recs, claim, rW, rM, sW, sM);
+export circuit variableBatch(): [] {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(varOpen, "no variable-pay report in progress");
+  const prev = variableSeal();
+  assert(sealVar(prev) == varSealed, "sealed totals do not match the report in progress");
+  const recs = payrollRecords();
+  const k = countBatch(recs, 1);
+  const t = prev.totals;
+  const c = prev.claim;
 
-  // (f): bands in pay order — a lower band never out-earns a higher one
+  // (f): every record sits inside its band's cut points, which puts the bands in
+  // pay order across the whole company, not only inside one batch
   for (const i of 0..16) {
-    for (const j of 0..16) {
-      if (i != j && recs[i].active && recs[j].active && recs[i].band < recs[j].band) {
-        assert((recs[i].salary as Uint<33>) + recs[i].variable <= (recs[j].salary as Uint<33>) + recs[j].variable,
-               "quartile bands are out of pay order");
-      }
+    if (recs[i].active) {
+      const total = (recs[i].salary as Uint<33>) + recs[i].variable;
+      assert(total >= bandFloor(recs[i].band, c.cuts) && bandCeilingOk(recs[i].band, total as Uint<33>, c.cuts),
+             "quartile bands are out of pay order");
     }
   }
-  // ... and each boundary sits at ⌊b·n/4⌋ records: 4c ≤ b·n < 4c + 4
-  const n = fold((acc, rec) => (acc + activeCount(rec)) as Uint<16>, 0 as Uint<16>, recs);
-  for (const b of 1..4) {
-    const c = fold((acc, rec) => (acc + belowBand(rec, b)) as Uint<16>, 0 as Uint<16>, recs);
-    assert(4 * c <= b * n && b * n < 4 * c + 4, "quartile bands do not split the workforce into quarters");
+
+  const next = VarTotals {
+    n: (t.n + k) as Uint<16>,
+    nW: (t.nW + fold((acc, rec) => (acc + womenCount(rec)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    nM: (t.nM + fold((acc, rec) => (acc + menCount(rec)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    rW: (t.rW + fold((acc, rec) => (acc + receives(rec, 0)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    rM: (t.rM + fold((acc, rec) => (acc + receives(rec, 1)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    sW: (t.sW + fold((acc, rec) => (acc + variableOf(rec, 0)) as Uint<48>, 0 as Uint<48>, recs)) as Uint<48>,
+    sM: (t.sM + fold((acc, rec) => (acc + variableOf(rec, 1)) as Uint<48>, 0 as Uint<48>, recs)) as Uint<48>,
+    belowW: (t.belowW + fold((acc, rec) => (acc + variableBelow(rec, 0, c.medianWomen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    upToW: (t.upToW + fold((acc, rec) => (acc + variableAtOrBelow(rec, 0, c.medianWomen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    belowM: (t.belowM + fold((acc, rec) => (acc + variableBelow(rec, 1, c.medianMen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    upToM: (t.upToM + fold((acc, rec) => (acc + variableAtOrBelow(rec, 1, c.medianMen)) as Uint<16>, 0 as Uint<16>, recs)) as Uint<16>,
+    catRW: [(t.catRW[0] + recvCount(recs, 0, 0)) as Uint<16>, (t.catRW[1] + recvCount(recs, 1, 0)) as Uint<16>,
+            (t.catRW[2] + recvCount(recs, 2, 0)) as Uint<16>, (t.catRW[3] + recvCount(recs, 3, 0)) as Uint<16>],
+    catRM: [(t.catRM[0] + recvCount(recs, 0, 1)) as Uint<16>, (t.catRM[1] + recvCount(recs, 1, 1)) as Uint<16>,
+            (t.catRM[2] + recvCount(recs, 2, 1)) as Uint<16>, (t.catRM[3] + recvCount(recs, 3, 1)) as Uint<16>],
+    catSW: [(t.catSW[0] + recvSum(recs, 0, 0)) as Uint<48>, (t.catSW[1] + recvSum(recs, 1, 0)) as Uint<48>,
+            (t.catSW[2] + recvSum(recs, 2, 0)) as Uint<48>, (t.catSW[3] + recvSum(recs, 3, 0)) as Uint<48>],
+    catSM: [(t.catSM[0] + recvSum(recs, 0, 1)) as Uint<48>, (t.catSM[1] + recvSum(recs, 1, 1)) as Uint<48>,
+            (t.catSM[2] + recvSum(recs, 2, 1)) as Uint<48>, (t.catSM[3] + recvSum(recs, 3, 1)) as Uint<48>],
+    bandW: [(t.bandW[0] + bandCount(recs, 0, 0)) as Uint<16>, (t.bandW[1] + bandCount(recs, 1, 0)) as Uint<16>,
+            (t.bandW[2] + bandCount(recs, 2, 0)) as Uint<16>, (t.bandW[3] + bandCount(recs, 3, 0)) as Uint<16>],
+    bandM: [(t.bandM[0] + bandCount(recs, 0, 1)) as Uint<16>, (t.bandM[1] + bandCount(recs, 1, 1)) as Uint<16>,
+            (t.bandM[2] + bandCount(recs, 2, 1)) as Uint<16>, (t.bandM[3] + bandCount(recs, 3, 1)) as Uint<16>],
+    below: [(t.below[0] + belowCount(recs, 1)) as Uint<16>, (t.below[1] + belowCount(recs, 2)) as Uint<16>,
+            (t.below[2] + belowCount(recs, 3)) as Uint<16>]
+  };
+  assert(next.n <= declaredHeadcount, "more records than the declared headcount");
+  varSealed = disclose(sealVar(VarSeal { totals: next, claim: c, salt: freshSalt() }));
+  varProcessed = disclose(next.n);
+}
+
+// The rest of Article 9, proven over the same complete, payroll-bound set:
+//   (b)/(d) mean and lower-median gaps in variable pay, among recipients;
+//   (e)     recipients of each gender (the share is recipients / headcount);
+//   (f)     women and men in each quartile band of total pay (basic + variable);
+//           each band holds a quarter of the workforce: 4c ≤ b·n < 4c + 4;
+//   (g)     the variable-pay gap in each worker category, at k = 3.
+// (b) and (d): verified only when both genders have recipients; otherwise the
+// employer must claim no gap. Returns [mean favors men, median favors men].
+circuit variableGaps(t: VarTotals, claim: VariableClaim): [Boolean, Boolean] {
+  if (t.rW > 0 && t.rM > 0) {
+    const meanFavorsMen = verifyGap(t.sW, t.rW, t.sM, t.rM, claim.meanGapBps);
+    assert(t.belowW * 2 < t.rW, "claimed variable-pay median is too high");
+    assert(t.upToW * 2 >= t.rW, "claimed variable-pay median is too low");
+    assert(t.belowM * 2 < t.rM, "claimed variable-pay median is too high");
+    assert(t.upToM * 2 >= t.rM, "claimed variable-pay median is too low");
+    const medianFavorsMen = verifyGap(claim.medianWomen as Uint<48>, 1, claim.medianMen as Uint<48>, 1, claim.medianGapBps);
+    return [meanFavorsMen, medianFavorsMen];
+  } else {
+    assert(claim.meanGapBps == 0 && claim.medianGapBps == 0, "no variable-pay gap exists without recipients of both genders");
+    return [false, false];
   }
-  const quartiles = [
-    QuartileBand { women: bandCount(recs, 0, 0), men: bandCount(recs, 0, 1) },
-    QuartileBand { women: bandCount(recs, 1, 0), men: bandCount(recs, 1, 1) },
-    QuartileBand { women: bandCount(recs, 2, 0), men: bandCount(recs, 2, 1) },
-    QuartileBand { women: bandCount(recs, 3, 0), men: bandCount(recs, 3, 1) }
-  ];
+}
+
+// Band b's boundary sits at floor(b*n/4) records: 4c <= b*n < 4c + 4.
+circuit quarterOk(c: Uint<16>, b: Uint<2>, n: Uint<16>): [] {
+  assert(4 * c <= b * n && b * n < 4 * c + 4, "quartile bands do not split the workforce into quarters");
+}
+
+export circuit finishVariableReport(): VariablePayReport {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(varOpen, "no variable-pay report in progress");
+  const s = variableSeal();
+  assert(sealVar(s) == varSealed, "sealed totals do not match the report in progress");
+  const t = s.totals;
+  const claim = s.claim;
+
+  assert(t.n == declaredHeadcount, "reporting set does not match the payroll provider's roster");
+  assert(t.n as Field == enrolled as Field, "payroll witness must cover every enrolled employee");
+
+  const defined = t.rW > 0 && t.rM > 0;
+  const [meanFavorsMen, medianFavorsMen] = variableGaps(t, claim);
+  quarterOk(t.below[0], 1, t.n);
+  quarterOk(t.below[1], 2, t.n);
+  quarterOk(t.below[2], 3, t.n);
 
   const report = VariablePayReport {
     round: (round as Field) as Uint<32>,
-    headcountWomen: cntW,
-    headcountMen: cntM,
-    recipientsWomen: rW,
-    recipientsMen: rM,
+    headcountWomen: t.nW,
+    headcountMen: t.nM,
+    recipientsWomen: t.rW,
+    recipientsMen: t.rM,
     gapDefined: defined,
     meanGapBps: claim.meanGapBps,
     meanFavorsMen: meanFavorsMen,
     medianGapBps: claim.medianGapBps,
     medianFavorsMen: medianFavorsMen,
-    quartiles: quartiles,
+    quartiles: [
+      QuartileBand { women: t.bandW[0], men: t.bandM[0] },
+      QuartileBand { women: t.bandW[1], men: t.bandM[1] },
+      QuartileBand { women: t.bandW[2], men: t.bandM[2] },
+      QuartileBand { women: t.bandW[3], men: t.bandM[3] }
+    ],
     categories: [
-      variableCategoryStats(recs, 0, claim.catGapBps[0]),
-      variableCategoryStats(recs, 1, claim.catGapBps[1]),
-      variableCategoryStats(recs, 2, claim.catGapBps[2]),
-      variableCategoryStats(recs, 3, claim.catGapBps[3])
+      variableCategoryStats(t.catRW[0], t.catRM[0], t.catSW[0], t.catSM[0], claim.catGapBps[0]),
+      variableCategoryStats(t.catRW[1], t.catRM[1], t.catSW[1], t.catSM[1], claim.catGapBps[1]),
+      variableCategoryStats(t.catRW[2], t.catRM[2], t.catSW[2], t.catSM[2], claim.catGapBps[2]),
+      variableCategoryStats(t.catRW[3], t.catRM[3], t.catSW[3], t.catSM[3], claim.catGapBps[3])
     ]
   };
   latestVariableReport = disclose(some<VariablePayReport>(report));
+  varOpen = false;
+  return disclose(report);
+}
+
+// ── the level report: the gap inside equal job levels ────────────────────────
+// Beyond Article 9. Proves, per job level, the women/men mix and (k = 3) the gap,
+// then a level-adjusted gap: the within-level gaps weighted by level headcount,
+// over the levels whose gap is disclosed. The mix is always published so a reader
+// can see whether one group is concentrated in lower levels: a small gap inside
+// levels does not show that the levels themselves are fair.
+
+circuit levCount(recs: Vector<16, EnrolledRecord>, l: Uint<2>, g: Uint<1>): Uint<16> {
+  return fold((acc, rec) => (acc + (rec.active && rec.level == l && rec.gender == g ? 1 : 0)) as Uint<16>, 0 as Uint<16>, recs);
+}
+circuit levSum(recs: Vector<16, EnrolledRecord>, l: Uint<2>, g: Uint<1>): Uint<48> {
+  return fold((acc, rec) => (acc + (rec.active && rec.level == l && rec.gender == g ? rec.salary : 0)) as Uint<48>, 0 as Uint<48>, recs);
+}
+
+export circuit beginLevelReport(): [] {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(payrollConfirmed, "payroll not yet confirmed by the works council");
+  reportSeq = (reportSeq + 1) as Uint<32>;
+  const zero = LevelTotals { n: 0, levW: [0, 0, 0, 0], levM: [0, 0, 0, 0], levSumW: [0, 0, 0, 0], levSumM: [0, 0, 0, 0] };
+  levelSealed = disclose(sealLevel(LevelSeal { totals: zero, claim: levelClaim(), salt: freshSalt() }));
+  levelOpen = true;
+  levelProcessed = 0;
+}
+
+export circuit levelBatch(): [] {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(levelOpen, "no level report in progress");
+  const prev = levelSeal();
+  assert(sealLevel(prev) == levelSealed, "sealed totals do not match the report in progress");
+  const recs = payrollRecords();
+  const k = countBatch(recs, 2);
+  const t = prev.totals;
+  const next = LevelTotals {
+    n: (t.n + k) as Uint<16>,
+    levW: [(t.levW[0] + levCount(recs, 0, 0)) as Uint<16>, (t.levW[1] + levCount(recs, 1, 0)) as Uint<16>,
+           (t.levW[2] + levCount(recs, 2, 0)) as Uint<16>, (t.levW[3] + levCount(recs, 3, 0)) as Uint<16>],
+    levM: [(t.levM[0] + levCount(recs, 0, 1)) as Uint<16>, (t.levM[1] + levCount(recs, 1, 1)) as Uint<16>,
+           (t.levM[2] + levCount(recs, 2, 1)) as Uint<16>, (t.levM[3] + levCount(recs, 3, 1)) as Uint<16>],
+    levSumW: [(t.levSumW[0] + levSum(recs, 0, 0)) as Uint<48>, (t.levSumW[1] + levSum(recs, 1, 0)) as Uint<48>,
+              (t.levSumW[2] + levSum(recs, 2, 0)) as Uint<48>, (t.levSumW[3] + levSum(recs, 3, 0)) as Uint<48>],
+    levSumM: [(t.levSumM[0] + levSum(recs, 0, 1)) as Uint<48>, (t.levSumM[1] + levSum(recs, 1, 1)) as Uint<48>,
+              (t.levSumM[2] + levSum(recs, 2, 1)) as Uint<48>, (t.levSumM[3] + levSum(recs, 3, 1)) as Uint<48>]
+  };
+  assert(next.n <= declaredHeadcount, "more records than the declared headcount");
+  levelSealed = disclose(sealLevel(LevelSeal { totals: next, claim: prev.claim, salt: freshSalt() }));
+  levelProcessed = disclose(next.n);
+}
+
+// One level: the mix always, the gap only when both groups have ≥ 3 people.
+circuit levelStats(nW: Uint<16>, nM: Uint<16>, sW: Uint<48>, sM: Uint<48>, g: Uint<16>): LevelStats {
+  if (nW >= 3 && nM >= 3) {
+    const favorsMen = verifyGap(sW, nW, sM, nM, g);
+    return LevelStats { women: nW, men: nM, disclosed: true, gapBps: g, gapFavorsMen: favorsMen };
+  } else {
+    assert(g == 0, "no gap may be claimed for a level with fewer than three women or men");
+    return LevelStats { women: nW, men: nM, disclosed: false, gapBps: 0, gapFavorsMen: false };
+  }
+}
+
+// A level's weight in the adjusted gap, on the side its gap favors: [toward men, toward women, headcount].
+circuit levelWeight(st: LevelStats): [Uint<40>, Uint<40>, Uint<16>] {
+  if (st.disclosed) {
+    const n = (st.women + st.men) as Uint<16>;
+    const w = (n * st.gapBps) as Uint<40>;
+    if (st.gapFavorsMen) return [w, 0 as Uint<40>, n]; else return [0 as Uint<40>, w, n];
+  } else {
+    return [0 as Uint<40>, 0 as Uint<40>, 0 as Uint<16>];
+  }
+}
+
+export circuit finishLevelReport(): LevelReport {
+  assert(publicKey(employerSecret()) == employerPk, "not the employer");
+  assert(levelOpen, "no level report in progress");
+  const s = levelSeal();
+  assert(sealLevel(s) == levelSealed, "sealed totals do not match the report in progress");
+  const t = s.totals;
+  const claim = s.claim;
+  assert(t.n == declaredHeadcount, "reporting set does not match the payroll provider's roster");
+  assert(t.n as Field == enrolled as Field, "payroll witness must cover every enrolled employee");
+
+  const l0 = levelStats(t.levW[0], t.levM[0], t.levSumW[0], t.levSumM[0], claim.gapBps[0]);
+  const l1 = levelStats(t.levW[1], t.levM[1], t.levSumW[1], t.levSumM[1], claim.gapBps[1]);
+  const l2 = levelStats(t.levW[2], t.levM[2], t.levSumW[2], t.levSumM[2], claim.gapBps[2]);
+  const l3 = levelStats(t.levW[3], t.levM[3], t.levSumW[3], t.levSumM[3], claim.gapBps[3]);
+  const [m0, w0, n0] = levelWeight(l0);
+  const [m1, w1, n1] = levelWeight(l1);
+  const [m2, w2, n2] = levelWeight(l2);
+  const [m3, w3, n3] = levelWeight(l3);
+  const towardMen = (m0 + m1 + m2 + m3) as Uint<48>;
+  const towardWomen = (w0 + w1 + w2 + w3) as Uint<48>;
+  const covers = (n0 + n1 + n2 + n3) as Uint<16>;
+  const favorsMen = towardMen >= towardWomen;
+  const d = (favorsMen ? towardMen - towardWomen : towardWomen - towardMen) as Uint<48>;
+  // the adjusted gap is ⌊d / covers⌋: a·covers ≤ d < (a+1)·covers
+  const a = claim.adjustedGapBps;
+  if (covers > 0) {
+    assert(a * covers <= d && d < (a + 1) * covers, "claimed level-adjusted gap is wrong");
+  } else {
+    assert(a == 0, "no level-adjusted gap exists when no level is disclosed");
+  }
+
+  const report = LevelReport {
+    round: (round as Field) as Uint<32>,
+    levels: [l0, l1, l2, l3],
+    adjustedGapBps: a,
+    adjustedFavorsMen: covers > 0 && favorsMen,
+    adjustedCovers: covers
+  };
+  latestLevelReport = disclose(some<LevelReport>(report));
+  levelOpen = false;
   return disclose(report);
 }
