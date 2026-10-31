@@ -16,9 +16,9 @@ import * as Rx from "rxjs";
 import { Transaction } from "@midnight-ntwrk/ledger-v8";
 import { ProtocolVersion, WalletTransaction } from "@midnight-ntwrk/wallet-sdk-abstractions";
 import { CompiledContract } from "@midnight-ntwrk/compact-js";
-import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
-import { deployContract, findDeployedContract } from "@midnight-ntwrk/midnight-js/contracts";
-import { setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
+import { createCircuitContext, sampleSigningKey } from "@midnight-ntwrk/compact-runtime";
+import { createUnprovenDeployTx, findDeployedContract, submitInsertVerifierKeyTx, submitTx } from "@midnight-ntwrk/midnight-js/contracts";
+import { getNetworkId, setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
@@ -30,6 +30,9 @@ import {
   type Circuit, type EquiluxPrivateState, type Step,
 } from "../deploy/witnesses.js";
 import { PREPROD, openWallet, redact } from "./wallet.js";
+// midnight-js's own ledger copy (8.1.1, contract/node_modules), not the wallet's: its cost model must
+// read the deploy transaction midnight-js builds
+const { LedgerParameters } = (await import("../node_modules/@midnight-ntwrk/ledger-v8/midnight_ledger_wasm_fs.js" as string)) as typeof import("@midnight-ntwrk/ledger-v8");
 
 setNetworkId("preprod");
 
@@ -138,23 +141,57 @@ async function main() {
     await persist();
   };
 
-  // ── deploy ───────────────────────────────────────────────────────────────
-  let d: any;
+  // ── deploy, in parts ─────────────────────────────────────────────────────
+  // A deploy writes the whole contract state, verifier keys included (~2.5 KB each), and a preprod
+  // block takes 50,000 written bytes. With all 14 keys the deploy writes ~38,900 and the node refused
+  // it ("would exhaust the block limits"); the Wave 2 v3 deploy that landed wrote 18,243 (6 keys).
+  // So the deploy carries keys up to 20,000 bytes written (6 of 14), and the rest are added one per
+  // maintenance transaction, signed by the contract's maintenance key.
+  const circuits = Object.keys(local.impureCircuits) as Circuit[];
   if (!record.contract) {
-    log(`deploying Equilux v4 for a ${SIZE}-person sample company (proving)…`);
-    d = await deployContract(providers as any, {
+    log(`deploying Equilux v4 for a ${SIZE}-person sample company…`);
+    const signingKey = sampleSigningKey();
+    const full: any = await createUnprovenDeployTx(providers as any, {
       compiledContract,
       args: [pureCircuits.publicKey(EMPLOYER_SK), pureCircuits.publicKey(PROVIDER_SK), pureCircuits.publicKey(COUNCIL_SK)],
+      signingKey,
       privateStateId: PRIVATE_STATE_ID,
       initialPrivateState: base,
     } as any);
-    record.contract = d.deployTxData.public.contractAddress;
-    note("deploy", d.deployTxData);
+    // rebuilt with the classes midnight-js produced (its ledger copy differs from the wallet's)
+    const tx = full.private.unprovenTx, intent = tx.intents.get(1), deploy = intent.actions[0], st = deploy.initialState;
+    const build = (keep: string[]) => {
+      const s = new st.constructor();
+      s.data = st.data;
+      s.maintenanceAuthority = st.maintenanceAuthority;
+      for (const id of keep) s.setOperation(id, st.operation(id));
+      const dep = new deploy.constructor(s);
+      return { address: dep.address as string, tx: tx.constructor.fromParts(getNetworkId(), tx.guaranteedOffer, undefined, intent.constructor.new(intent.ttl).addDeploy(dep)) };
+    };
+    const written = (keep: string[]) => Number(build(keep).tx.cost(LedgerParameters.initialParameters()).bytesWritten);
+    const keep: string[] = [];
+    for (const id of circuits) if (written([...keep, id]) <= 20_000) keep.push(id); else break;
+    log(`all keys: ${written(circuits)} bytes written; deploying with ${keep.length} of ${circuits.length} keys (${written(keep)} bytes)`);
+    const part = build(keep);
+    const res: any = await submitTx(providers as any, { unprovenTx: part.tx });
+    if (res.status !== "SucceedEntirely") throw new Error(`deploy failed on chain: ${res.status}`);
+    record.contract = part.address;
+    providers.privateStateProvider.setContractAddress(part.address as never);
+    await providers.privateStateProvider.set(PRIVATE_STATE_ID, full.private.initialPrivateState);
+    await providers.privateStateProvider.setSigningKey(part.address as never, signingKey);
+    note("deploy", { public: res });
     log(`contract ${record.contract}`);
-  } else {
-    d = await findDeployedContract(providers as any, { contractAddress: record.contract, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: base } as any);
-    log(`resuming contract ${record.contract}`);
   }
+  providers.privateStateProvider.setContractAddress(record.contract as never);
+  const deployed = await providers.publicDataProvider.queryContractState(record.contract!);
+  for (const id of circuits) {
+    if (deployed?.operation(id)) continue;
+    const vk = await zkConfigProvider.getVerifierKey(id);
+    note(`verifierKey:${id}`, { public: await submitInsertVerifierKeyTx(providers as any, compiledContract as any, record.contract!, id, vk) });
+    await persist();
+  }
+  const d: any = await findDeployedContract(providers as any, { contractAddress: record.contract, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: base } as any);
+  log(`contract ${record.contract}: all ${circuits.length} circuits on chain`);
 
   // ── roster and council: deterministic steps, resumable one by one ─────────
   const roster = rosterSteps(base, TEAM.map(rowOf));
