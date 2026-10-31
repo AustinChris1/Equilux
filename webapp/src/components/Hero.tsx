@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Lock, Search, ShieldCheck } from "lucide-react";
 import { useScramble } from "./landing/useScramble";
-import { EASE_OUT, FIGURES, PREPROD_VERIFY, pseudoHash } from "./landing/data";
+import { EASE_OUT, FIGURES, MAX_PEOPLE, V4_VERIFY, pseudoHash } from "./landing/data";
 
 const enter = (delay: number) => ({
   initial: { opacity: 0, transform: "translateY(18px)" },
@@ -65,7 +65,7 @@ export function Hero() {
             <a href="/app" className="group inline-flex items-center gap-2 rounded-lg bg-gold px-6 py-3.5 text-[15px] font-semibold text-night transition-transform duration-150 ease-out active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold">
               Open the app <ArrowRight size={15} className="transition-transform duration-200 ease-out group-hover:translate-x-0.5" />
             </a>
-            <a href={PREPROD_VERIFY} className="inline-flex items-center gap-2 rounded-lg px-4 py-3.5 text-[15px] font-medium text-cream/85 ring-1 ring-gold/25 transition-colors hover:text-gold hover:ring-gold/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold">
+            <a href={V4_VERIFY} className="inline-flex items-center gap-2 rounded-lg px-4 py-3.5 text-[15px] font-medium text-cream/85 ring-1 ring-gold/25 transition-colors hover:text-gold hover:ring-gold/60 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold">
               <Search size={14} /> Verify it on testnet
             </a>
           </motion.div>
@@ -96,7 +96,7 @@ export function Hero() {
         {/* the Equals Seal as the horizon: the solid bar is what gets published, the hollow one the sealed payroll */}
         <div className="col-span-12">
           <ul className="flex flex-wrap justify-between gap-x-6 gap-y-2 text-[14px] text-sage">
-            {[["7", "Article 9 indicators proven"], ["45", "tests on the compiled circuits"], ["0", "salaries disclosed"]].map(([n, label]) => (
+            {[[String(MAX_PEOPLE), "people per report, 16 at a time"], ["7", "Article 9 indicators proven"], ["73", "tests on the compiled circuits"], ["0", "salaries disclosed"]].map(([n, label]) => (
               <li key={label}><span className="display mr-2 text-2xl text-cream">{n}</span>{label}</li>
             ))}
           </ul>

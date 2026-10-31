@@ -9,7 +9,7 @@ const waves = [
   {
     wave: "Wave 2",
     dates: "Sep 27 — Oct 17",
-    status: "Building",
+    status: "Delivered",
     items: [
       "Deployed and proven on Midnight's public preprod testnet",
       "Payroll provider as a third party: every salary bound to its payroll row",
@@ -19,26 +19,39 @@ const waves = [
       "Verify page and Article 9 filing pack",
       "The compiled contract runs in the browser — no Docker",
       "Personio / DATEV CSV import",
-      "Everything first planned for Wave 3, delivered early",
+    ],
+  },
+  {
+    wave: "Wave 3",
+    dates: "Oct 27 — Nov 16",
+    status: "Building",
+    items: [
+      "Up to 512 people per report, proven 16 at a time",
+      "Running totals sealed between batches: no partial leaks",
+      "The gap inside equal job levels, with each level's mix",
+      "On preprod again: 32 people, 2 batches, 58 transactions",
+      "Employees check their own record from a link, no wallet",
+      "73 tests, incl. a 250-person company",
+      "Desk research: who would pay",
     ],
   },
   {
     wave: "Next",
     dates: "after the Buildathon",
     status: "Open",
-    items: ["Mainnet, when Midnight opens it", "A named pilot with a works council and an EU employer"],
+    items: ["Enrollment from a payslip link, fee paid by the employer", "A named pilot with a works council and an EU employer", "Mainnet, when Midnight opens it"],
   },
 ];
 
 const FILL = { Delivered: 1, Building: 0.85, Open: 0 } as const;
 
-/** The three waves along the seal: solid, filling, hollow. Items open on demand. */
+/** The waves along the seal: solid, filling, hollow. Items open on demand. */
 export function Roadmap() {
   return (
     <section id="roadmap" className="mx-2 mt-2 rounded-[28px] bg-gold text-night md:mx-3 md:mt-3">
       <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
         <h2 className="display max-w-3xl text-4xl leading-[1.05] md:text-6xl">Built in the open, wave by wave.</h2>
-        <ol className="mt-14 grid gap-x-3 gap-y-10 md:grid-cols-3">
+        <ol className="mt-14 grid gap-x-3 gap-y-10 md:grid-cols-2 lg:grid-cols-4">
           {waves.map((w) => {
             const fill = FILL[w.status as keyof typeof FILL] ?? 0;
             return (

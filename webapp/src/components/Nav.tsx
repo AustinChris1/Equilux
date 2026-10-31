@@ -5,6 +5,7 @@ import { LogoMark } from "./Logo";
 const links = [
   { label: "How it works", href: "#protocol" },
   { label: "Indicators", href: "#indicators" },
+  { label: "Scale", href: "#scale" },
   { label: "Try to cheat", href: "#cheats" },
   { label: "Scope", href: "#scope" },
   { label: "Verify", href: "/verify" },

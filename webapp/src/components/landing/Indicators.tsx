@@ -1,9 +1,9 @@
 import { useRef } from "react";
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { BadgeCheck, Coins, Equal, Layers, Percent, TrendingUp, Users } from "lucide-react";
+import { BadgeCheck, ChartColumn, Coins, Equal, Layers, Percent, TrendingUp, Users } from "lucide-react";
 import { EASE_OUT, FIGURES } from "./data";
 
-type Card = { letter: string; icon: typeof Percent; label: string; figure: React.ReactNode; note: string; small?: boolean };
+type Card = { letter: string; icon: typeof Percent; label: string; figure: React.ReactNode; note: string; small?: boolean; extra?: boolean };
 
 const pct = (n: number) => `${n.toFixed(2)}%`;
 
@@ -31,6 +31,7 @@ const CARDS: Card[] = [
   { letter: "e", icon: Users, label: "Receive variable pay", figure: "71% · 100%", note: "women 5 of 7 · men 7 of 7", small: true },
   { letter: "f", icon: Layers, label: "Pay quartiles", figure: <Quartiles />, note: "women dark, men light, lowest to highest" },
   { letter: "g", icon: BadgeCheck, label: "Gap per worker category", figure: pct(FIGURES.engineeringGap), note: "Engineering · ≥ 5% flagged · small groups suppressed" },
+  { letter: "+", icon: ChartColumn, label: "Gap inside equal job levels", figure: pct(FIGURES.levelAdjustedGap), note: "new in Wave 3 · level mix always shown · not a fairness verdict", extra: true },
 ];
 
 /** Article 9(1)(a)–(g): a numbered card grid that fills as each indicator is shown proven. */
@@ -59,7 +60,7 @@ export function Indicators() {
           {CARDS.map((c, i) => (
             <article
               key={c.letter}
-              className={`relative isolate flex min-h-[176px] flex-col overflow-hidden rounded-2xl p-5 ring-1 ring-night/20 ${i === 6 ? "col-span-2" : ""}`}
+              className={`relative isolate flex min-h-[176px] flex-col overflow-hidden rounded-2xl p-5 ${c.extra ? "border-2 border-dashed border-night/60" : "ring-1 ring-night/20"}`}
             >
               {/* the card fills from the bottom as its figure is shown proven */}
               <motion.span aria-hidden="true" className="absolute inset-0 -z-10 bg-paper"

@@ -111,7 +111,7 @@ function Stage({ step }: { step: number }) {
                 transition={{ duration: 0.35, ease: EASE_OUT, delay: 0.25 }}>
                 proven
               </motion.span>
-              <p className="mt-4 text-[14px] text-sage">14 records · 6 circuits · 0 salaries disclosed</p>
+              <p className="mt-4 text-[14px] text-sage">14 records · 1 batch · 0 salaries disclosed</p>
             </div>
           </motion.div>
         )}

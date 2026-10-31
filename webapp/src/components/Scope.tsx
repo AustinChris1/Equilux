@@ -8,6 +8,8 @@ const proves = [
   { head: "Every figure is exact", body: "All seven Article 9 indicators are exact: mean and median gaps on basic and on variable pay, who receives variable pay, the gender mix of each pay quartile, and every category's gap. The circuit accepts one value and rejects every other, including one basis point off." },
   { head: "No small-group leaks", body: "No category's pay is published unless both groups have at least three people, so no colleague's salary can be worked out." },
   { head: "You can check you were counted", body: "Each employee can verify their own record was inside the numbers, without seeing anyone else's." },
+  { head: "Big companies, no partial leaks", body: "A report covers up to 512 people, proven sixteen at a time. Between batches the running totals are sealed (the chain holds only a salted hash of them), so no batch reveals what the people in it earn." },
+  { head: "The gap inside equal job levels", body: "Each job level's mix of women and men is published, and the gap inside each level where both groups have at least three people, plus a level-adjusted gap over the whole company." },
 ];
 
 const doesNot = [
@@ -28,12 +30,20 @@ const doesNot = [
     body: "All seven Article 9 indicators are proven, on annual basic and variable pay. Variable-pay gaps are measured among the people who receive it. National transpositions may define pay (hourly rates, allowances) or tied earners at a quartile boundary differently; the circuit uses annual figures and lets the employer place ties.",
   },
   {
-    head: "A sized instance, not a production deployment",
-    body: "This build fixes a 16-record witness, 32 commitment slots and 4 worker categories — right for a demo company, not a 250-person employer. Sizing is a compile-time parameter per company band.",
+    head: "A small level gap is not a fair pay structure",
+    body: "Equal pay inside each level says nothing about who reaches which level. That is why each level's mix is always published. Whether the levels themselves are fair stays a human judgement.",
+  },
+  {
+    head: "Up to 512 people, tested at 250, on testnet at 32",
+    body: "One contract instance takes up to 512 people and 4 worker categories (a compile-time size). A 250-person company runs through the compiled circuits in the tests and in your browser; the run on Midnight's testnet used 32 people in 2 batches. We do not claim 250 on-chain.",
   },
   {
     head: "Testnet, not mainnet",
-    body: "Deployed and proven on Midnight's public preprod testnet (contract 598b346e…d1cb), the full flow with real proofs. Midnight's stable wallet SDK cannot sync preprod yet, so the deploy runs on its release-candidate wallet with one documented patch. Mainnet follows Midnight.",
+    body: "Proven on Midnight's public preprod testnet: contract v4 for 32 people (58 transactions, contract 7b4e8bab…1021f), and the Wave 2 contract for 14. Midnight closed its own preprod indexer, so the site reads through Blockfrost. Mainnet follows Midnight.",
+  },
+  {
+    head: "Employees still need a wallet to enroll",
+    body: "Checking your own record needs no wallet. Enrolling it does, today. A link in the payslip portal, with the employer paying the fee, is the next step.",
   },
   {
     head: "Binary gender markers",

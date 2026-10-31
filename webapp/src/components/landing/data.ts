@@ -44,10 +44,24 @@ export const FIGURES = {
   quartiles: [ { w: 2, m: 1 }, { w: 2, m: 2 }, { w: 2, m: 1 }, { w: 1, m: 3 } ],
   engineeringGap: 13.88,
   salesGap: 3.7,
+  levelAdjustedGap: 3.7, // the level report (contract v4) for the same 14 people
 };
 
-/** The demo company, deployed and proven on Midnight's public preprod testnet (2026-10-01). */
+/** The demo company, deployed and proven on Midnight's public preprod testnet (2026-10-01, contract v3). */
 export const PREPROD_CONTRACT = "598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb";
 export const PREPROD_VERIFY = `/verify?network=preprod&contract=${PREPROD_CONTRACT}`;
+
+/** Wave 3: contract v4 (batched) on preprod, a 32-person company in 2 batches (2026-10-31). */
+export const V4_CONTRACT = "7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f";
+export const V4_VERIFY = `/verify?network=preprod&contract=${V4_CONTRACT}`;
+export const V4_RUN = { people: 32, batches: 2, transactions: 58, meanGap: 9.5, levelAdjustedGap: 9.05 };
+export const BATCH = 16;
+export const MAX_PEOPLE = 512;
+
+/** Transactions for a company of n: deploy (1 + 8 keys), roster, council, one enrollment each, three reports. */
+export const transactionsFor = (n: number) => {
+  const b = Math.ceil(n / BATCH);
+  return 9 + (1 + b) + b + n + 3 * (2 + b);
+};
 
 export const EASE_OUT = [0.23, 1, 0.32, 1] as const;

@@ -131,6 +131,12 @@ export default function VerifyPage() {
                   <ExternalLink size={13} className="mt-0.5 shrink-0" />
                   <span>contract {view.contractAddress} <span className="font-sans not-italic text-cream/80">· view on Midnight's preprod explorer</span></span>
                 </a>
+              ) : null}
+              {explorerContractUrl(network, view.contractAddress) ? (
+                <a href={`https://preprod.midnightexplorer.com/contracts/${view.contractAddress}`} target="_blank" rel="noreferrer"
+                  className="mt-1.5 ml-[21px] flex w-fit text-[12px] text-sage underline decoration-gold/30 underline-offset-4 hover:text-gold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
+                  or on MidnightExplorer
+                </a>
               ) : (
                 <p className="mt-3 font-mono text-[12px] break-all text-sage">contract {view.contractAddress}</p>
               )}

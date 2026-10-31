@@ -3,6 +3,7 @@ import { Hero } from "./components/Hero";
 import { Equinox } from "./components/landing/Equinox";
 import { Indicators } from "./components/landing/Indicators";
 import { Cheats } from "./components/landing/Cheats";
+import { Scale } from "./components/landing/Scale";
 import { WhoSees } from "./components/landing/WhoSees";
 import { Mandate } from "./components/Mandate";
 import { Scope } from "./components/Scope";
@@ -19,6 +20,7 @@ export default function App() {
         <Hero />
         <Equinox />
         <Indicators />
+        <Scale />
         <Cheats />
         <WhoSees />
         <Mandate />
