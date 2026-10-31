@@ -9,11 +9,11 @@
  * Pages (.github/workflows/keys.yml). Loaded only when a visitor connects.
  */
 import type { ConnectedAPI } from "@midnight-ntwrk/dapp-connector-api";
-import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
+import { createCircuitContext, sampleSigningKey } from "@midnight-ntwrk/compact-runtime";
 import { CompiledContract } from "@midnight-ntwrk/compact-js";
-import { CostModel, Transaction, type FinalizedTransaction } from "@midnight-ntwrk/ledger-v8";
-import { deployContract, findDeployedContract } from "@midnight-ntwrk/midnight-js/contracts";
-import { setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
+import { CostModel, LedgerParameters, Transaction, type FinalizedTransaction } from "@midnight-ntwrk/ledger-v8";
+import { createUnprovenDeployTx, findDeployedContract, submitInsertVerifierKeyTx, submitTx } from "@midnight-ntwrk/midnight-js/contracts";
+import { getNetworkId, setNetworkId } from "@midnight-ntwrk/midnight-js/network-id";
 import type { MidnightProvider, PrivateStateProvider, ProofProvider, WalletProvider } from "@midnight-ntwrk/midnight-js/types";
 import { dappConnectorProofProvider } from "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider";
 import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-config-provider";
@@ -45,7 +45,7 @@ export class WalletStop extends Error {
   readonly kind: typeof NO_DUST | typeof NO_ANSWER;
   constructor(kind: typeof NO_DUST | typeof NO_ANSWER, message: string) { super(message); this.kind = kind; }
 }
-const STORAGE = "equilux.wallet-chain.v1";
+const STORAGE = "equilux.wallet-chain.v2"; // v2: contract v4, with its maintenance key
 const PRIVATE_STATE_ID = "equiluxPrivateState";
 
 type Log = (lines: string[]) => void;
@@ -100,7 +100,8 @@ const circuitMessage = (e: unknown): string => {
   return idx >= 0 ? m.slice(idx + "failed assert:".length).trim() : m;
 };
 
-interface Saved { address: string; employerSecret: string; providerSecret: string; councilSecret: string }
+/** signingKey: the contract's maintenance key, needed to add the verifier keys the deploy did not carry. */
+interface Saved { address: string; employerSecret: string; providerSecret: string; councilSecret: string; signingKey: string }
 const loadSaved = (): Saved | null => { try { return JSON.parse(localStorage.getItem(STORAGE) ?? "null"); } catch { return null; } };
 const save = (s: Saved | null) => { try { s ? localStorage.setItem(STORAGE, JSON.stringify(s)) : localStorage.removeItem(STORAGE); } catch { /* ignore */ } };
 
@@ -237,12 +238,56 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
   let secrets: { e: Uint8Array; p: Uint8Array; c: Uint8Array } | null = null;
   const baseState = () => initialPrivateState(secrets!.e, secrets!.p, secrets!.c);
 
+  /**
+   * A deploy writes the whole contract state, verifier keys included (~2.5 KB each), and a preprod block takes
+   * 50,000 written bytes: with all 14 keys the node refuses the deploy ("would exhaust the block limits").
+   * So the deploy carries keys up to 20,000 bytes written (6 of 14) and the rest are added one per
+   * maintenance transaction, signed with the contract's maintenance key (saved first, so a reload can resume).
+   */
+  const circuits = Object.keys(localContract.impureCircuits) as Circuit[];
+  async function deployInParts(args: unknown[], ps: EquiluxPrivateState, keep: (address: string, signingKey: string) => void) {
+    const signingKey = sampleSigningKey();
+    const full: any = await createUnprovenDeployTx(providers as never, { compiledContract, args, signingKey, privateStateId: PRIVATE_STATE_ID, initialPrivateState: ps } as never);
+    const tx = full.private.unprovenTx, intent = tx.intents.get(1), deploy = intent.actions[0], st = deploy.initialState;
+    const build = (ids: string[]) => {
+      const s = new st.constructor();
+      s.data = st.data;
+      s.maintenanceAuthority = st.maintenanceAuthority;
+      for (const id of ids) s.setOperation(id, st.operation(id));
+      const dep = new deploy.constructor(s);
+      return { address: dep.address as string, tx: tx.constructor.fromParts(getNetworkId(), tx.guaranteedOffer, undefined, intent.constructor.new(intent.ttl).addDeploy(dep)) };
+    };
+    const params = LedgerParameters.initialParameters();
+    const ids: string[] = [];
+    for (const id of circuits) if (Number(build([...ids, id]).tx.cost(params).bytesWritten) <= 20_000) ids.push(id); else break;
+    log([`the contract is deployed in ${1 + circuits.length - ids.length} transactions: one block cannot hold all ${circuits.length} circuits' keys`]);
+    const part = build(ids);
+    const res: any = await submitTx(providers as never, { unprovenTx: part.tx } as never);
+    if (res.status !== "SucceedEntirely") throw new Error(`the deploy failed on chain: ${res.status}`);
+    keep(part.address, signingKey as string);
+    log([`deployed at ${part.address} (block ${res.blockHeight}); now adding the remaining circuits`]);
+    return { address: part.address, res };
+  }
+  /** Adds every verifier key the contract does not have yet: one wallet approval each. */
+  async function completeKeys(address: string, signingKey: string) {
+    await providers.privateStateProvider.setSigningKey(address as never, signingKey as never);
+    const cs = await providers.publicDataProvider.queryContractState(address);
+    const missing = circuits.filter((id) => !cs?.operation(id));
+    for (const [i, id] of missing.entries()) {
+      await requireDust();
+      log([`circuit ${i + 1}/${missing.length} · ${id}: approve in ${choice.name}`]);
+      const r: any = await submitInsertVerifierKeyTx(providers as never, compiledContract as never, address as never, id as never, await zk.getVerifierKey(id));
+      log([`circuit ${i + 1}/${missing.length} · ${id} added (block ${r.blockHeight})`]);
+    }
+  }
+
   if (saved) {
     secrets = { e: bytes32(saved.employerSecret), p: bytes32(saved.providerSecret), c: bytes32(saved.councilSecret) };
     try {
       log([`rejoining your contract ${saved.address.slice(0, 12)}…`]);
+      await completeKeys(saved.address, saved.signingKey);
       deployed = await findDeployedContract(providers as never, {
-        contractAddress: saved.address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: baseState(),
+        contractAddress: saved.address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: baseState(), signingKey: saved.signingKey,
       } as never);
     } catch (e) {
       log([`could not rejoin it (${circuitMessage(e)}); deploy a new one from the Employer tab`]);
@@ -310,19 +355,29 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
       switch (path) {
         case "/api/deploy": {
           if (deployed && saved) return { contractAddress: saved.address, alreadyDeployed: true };
+          if (saved) { // deployed, but stopped before every circuit was added: finish that contract
+            await completeKeys(saved.address, saved.signingKey);
+            deployed = await findDeployedContract(providers as never, {
+              contractAddress: saved.address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: baseState(), signingKey: saved.signingKey,
+            } as never);
+            log([`all ${circuits.length} circuits on chain: the contract is ready`]);
+            return { contractAddress: saved.address, alreadyDeployed: true };
+          }
           const s = { employerSecret: String(body.employerSecret), providerSecret: String(body.providerSecret), councilSecret: String(body.councilSecret) };
           const e = bytes32(s.employerSecret), p = bytes32(s.providerSecret), c = bytes32(s.councilSecret);
           await requireDust();
           log([`deploying: employer ${toHex(pureCircuits.publicKey(e)).slice(0, 10)}…, payroll provider ${toHex(pureCircuits.publicKey(p)).slice(0, 10)}…, works council ${toHex(pureCircuits.publicKey(c)).slice(0, 10)}…`]);
-          const d: any = await deployContract(providers as never, {
-            compiledContract, args: [pureCircuits.publicKey(e), pureCircuits.publicKey(p), pureCircuits.publicKey(c)],
-            privateStateId: PRIVATE_STATE_ID, initialPrivateState: initialPrivateState(e, p, c),
+          secrets = { e, p, c };
+          const { address, res } = await deployInParts(
+            [pureCircuits.publicKey(e), pureCircuits.publicKey(p), pureCircuits.publicKey(c)], initialPrivateState(e, p, c),
+            (address, signingKey) => { saved = { address, ...s, signingKey }; save(saved); },
+          );
+          await completeKeys(address, saved!.signingKey);
+          deployed = await findDeployedContract(providers as never, {
+            contractAddress: address, compiledContract, privateStateId: PRIVATE_STATE_ID, initialPrivateState: initialPrivateState(e, p, c), signingKey: saved!.signingKey,
           } as never);
-          deployed = d; secrets = { e, p, c };
-          saved = { address: d.deployTxData.public.contractAddress, ...s };
-          save(saved);
-          log([`deployed at ${saved.address} (block ${d.deployTxData.public.blockHeight})`]);
-          return { contractAddress: saved.address, txId: d.deployTxData.public.txId, blockHeight: n(d.deployTxData.public.blockHeight) };
+          log([`all ${circuits.length} circuits on chain: the contract is ready`]);
+          return { contractAddress: address, txId: res.txId, blockHeight: n(res.blockHeight) };
         }
         case "/api/roster": {
           requireDeployed();
