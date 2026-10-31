@@ -1,0 +1,369 @@
+{
+  "network": "preprod",
+  "contractVersion": "v4",
+  "companySize": 32,
+  "startedAt": "2026-10-31T20:08:08.214Z",
+  "steps": [
+    {
+      "step": "deploy",
+      "txId": "00f424204168ecc6c1ae597333f7cd1a2306408eeea32779fa988debf0f448dca7",
+      "txHash": "03e2421f9908f7ca47e19aceea4a21cace0befcce0dec430c4daf36aedd6dee1",
+      "block": 3223740
+    },
+    {
+      "step": "verifierKey:reportBatch",
+      "txId": "00ceed449c251df01be92b09bed4be65fbae491dd8f9732283964090ea4ce01641",
+      "txHash": "7febcbcad1032cc37fbfc9a3c04c2e7d8d641fcbb8c289676e3a215f9c5c11fc",
+      "block": 3223745
+    },
+    {
+      "step": "verifierKey:finishReport",
+      "txId": "0050a3deb479e6c51ea377852d004bcad16cfd2307f0d176ce81a6f1d098e98da3",
+      "txHash": "f00f7d72f0d35cc84c8e2ee1ea25bcdd4d3680b4363403e862a9cb5d9aef0b59",
+      "block": 3223750
+    },
+    {
+      "step": "verifierKey:beginVariableReport",
+      "txId": "00afdcf3f8a65b74278e6f211404f8740daa3b3d4714649ce04d78057d17bc59c4",
+      "txHash": "12d60b34581559a89e3f50cde5352c1d8a7e54ee6a13f97f6a8c21e61e49a294",
+      "block": 3223754
+    },
+    {
+      "step": "verifierKey:variableBatch",
+      "txId": "00a027bc0af0761f0009f61f17745c5cac623b56fc46bde685e720a14e4a1c4484",
+      "txHash": "d15356e4d4122a698b6b37e27600e0d15c4da3c0c3c5daf9044227fe84193250",
+      "block": 3223759
+    },
+    {
+      "step": "verifierKey:finishVariableReport",
+      "txId": "001667fc340cb8551783796d9cbc71bf65f543ed9d6eb8898e8d34cec4f8aceba5",
+      "txHash": "3946945145493440156626d3d5e7be6447d6bac6ffb171348d91cb455998377d",
+      "block": 3223764
+    },
+    {
+      "step": "verifierKey:beginLevelReport",
+      "txId": "00ab04f3e9ea2612c217a997083e9e12e25e168cff2e6b89f3fca15c6c40a1190c",
+      "txHash": "8f13528e6033662820969c29bbdd43f4165388a911677beeaa34be26aa7c367c",
+      "block": 3223769
+    },
+    {
+      "step": "verifierKey:levelBatch",
+      "txId": "00661c419ea8e4d31df33169816313b9eae82d3c4928da8fee43ed2e264433e0b0",
+      "txHash": "712b0da6608f7922505b25bf4f94413c9fcfc1988f435f62a423090b749073f2",
+      "block": 3223774
+    },
+    {
+      "step": "verifierKey:finishLevelReport",
+      "txId": "00f847102e78fe8e6a2a5adc4f4ae2fb09be3db311470f68f987a1206e6a93b0a5",
+      "txHash": "4096b46c9f8942a55128d4a3eda19569d5f8db5f90783a6d3dadfafcf1575c76",
+      "block": 3223779
+    },
+    {
+      "step": "declareRoster",
+      "txId": "00e4d7768219b402e668942193103d2d853e0756c6d99a9f4ae4da169f193e9627",
+      "txHash": "0f65eb5fc7274c3a5f2946273488b716461973f4c00b338d3dd539038d25c679",
+      "block": 3223785
+    },
+    {
+      "step": "addPayrollRows:1",
+      "txId": "003d39c974a0f4db34e17af8582c609636a567a6208a4661afd2f332c9f497c632",
+      "txHash": "76c21024cd7a8e8170c4db96ec418e91c533e9ea4b9556b61093870712c0a026",
+      "block": 3223790
+    },
+    {
+      "step": "addPayrollRows:2",
+      "txId": "007b359e9550b36dca3007d85c70b254777e99d0ba7b043801b59b9738be8baf4d",
+      "txHash": "a83ca8841bbc56fbbb19358abc98b84c795e1f48be866858e91c0ac3eb5e2061",
+      "block": 3223796
+    },
+    {
+      "step": "confirmPayroll:1",
+      "txId": "00eaa59efb85df57ba473ab5525f5885b7285f75553918d2b97ecaaef460d2f86a",
+      "txHash": "3a3e5bf8a4263f5a5662d7105e184339baa43315807f5c0cea83099ebce18174",
+      "block": 3223805
+    },
+    {
+      "step": "confirmPayroll:2",
+      "txId": "00373e1231e9a4268ca94d3886cf2859a2ced153e4477ee15312d81fa8d44e9eb5",
+      "txHash": "e2a25b035552da69b18ad774b2a5925c754d598a34033d2cf05a030e21be3698",
+      "block": 3223814
+    },
+    {
+      "step": "enroll:p000",
+      "txId": "00522b5765c523440796dfd4e74071ab4361c7c04a56ad566b2151a66bd855fa95",
+      "txHash": "bb170fc47480c456adcf80d2044925636464bc9c872bbbc3162835be078767c7",
+      "block": 3223819
+    },
+    {
+      "step": "enroll:p001",
+      "txId": "00e53d384d4209e58ed42994a8a1a328ea159e9344bde39a303774886f2d55e11e",
+      "txHash": "710d69b3b8007692224eebb0b44476cb256b8312df1ade6e6a14b5efdb4c43bd",
+      "block": 3223825
+    },
+    {
+      "step": "enroll:p002",
+      "txId": "001db99684c1341379311a43404a6b7d32a41d3daaaf29b01d0a2eef18f3738b2c",
+      "txHash": "1773b04b20621ce2cfba00a85a8e5c0a84b6aded4cb2b1ad2a4382debb86c1fe",
+      "block": 3223831
+    },
+    {
+      "step": "enroll:p003",
+      "txId": "00f6f199f7fc4490a840c1a60a064d848299cbbfe2a69fd0678e1a476b497fafe4",
+      "txHash": "f08f2735ebcd72e9b51915dd60580904e42a8fedf9f32f93dc57213f2e5977db",
+      "block": 3223836
+    },
+    {
+      "step": "enroll:p004",
+      "txId": "0040c375a6a853607c4d4deba013a72c6ec8ecd0cb037e0a91c16b28237b246f4e",
+      "txHash": "77aecb26ba8ccb2220f69f144a1606ac29e7bd7e6f2f2efe339aa3a6de7879f1",
+      "block": 3223841
+    },
+    {
+      "step": "enroll:p005",
+      "txId": "00189f7a9efe313b3fd1584e65266cc84864c660fd0f7289830f44439e1a355b08",
+      "txHash": "cb30a1993f9fba4ef467afadb634bbbd798310489b0c7e7446faca4f742b393e",
+      "block": 3223847
+    },
+    {
+      "step": "enroll:p006",
+      "txId": "00cd7ea4072d47bc0a239e110e6e359e0ccf6fd43e83793b340868a05a0765ad47",
+      "txHash": "b17c89bcdd3f8872a614c050cdacdd3102c8fd17c228cef1766487952782de88",
+      "block": 3223853
+    },
+    {
+      "step": "enroll:p007",
+      "txId": "001ff2e22275276d75007ec80ac980bafa9ae8c2d9954a78caa11e5864f29cee46",
+      "txHash": "0913e268294e339d8d1b8cf7bb65751dc5f90760e03253679414fae819114112",
+      "block": 3223859
+    },
+    {
+      "step": "enroll:p008",
+      "txId": "0074879df5ad2e3e5dd8d3a7e4ac7ca78e62fc1572ebd2fe9ea1c4d47e0b48b2e2",
+      "txHash": "2a4d112e9622665f3310d2cf82cb8dfc38569b72321cab37a4328a85c9447238",
+      "block": 3223865
+    },
+    {
+      "step": "enroll:p009",
+      "txId": "00bdd22fdd1aa234907c566a6774a6419eb42761e8fd2ca43ea6bb4584dd6cb38e",
+      "txHash": "5e55df37817ec65f78105d288588ea575c374daf8c5a75bf3fa0f0619af069b0",
+      "block": 3223871
+    },
+    {
+      "step": "enroll:p010",
+      "txId": "004df452a3428103c38aaeedd8cb12542db94362416d9ebdc31afeeac0135037b8",
+      "txHash": "e5d7467ef7852e3907be0f07a3ec6993443aee10576706c76d2a68781bd2f959",
+      "block": 3223877
+    },
+    {
+      "step": "enroll:p011",
+      "txId": "00d202444bc1a6f9c4decf6d850a75eea90a20d01090c0fa6c526060f1515a145f",
+      "txHash": "9c255863bd25c0eb472bafdef2cb6cd8de72aa96d113b230acd19bd46fa3a730",
+      "block": 3223883
+    },
+    {
+      "step": "enroll:p012",
+      "txId": "00210b305da22c9963e61cf747d919ca24c9c5b38fd5003ce2150e550cba32e871",
+      "txHash": "30fa94f07bfcddb2a620a427552cfbd0567254280aa32fb119875b73914280d6",
+      "block": 3223888
+    },
+    {
+      "step": "enroll:p013",
+      "txId": "0094f90ddc2a4908fc4119d1848bcef3b4ce29d19ef848d3815c220344bbf576a4",
+      "txHash": "3c49fba924df3d3cda58d4d78a4c9e8facc3299a19d7a34de9f26cd82d88db33",
+      "block": 3223894
+    },
+    {
+      "step": "enroll:p014",
+      "txId": "00bfd8d5a167642f299d4fbcbf79ba462960b9b6d58ada24e5d28db8531db78d02",
+      "txHash": "4ecfb55d212719671ffce83a350f1258a92f708f404d216ec59dd2ba3c438380",
+      "block": 3223900
+    },
+    {
+      "step": "enroll:p015",
+      "txId": "0044431c62736bfee378c03920143e6451b31ca1de48963a6d844b7ada79e73607",
+      "txHash": "5b6dbea548cd9554e2c0b8d67a7aba7c3a009d66fdaa1352eb560946523d0fc2",
+      "block": 3223906
+    },
+    {
+      "step": "enroll:p016",
+      "txId": "00b3c434f15ffbc7166d76fc02bee8b98a45da1d9ef770ce98be3dceac13244f3d",
+      "txHash": "853bc0dfb3cfbec3e60029050f002bb457665d39867c2984a96e7f4f7d0c6599",
+      "block": 3223911
+    },
+    {
+      "step": "enroll:p017",
+      "txId": "00f2e9352faeffa1c198e717acc3079335b3b58245a689be7220f7bf40da2ad403",
+      "txHash": "6d8d04df7eaf1096ff08a2b9bd53acb779d7868b6245c2343a38a8894420e507",
+      "block": 3223917
+    },
+    {
+      "step": "enroll:p018",
+      "txId": "00628e52d40206e845e1f24f14bac0ac16bfb158f66271157c5801ec5fc627b381",
+      "txHash": "a080c01f496b82976dbae3e180edb7694dc09c441c6d8f5be50f8bdd578d3f16",
+      "block": 3223923
+    },
+    {
+      "step": "enroll:p019",
+      "txId": "0015b2e7291e7a73381ebc811647063027a3300cde54e8ac29adb92378870c406e",
+      "txHash": "bd3eb27df5a36d1c0c14eca66c31a08467afa7f09dba5672f68024c237788613",
+      "block": 3223929
+    },
+    {
+      "step": "enroll:p020",
+      "txId": "005c98daee2c6acb55c4ec5067a3dc0458866e4d918a9a0f114a9a28216a1f95df",
+      "txHash": "412f1523198dd1c918b054c60588fe21bdbf157caa698348f655e605e779dfc0",
+      "block": 3223935
+    },
+    {
+      "step": "enroll:p021",
+      "txId": "00c3113f974a7cdcd038b23bbdfa70063151e06cc9552f14e30087bed936476201",
+      "txHash": "70f4af39608677d245b42cb8d24a4f7da39d016ee7e8be71140398bf4af0f9de",
+      "block": 3223941
+    },
+    {
+      "step": "enroll:p022",
+      "txId": "00c6a4f55c67e2ff2459ebff3e15712129aa727a67a9475087e051b01056c3d8b9",
+      "txHash": "4c5d7fffa8060ef33a602c5d6ff808f27efb7740c9b2dc8cb89862d5bd46c350",
+      "block": 3223946
+    },
+    {
+      "step": "enroll:p023",
+      "txId": "005ebe23bdb7c43e6e25b4be10d5cac8f6461a5524cdbf05da8d77e00bd415a96a",
+      "txHash": "9a3f0bed1d44c1c2538eb759fb643a1cbd41b943fe908bc61d2c540424291693",
+      "block": 3223952
+    },
+    {
+      "step": "enroll:p024",
+      "txId": "005ccc2843669a7b5b043e40decfa8de91b8775aefd1ab3fa64c9cf02e375f7954",
+      "txHash": "28845ad0271275eabb942d68ee489feea8cc6376c4531011b7df9a17d2b0afcc",
+      "block": 3223958
+    },
+    {
+      "step": "enroll:p025",
+      "txId": "007135ea90753abc79bef216ae56c960e06e8e239794d9f9f8e4eb4b2bcb2a0b8b",
+      "txHash": "b3954dd2ae1106d62b9f2ea9372992b55c11499a8560e9cb2d982f75091d3195",
+      "block": 3223965
+    },
+    {
+      "step": "enroll:p026",
+      "txId": "0093fc4ef56142315aca8e702600270a8c5c98da8e5e44e07ed0184cfeae9778a8",
+      "txHash": "c6694bcd0d3b80eee044a655467300d754c46517ed4fd7b11017e654a9dc042e",
+      "block": 3223972
+    },
+    {
+      "step": "enroll:p027",
+      "txId": "0004366c8323376152aafb72f8cc4f203bdced5f0f4f80354dfa7371377b8a36d5",
+      "txHash": "1eca6589afff0fed6cad4a0bf94f90e30b1bded6e178f1a924ad274f10020d2e",
+      "block": 3223978
+    },
+    {
+      "step": "enroll:p028",
+      "txId": "00413c273ee6b115e7ffe4cee969916d942df5f7528f33c0555ff28ca6c2807484",
+      "txHash": "c674482caa016dd48f4b3a7c67f20f9e1c30f4bb771167d82d51960729887bdc",
+      "block": 3223984
+    },
+    {
+      "step": "enroll:p029",
+      "txId": "00736aae09ad579d4acb019ed00d24be02dce604bc340ae0591fac3a7905ca6d9d",
+      "txHash": "1b6251dad9e7dfa9777d2908940a9d335055ccbaaa083f35f2e36b272e1408d9",
+      "block": 3223990
+    },
+    {
+      "step": "enroll:p030",
+      "txId": "002843ad3ea70daca72995cd9439b198bd0a869aea6269fb2fa50e0ecb185723f0",
+      "txHash": "d7eedf3978c410f256cfd945386fa3fdfce31c9b21744488024048aa2ed459e3",
+      "block": 3223996
+    },
+    {
+      "step": "enroll:p031",
+      "txId": "0016fc41e8d7304b6ada3476308ed7fa6403646f5409b991ec7aa9a9305360fd07",
+      "txHash": "6c3b85461771a6d18ee615d79391fc9e4b0ac39a1c468149c9aadf8481f6a69f",
+      "block": 3224003
+    },
+    {
+      "step": "payReport:begin#1",
+      "txId": "005bbca37818493d8fb47a95a72f8e0a99d8476054a2e679a9f2d621f1d43953e8",
+      "txHash": "b9c8ab83629e4d79680b022d95d86ad53d5c4181e88a680bc22c8ecc31d02e1e",
+      "block": 3224009
+    },
+    {
+      "step": "payReport:batch1#1",
+      "txId": "0039984c02d8a4eb0d6a81c71199b11e8d4fa3f2fc62f3810be385c597400eb24b",
+      "txHash": "ee6c235b3400b77b29e7999e646c764c453a3c01ed80c1ef4f543f2e47893aec",
+      "block": 3224034
+    },
+    {
+      "step": "payReport:batch2#1",
+      "txId": "0092b0a397a8fd814bd61d9747424b00ce984f115a444f7b26bb7595f4bc88859e",
+      "txHash": "8a1111215e51dbbf1928ff247f4d9ff06eab6614757da88320c5955a1362c958",
+      "block": 3224051
+    },
+    {
+      "step": "payReport:finish#1",
+      "txId": "001f777fa804cd911a5fd4d3a7cfa51447cd54a380e516d31c03a6bac5b5643635",
+      "txHash": "9c48cb43eac1ac19bb4b6bea03c40c2c3e1704337cd8e7eff1dc23c45e788a31",
+      "block": 3224057
+    },
+    {
+      "step": "payReport:complete"
+    },
+    {
+      "step": "variableReport:begin#1",
+      "txId": "00111ee1a6a87ee6a4a87fdae1a66d8102fd245664f02657d4761b1217fe298ece",
+      "txHash": "4676c1843e22e8846cf7a0d0795557807e4790f30bf8fd4c9be18254f887c9cd",
+      "block": 3224063
+    },
+    {
+      "step": "variableReport:batch1#1",
+      "txId": "00caed3906da65d708ccd70882485a8f04fd0d02379680f2e5832b8b49c6bb44ab",
+      "txHash": "d9bea1cea20446d3d19ff54993593475331112d822d7dc32774ba9acb7c45835",
+      "block": 3224086
+    },
+    {
+      "step": "variableReport:batch2#1",
+      "txId": "007e6e0f159790920d89f46f02dd95671775c8bb24c0a69d941380c8830e72a2be",
+      "txHash": "8e74151f1f7bd9a9c380773736fadc943d9d7c51afba20697c7af6dc82bac6c0",
+      "block": 3224104
+    },
+    {
+      "step": "variableReport:finish#1",
+      "txId": "00d6a442d82ce9f9e635d050dfe1ceddd5ad7d3fbd2e5d0aad78f8d5aa60bb1547",
+      "txHash": "95d2d708cbdde11c5db1cb226254e99fb4f57b2a9d00c308cef6053a04c069a6",
+      "block": 3224110
+    },
+    {
+      "step": "variableReport:complete"
+    },
+    {
+      "step": "levelReport:begin#1",
+      "txId": "003c760a014585b1bfe2f7531ff5a6758770def6f29bed12772561685a1ca26998",
+      "txHash": "aca28ec3c6086e8cdfef6dd693a3d50198d78e261627067f8e9239f705ebb11c",
+      "block": 3224116
+    },
+    {
+      "step": "levelReport:batch1#1",
+      "txId": "00051d25701d494b620048f414443c683e743c61fe66ef2fd14914d96ffa300a1f",
+      "txHash": "756e5e244427f6aaceb584d92aa94ce9322736d4c04bac2cde0033704cf353f1",
+      "block": 3224139
+    },
+    {
+      "step": "levelReport:batch2#1",
+      "txId": "00fddf6dce3e303192a20ca3abbee24d96d366e216a26a2223100bcd79f3d17048",
+      "txHash": "25e55dd5ea899b9facdef6c046cb9dd0c0619221ee7d593468d30725de7db75b",
+      "block": 3224157
+    },
+    {
+      "step": "levelReport:finish#1",
+      "txId": "0059030c28e8841611ce3eb07bb94cb3cc54c62295c17082210b7d8c68d577fb85",
+      "txHash": "17581305205f6050f999f8118151b95573eb8f7d3afe7fc631c5cadb664a857c",
+      "block": 3224162
+    },
+    {
+      "step": "levelReport:complete"
+    },
+    {
+      "step": "complete"
+    }
+  ],
+  "contract": "7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f"
+}
