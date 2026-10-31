@@ -51,3 +51,13 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 - [x] README and SUBMISSION rewritten for Wave 3
 - [ ] short Wave 3 video (60 to 90 s), then its link into SUBMISSION.md ([WAVE 3 VIDEO LINK])
 - [ ] optional: one real wallet deploy on v4 (Lace, 9 approvals) to confirm the split deploy from a browser
+
+## Submission push (agreed 2026-10-31, aiming at every score)
+1. [ ] explorer links → preprod.midnightexplorer.com (the other host does not answer)
+2. [ ] webapp: landing roadmap (Wave 2 delivered, Wave 3 column), every Wave-2-era number on the site
+3. [ ] walletless employee check `/check`: from a payslip link, no wallet, no fee: row committed, council
+       opened it, enrolled, counted in each published report (read-only against preprod). Enrollment itself
+       still needs a wallet: say so.
+4. [ ] Wave 3 video on the v4 product (60 to 90 s) → README hero + SUBMISSION link
+5. [ ] deck for Wave 3; the fee cost of the 32-person preprod run as a business number
+No invented outreach: the user cannot send HR messages; research stays labelled as research.
