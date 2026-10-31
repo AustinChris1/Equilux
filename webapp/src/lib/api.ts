@@ -69,6 +69,7 @@ export interface VariablePayReportOnChain {
 }
 
 export interface LedgerView {
+  contractVersion?: "v3" | "v4"; // v3 = the Wave 2 layout (16 people), v4 = batched
   contractAddress: string;
   rosterDeclared: boolean;
   payrollConfirmed: boolean;

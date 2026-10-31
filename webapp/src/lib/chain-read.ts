@@ -5,6 +5,8 @@
  */
 import { ContractState } from "@midnight-ntwrk/compact-runtime";
 import { ledger } from "../../../contract/build/contract/index.js";
+// The Wave 2 contract on preprod (598b346e…) uses the v3 ledger layout; its compiled module is kept to decode it.
+import { ledger as ledgerV3 } from "./contract-v3/index.js";
 import type { LedgerView } from "./api";
 import { ledgerView } from "./browser-contract";
 
@@ -39,11 +41,12 @@ export async function readContract(network: ChainNetwork, address: string): Prom
   if (body?.errors?.length) throw new Error(`The indexer rejected the query: ${body.errors[0].message}`);
   const state = body?.data?.contractAction?.state as string | undefined;
   if (!state) throw new Error("No contract with that address on this network.");
-  let view: LedgerView;
-  try {
-    view = ledgerView(ledger(ContractState.deserialize(hexToBytes(state)).data), clean);
-  } catch {
-    throw new Error("A contract exists at that address, but it is not an Equilux reporting contract of this version.");
+  const data = ContractState.deserialize(hexToBytes(state)).data;
+  // v4 (batched) first, then the Wave 2 layout
+  for (const [version, decode] of [["v4", ledger], ["v3", ledgerV3]] as const) {
+    try {
+      return { ...ledgerView((decode as typeof ledger)(data), clean), contractVersion: version };
+    } catch { /* try the older layout */ }
   }
-  return view;
+  throw new Error("A contract exists at that address, but it is not an Equilux reporting contract.");
 }
