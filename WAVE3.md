@@ -37,12 +37,13 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
     order across batches; finish checks each band holds a quarter (4c ≤ b·n < 4c+4).
 
 ## Progress
-- [x] v4 contract compiles (--skip-zk), 11 circuits (`9ea8d4b`); keys: compiling (`contract/compile-keys.sh`)
+- [x] v4 contract compiles (--skip-zk), 11 circuits (`9ea8d4b`); keys: recompiling after a power cut (`contract/compile-keys.sh`)
 - [x] claims.ts: batch arithmetic mirroring the circuits, quartile cut points (`7af88df`)
 - [x] tests: 67 pass (57 circuits incl. a 250-person company in ~2 min, 10 CSV) (`7af88df`)
-- [ ] browser practice mode on v4 (sample company sizes 14 / 250)
-- [ ] /verify decodes both the Wave 2 (v3) contract and v4
-- [ ] API / standalone / wallet-chain on v4
+- [x] app on v4 (`3817774`): 14-person story 9.69% in ~10 s, 11/11 cheats refused, 250-person company in ~62 s in the browser (e2e: video/scripts/e2e-v4.mjs)
+- [x] /verify decodes v4 and the Wave 2 (v3) preprod contract (`0d734c0`), checked against preprod
+- [x] wallet-chain on v4: whole phases simulated in the page before any fee (`3817774`)
+- [ ] API server / standalone demo on v4
 - [ ] preprod run on GitHub Actions at a size that finishes
 - [ ] equal-levels gap
 - [ ] research paragraph, README, submission, video update
