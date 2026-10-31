@@ -47,4 +47,7 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 - [x] preprod run on GitHub Actions (workflow `Preprod v4`, run 41235926203, 1 h 6 min): contract `7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f`, 58 txs in blocks 3,223,740 to 3,224,162 (deploy with 6 keys + 8 key inserts, roster 3, council 2, 32 enrollments, 3 reports × begin + 2 batches + finish). Mean 9.50%, median 3.40%, variable 9.26%, level-adjusted 9.05% over 31 people. Record: contract/preprod/deployment-v4.json; /verify on the wave3 build reads it all. Merging wave3 to main makes the live /verify link work
 - [x] the gap inside equal job levels (`e563cbe` contract, app next commit): records carry a level, batched level report (mix + gap at k = 3 + level-adjusted gap), CSV level column, shown in the app and /verify with the caveat that levels themselves may not be fair; 73 tests; browser e2e passes (14 people: adjusted 3.70%; 250 people: three reports in ~29 s)
 - [x] research: docs/who-pays.md (desk research, labelled as such)
-- [ ] README, submission, short Wave 3 video
+- [x] merged wave3 into main (`088e0fc`); live site on v4, /verify reads v4 and v3, e2e passes on the live site; wallet path deploys in parts too
+- [x] README and SUBMISSION rewritten for Wave 3
+- [ ] short Wave 3 video (60 to 90 s), then its link into SUBMISSION.md ([WAVE 3 VIDEO LINK])
+- [ ] optional: one real wallet deploy on v4 (Lace, 9 approvals) to confirm the split deploy from a browser
