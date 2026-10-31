@@ -45,5 +45,5 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 - [x] wallet-chain on v4: whole phases simulated in the page before any fee (`3817774`)
 - [x] API server and scripted demo on v4 phases (type-checked; not run: they need the Docker local network)
 - [ ] preprod run on GitHub Actions at a size that finishes: workflow `Preprod v4` ready (probe mode first, then run, 32 people). Midnight's own preprod indexer AND RPC are closed; everything goes through Blockfrost. NEEDS the repo secret BLOCKFROST_PROJECT_ID (owner action)
-- [ ] equal-levels gap
+- [x] the gap inside equal job levels (`e563cbe` contract, app next commit): records carry a level, batched level report (mix + gap at k = 3 + level-adjusted gap), CSV level column, shown in the app and /verify with the caveat that levels themselves may not be fair; 73 tests; browser e2e passes (14 people: adjusted 3.70%; 250 people: three reports in ~29 s)
 - [ ] research paragraph, README, submission, video update

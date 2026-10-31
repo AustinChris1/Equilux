@@ -34,6 +34,7 @@ interface Person {
   variable: number; // annual bonus; 0 if none
   gender: 0 | 1;
   category: number;
+  level: number; // job level 0..3, for the level report
   secret: string;
   nonce: string; // payslip nonce from the payroll company; blinds this person's payroll row
   commitment?: string;
@@ -41,7 +42,7 @@ interface Person {
   receipt?: boolean;
 }
 
-const STORAGE = "equilux.workspace.v4";
+const STORAGE = "equilux.workspace.v5";
 const newSecret = () => (crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)).replace(/-/g, "").slice(0, 24);
 const DEFAULT_CATEGORIES = ["Engineering", "Sales", "Operations", "Design"];
 
@@ -55,8 +56,11 @@ const SEED: [string, number, number, 0 | 1, number][] = [
   ["Mia Costa", 40_000, 0, 0, 2], ["Ned Fischer", 45_000, 1_000, 1, 2],
 ];
 
-const SAMPLE_CSV = `First name,Last name,Gender,Department,Annual salary,Bonus
-${SEED.map(([n, sal, v, g, c]) => `${n.replace(" ", ",")},${g === 0 ? "female" : "male"},${["Engineering", "Sales", "Operations"][c]},${sal},${v || ""}`).join("\n")}`;
+/** Sample job levels by pay band (1 to 4 in the sample export): under 50k, 50-59k, 60-69k, from 70k. */
+const levelOf = (salary: number) => (salary < 50_000 ? 0 : salary < 60_000 ? 1 : salary < 70_000 ? 2 : 3);
+
+const SAMPLE_CSV = `First name,Last name,Gender,Department,Annual salary,Bonus,Grade
+${SEED.map(([n, sal, v, g, c]) => `${n.replace(" ", ",")},${g === 0 ? "female" : "male"},${["Engineering", "Sales", "Operations"][c]},${sal},${v || ""},${levelOf(sal) + 1}`).join("\n")}`;
 
 const FIRST_W = ["Ana", "Bea", "Chidi", "Gia", "Hana", "Ivy", "Mia", "Nora", "Olga", "Pia", "Rosa", "Sara", "Tara", "Uma", "Vera", "Wen", "Yara", "Zoe", "Lena", "Ines"];
 const FIRST_M = ["Dan", "Eli", "Felix", "Jon", "Kai", "Leo", "Ned", "Omar", "Paul", "Raj", "Sam", "Tom", "Ugo", "Vik", "Will", "Yusuf", "Zane", "Marc", "Lars", "Ivo"];
@@ -73,13 +77,14 @@ export const sampleCompany = (n = 250): Person[] => {
     const salary = Math.round((base[category] * (0.85 + rnd() * 0.3) * (gender ? 1.06 : 1)) / 100) * 100;
     const variable = rnd() < 0.6 ? Math.round((salary * (0.03 + rnd() * 0.07)) / 50) * 50 : 0;
     const name = `${(gender ? FIRST_M : FIRST_W)[i % 20]} ${LAST[(i * 3 + 7) % 20]}`;
-    return { id: `c${i}-${newSecret().slice(0, 4)}`, name, salary, variable, gender, category, secret: newSecret(), nonce: newNonce() };
+    const level = Math.min(3, Math.floor(rnd() * 3.2 + (gender ? 0.5 : 0)));
+    return { id: `c${i}-${newSecret().slice(0, 4)}`, name, salary, variable, gender, category, level, secret: newSecret(), nonce: newNonce() };
   });
 };
 
 
 const seedPeople = (): Person[] =>
-  SEED.map(([name, salary, variable, gender, category]) => ({ id: newSecret().slice(0, 8), name, salary, variable, gender, category, secret: newSecret(), nonce: newNonce() }));
+  SEED.map(([name, salary, variable, gender, category]) => ({ id: newSecret().slice(0, 8), name, salary, variable, gender, category, level: levelOf(salary), secret: newSecret(), nonce: newNonce() }));
 
 interface Saved { people: Person[]; categories: string[] }
 function load(): Saved {
@@ -89,10 +94,10 @@ function load(): Saved {
   } catch { /* ignore */ }
   return { people: seedPeople(), categories: DEFAULT_CATEGORIES };
 }
-const stripProgress = (ps: Person[]) => ps.map(({ id, name, salary, variable, gender, category, secret, nonce }) => ({ id, name, salary, variable, gender, category, secret, nonce }));
+const stripProgress = (ps: Person[]) => ps.map(({ id, name, salary, variable, gender, category, level, secret, nonce }) => ({ id, name, salary, variable, gender, category, level: level ?? 0, secret, nonce }));
 
-const toRow = (p: Person): Row => ({ salary: p.salary, variable: p.variable, gender: p.gender, category: p.category, secret: p.secret, nonce: p.nonce });
-const openingOf = (r: Row) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, nonce: r.nonce });
+const toRow = (p: Person): Row => ({ salary: p.salary, variable: p.variable, gender: p.gender, category: p.category, level: p.level ?? 0, secret: p.secret, nonce: p.nonce });
+const openingOf = (r: Row) => ({ salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, level: r.level ?? 0, nonce: r.nonce });
 const enrollBody = (r: Row) => ({ ...r, rowNonce: r.nonce });
 const first = (name: string) => name.split(" ")[0];
 const euro = (n: number) => `€${n.toLocaleString("en-US")}`;
@@ -367,7 +372,8 @@ export function Workspace() {
     await new Promise((r) => setTimeout(r, 0));
     const rows = peopleRef.current.filter((p) => p.commitment).map(toRow);
     if (!rep && (await step("Publishing the pay gap…", () => bc.apply({ k: "publish", rows }), { path: "/api/publish", body: { payroll: rows } })) === undefined) return false;
-    if ((await step("Publishing the bonus figures…", () => bc.apply({ k: "publishVariable", rows }), { path: "/api/publish-variable", body: { payroll: rows } })) === undefined) return false;
+    if (!vrep && (await step("Publishing the bonus figures…", () => bc.apply({ k: "publishVariable", rows }), { path: "/api/publish-variable", body: { payroll: rows } })) === undefined) return false;
+    if ((await step("Publishing the gap inside job levels…", () => bc.apply({ k: "publishLevels", rows }), { path: "/api/publish-levels", body: { payroll: rows } })) === undefined) return false;
     setView("report");
     return true;
   };
@@ -462,7 +468,7 @@ export function Workspace() {
     const { rows, categories: cats, errors } = parsePayrollCsv(text);
     if (rows.length === 0) { setCsvNote(`Nothing imported: ${errors.join("; ")}`); return; }
     const capped = rows.slice(0, 512);
-    setPeople(capped.map((r) => ({ id: newSecret().slice(0, 8), name: r.name, salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, secret: newSecret(), nonce: newNonce() })));
+    setPeople(capped.map((r) => ({ id: newSecret().slice(0, 8), name: r.name, salary: r.salary, variable: r.variable, gender: r.gender, category: r.category, level: r.level, secret: newSecret(), nonce: newNonce() })));
     setCategories([...cats, ...DEFAULT_CATEGORIES.slice(cats.length)].slice(0, 4));
     setCsvNote(`${capped.length} people imported from ${source}${rows.length > 512 ? " (this instance holds 512)" : ""}${errors.length ? ` · ${errors.length} row(s) skipped` : ""}`);
     push([`imported ${capped.length} payroll rows from ${source}: read in this browser, nothing sent anywhere`]);
@@ -590,10 +596,10 @@ export function Workspace() {
               <ReportSummary rep={rep} vrep={vrep} categories={categories} />
               <details className="group rounded-xl bg-night-deep/60 ring-1 ring-gold/10">
                 <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-4 py-3 text-[14px] font-medium text-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold">
-                  <ScrollText size={16} className="shrink-0 text-gold" /> See all seven figures the law asks for
+                  <ScrollText size={16} className="shrink-0 text-gold" /> See all seven figures, and the gap inside job levels
                   <ChevronDown size={16} className="ml-auto shrink-0 text-sage transition-transform group-open:rotate-180" />
                 </summary>
-                <div className="flex flex-col gap-4 p-4 pt-1"><ReportView rep={rep} vrep={vrep} categories={categories} /></div>
+                <div className="flex flex-col gap-4 p-4 pt-1"><ReportView rep={rep} vrep={vrep} lrep={ledger?.latestLevelReport} categories={categories} /></div>
               </details>
             </div>
           ) : null,

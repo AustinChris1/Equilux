@@ -20,9 +20,9 @@ import { FetchZkConfigProvider } from "@midnight-ntwrk/midnight-js-fetch-zk-conf
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { Contract, ledger, pureCircuits } from "../../../contract/build/contract/index.js";
-import { assignBands, buildClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "../../../contract/deploy/claims";
+import { assignBands, buildClaim, buildLevelClaim, buildVariableClaim, type PayRecord, type ReportClaim, type VariableClaim } from "../../../contract/deploy/claims";
 import {
-  bytes32, confirmSteps, initialPrivateState, payReportSteps, rosterSteps, variableReportSteps, witnesses,
+  bytes32, confirmSteps, initialPrivateState, levelReportSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses,
   type Circuit, type EquiluxPrivateState, type Step,
 } from "../../../contract/deploy/witnesses";
 import { ledgerView } from "./browser-contract";
@@ -104,9 +104,9 @@ interface Saved { address: string; employerSecret: string; providerSecret: strin
 const loadSaved = (): Saved | null => { try { return JSON.parse(localStorage.getItem(STORAGE) ?? "null"); } catch { return null; } };
 const save = (s: Saved | null) => { try { s ? localStorage.setItem(STORAGE, JSON.stringify(s)) : localStorage.removeItem(STORAGE); } catch { /* ignore */ } };
 
-type Row = { salary: number; variable?: number; gender: number; category?: number; secret: string };
+type Row = { salary: number; variable?: number; gender: number; category?: number; level?: number; secret: string };
 const toRecord = (r: Row): PayRecord => ({
-  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), sk: bytes32(String(r.secret)),
+  salary: BigInt(r.salary), variable: BigInt(r.variable ?? 0), gender: BigInt(r.gender), category: BigInt(r.category ?? 0), level: BigInt(r.level ?? 0), sk: bytes32(String(r.secret)),
 });
 
 function applyTamper(claim: ReportClaim, tamper?: Tamper): ReportClaim {
@@ -334,8 +334,8 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
         }
         case "/api/confirm": {
           requireDeployed();
-          const raw = body.openings as { salary: number; variable?: number; gender: number; category: number; nonce: string }[];
-          const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), nonce: fromHex(String(o.nonce)) }));
+          const raw = body.openings as { salary: number; variable?: number; gender: number; category: number; level?: number; nonce: string }[];
+          const openings = raw.map((o) => ({ salary: BigInt(o.salary), variable: BigInt(o.variable ?? 0), gender: BigInt(o.gender), category: BigInt(o.category), level: BigInt(o.level ?? 0), nonce: fromHex(String(o.nonce)) }));
           const res: any = await phase(confirmSteps(baseState(), openings), log);
           log([`payroll confirmed by the works council (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight) };
@@ -344,7 +344,7 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           requireDeployed();
           if (!isHex32(String(body.rowNonce))) throw new Error("rowNonce (from the payslip) must be 32-byte hex");
           const r = toRecord(body);
-          const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(body.rowNonce) };
+          const ps: EquiluxPrivateState = { ...baseState(), employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(body.rowNonce) };
           const res: any = await call("enroll", ps, [], log);
           const cm = toHex(res.private.result);
           log([`enrolled · commitment ${cm.slice(0, 12)}… (block ${res.public.blockHeight})`]);
@@ -369,6 +369,13 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
           const claim = applyVariableTamper(buildVariableClaim(recs), body.tamper);
           const res: any = await phase(variableReportSteps(baseState(), recs, claim, bands), log);
           log([`variable-pay report published (block ${res.public.blockHeight})`]);
+          return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
+        }
+        case "/api/publish-levels": {
+          requireDeployed();
+          const recs = (body.payroll as Row[]).map(toRecord);
+          const res: any = await phase(levelReportSteps(baseState(), recs, buildLevelClaim(recs)), log);
+          log([`level report published (block ${res.public.blockHeight})`]);
           return { txId: res.public.txId, blockHeight: n(res.public.blockHeight), ledger: await readLedger() };
         }
         case "/api/receipt": {

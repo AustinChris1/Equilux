@@ -23,14 +23,15 @@ import {
 } from "@midnight-ntwrk/compact-runtime";
 import { Contract, ledger, pureCircuits, type Witnesses } from "../../../contract/build/contract/index.js";
 import {
-  addPayBatch, addVarBatch, assignBands, buildClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows, zeroPayTotals, zeroVarTotals,
-  type PayRecord, type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
+  addLevelBatch, addPayBatch, addVarBatch, assignBands, buildClaim, buildLevelClaim, buildVariableClaim, chunk, padOpenings, padRecords, padRows,
+  zeroLevelTotals, zeroPayTotals, zeroVarTotals,
+  type LevelClaim, type LevelTotals, type PayRecord, type PayTotals, type ReportClaim, type RowOpening, type VariableClaim, type VarTotals,
 } from "../../../contract/deploy/claims";
 import type { LedgerView, Tamper, VariableTamper } from "./api";
 
 interface PS {
   employeeSecret: Uint8Array;
-  employeeRecord: [bigint, bigint, bigint, bigint];
+  employeeRecord: [bigint, bigint, bigint, bigint, bigint];
   rowNonce: Uint8Array;
   employerSecret: Uint8Array;
   providerSecret: Uint8Array;
@@ -41,11 +42,13 @@ interface PS {
   variableClaim: VariableClaim;
   paySeal: { totals: PayTotals; claim: ReportClaim; salt: Uint8Array };
   variableSeal: { totals: VarTotals; claim: VariableClaim; salt: Uint8Array };
+  levelClaim: LevelClaim;
+  levelSeal: { totals: LevelTotals; claim: LevelClaim; salt: Uint8Array };
   nextSalt: Uint8Array;
 }
 
 /** One employee's record. `nonce` (hex) is the payslip nonce blinding their payroll row. */
-export interface Row { salary: number; variable: number; gender: 0 | 1; category: number; secret: string; nonce: string }
+export interface Row { salary: number; variable: number; gender: 0 | 1; category: number; level?: number; secret: string; nonce: string }
 
 export type Action =
   | { k: "deploy"; employerSecret: string; providerSecret: string; councilSecret: string }
@@ -53,7 +56,8 @@ export type Action =
   | { k: "confirm"; rows: Row[] }   // the works council opens every row
   | { k: "enroll"; row: Row }
   | { k: "publish"; rows: Row[] }
-  | { k: "publishVariable"; rows: Row[] };
+  | { k: "publishVariable"; rows: Row[] }
+  | { k: "publishLevels"; rows: Row[] };
 
 const KEY = "equilux.browser-contract.v5";
 
@@ -80,17 +84,19 @@ const witnesses: Witnesses<PS> = {
   paySeal: ({ privateState }) => [privateState, privateState.paySeal],
   variableSeal: ({ privateState }) => [privateState, privateState.variableSeal],
   freshSalt: ({ privateState }) => [privateState, privateState.nextSalt],
+  levelClaim: ({ privateState }) => [privateState, privateState.levelClaim],
+  levelSeal: ({ privateState }) => [privateState, privateState.levelSeal],
 };
 const salt = () => crypto.getRandomValues(new Uint8Array(32));
 
 const toRecord = (r: Row): PayRecord => ({
-  salary: BigInt(r.salary), variable: BigInt(r.variable), gender: BigInt(r.gender), category: BigInt(r.category), sk: bytes32(r.secret),
+  salary: BigInt(r.salary), variable: BigInt(r.variable), gender: BigInt(r.gender), category: BigInt(r.category), level: BigInt(r.level ?? 0), sk: bytes32(r.secret),
 });
-const toOpening = (r: Row) => ({ salary: BigInt(r.salary), variable: BigInt(r.variable), gender: BigInt(r.gender), category: BigInt(r.category), nonce: fromHex(r.nonce) });
+const toOpening = (r: Row) => ({ salary: BigInt(r.salary), variable: BigInt(r.variable), gender: BigInt(r.gender), category: BigInt(r.category), level: BigInt(r.level ?? 0), nonce: fromHex(r.nonce) });
 
 /** The payroll provider's hiding hash of one row — computed where the payroll lives. */
 export const payrollRowHash = (r: Row): string =>
-  toHex(pureCircuits.payrollRow(BigInt(r.salary), BigInt(r.variable), BigInt(r.gender), BigInt(r.category), fromHex(r.nonce)));
+  toHex(pureCircuits.payrollRow(BigInt(r.salary), BigInt(r.variable), BigInt(r.gender), BigInt(r.category), BigInt(r.level ?? 0), fromHex(r.nonce)));
 
 export const newNonce = (): string => toHex(crypto.getRandomValues(new Uint8Array(32)));
 
@@ -197,6 +203,19 @@ export class BrowserContract {
     return this.c.finishVariableReport(this.with(x, { variableSeal: seal }));
   }
 
+  /** The level report (the gap inside equal job levels), the same way. */
+  private levelReport(ctx: CircuitContext<PS>, recs: PayRecord[], claim: LevelClaim) {
+    const s0 = salt();
+    let x = this.c.beginLevelReport(this.with(ctx, { levelClaim: claim, nextSalt: s0 })).context;
+    let seal = { totals: zeroLevelTotals(), claim, salt: s0 };
+    for (const b of chunk(recs)) {
+      const s1 = salt();
+      x = this.c.levelBatch(this.with(x, { payroll: padRecords(b), levelSeal: seal, nextSalt: s1 })).context;
+      seal = { totals: addLevelBatch(seal.totals, b), claim, salt: s1 };
+    }
+    return this.c.finishLevelReport(this.with(x, { levelSeal: seal }));
+  }
+
   /** Runs one action through the real circuits; throws the circuit's message on rejection. */
   apply(a: Action, record = true): unknown {
     let result: unknown;
@@ -215,11 +234,13 @@ export class BrowserContract {
       if (this.ctx) throw new Error("contract already deployed");
       const eSk = bytes32(a.employerSecret), pSk = bytes32(a.providerSecret), cSk = bytes32(a.councilSecret);
       this.base = {
-        employeeSecret: new Uint8Array(32), employeeRecord: [0n, 0n, 0n, 0n], rowNonce: new Uint8Array(32),
+        employeeSecret: new Uint8Array(32), employeeRecord: [0n, 0n, 0n, 0n, 0n], rowNonce: new Uint8Array(32),
         employerSecret: eSk, providerSecret: pSk, councilSecret: cSk, openings: padOpenings([]),
         payroll: padRecords([]), claim: buildClaim([]), variableClaim: buildVariableClaim([]),
         paySeal: { totals: zeroPayTotals(), claim: buildClaim([]), salt: new Uint8Array(32) },
         variableSeal: { totals: zeroVarTotals(), claim: buildVariableClaim([]), salt: new Uint8Array(32) },
+        levelClaim: buildLevelClaim([]),
+        levelSeal: { totals: zeroLevelTotals(), claim: buildLevelClaim([]), salt: new Uint8Array(32) },
         nextSalt: new Uint8Array(32),
       };
       const init = this.contract.initialState(
@@ -242,13 +263,19 @@ export class BrowserContract {
         return a.rows.length;
       case "enroll": {
         const r = toRecord(a.row);
-        const res = this.c.enroll(this.with(this.ctx, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(a.row.nonce) }));
+        const res = this.c.enroll(this.with(this.ctx, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(a.row.nonce) }));
         this.ctx = res.context;
         return toHex(res.result);
       }
       case "publish": {
         const recs = a.rows.map(toRecord);
         const res = this.payReport(this.ctx, recs, buildClaim(recs));
+        this.ctx = res.context;
+        return res.result;
+      }
+      case "publishLevels": {
+        const recs = a.rows.map(toRecord);
+        const res = this.levelReport(this.ctx, recs, buildLevelClaim(recs));
         this.ctx = res.context;
         return res.result;
       }
@@ -300,7 +327,7 @@ export class BrowserContract {
     try {
       const x = this.confirm(this.ctx, rows);
       const r = toRecord(rows[0]);
-      this.c.enroll(this.with(x, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(rows[0].nonce) }));
+      this.c.enroll(this.with(x, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(rows[0].nonce) }));
     } catch (e) {
       throw new Error(circuitMessage(e));
     }
@@ -312,7 +339,7 @@ export class BrowserContract {
     if (!this.ctx) throw new Error("No contract deployed yet");
     const r = toRecord(row);
     try {
-      this.c.enroll(this.with(this.ctx, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category], rowNonce: fromHex(row.nonce) }));
+      this.c.enroll(this.with(this.ctx, { employeeSecret: r.sk, employeeRecord: [r.salary, r.variable, r.gender, r.category, r.level], rowNonce: fromHex(row.nonce) }));
     } catch (e) {
       throw new Error(circuitMessage(e));
     }
@@ -354,6 +381,15 @@ export function ledgerView(l: ReturnType<typeof ledger>, contractAddress: string
     employerPk: toHex(l.employerPk),
     providerPk: toHex(l.providerPk),
     councilPk: toHex(l.councilPk),
+    latestLevelReport: l.latestLevelReport?.is_some
+      ? (() => {
+          const v = l.latestLevelReport.value;
+          return {
+            levels: v.levels.map((x) => ({ women: n(x.women), men: n(x.men), disclosed: x.disclosed, gapBps: n(x.gapBps), gapFavorsMen: x.gapFavorsMen })),
+            adjustedGapBps: n(v.adjustedGapBps), adjustedFavorsMen: v.adjustedFavorsMen, adjustedCovers: n(v.adjustedCovers),
+          };
+        })()
+      : null,
     latestVariableReport: l.latestVariableReport.is_some
       ? (() => {
           const v = l.latestVariableReport.value;
