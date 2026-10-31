@@ -30,7 +30,7 @@ import {
   type UnshieldedKeystore,
 } from "@midnight-ntwrk/wallet-sdk-unshielded-wallet";
 import { Contract, ledger } from "../build/contract/index.js";
-import { initialPrivateState, witnesses, type EquiluxPrivateState } from "./witnesses.js";
+import { initialPrivateState, witnesses, type Circuit, type EquiluxPrivateState } from "./witnesses.js";
 
 // @ts-expect-error node global for GraphQL subscriptions
 globalThis.WebSocket = WebSocket;
@@ -159,7 +159,7 @@ export async function connectMidnight(log: Log) {
 
   const here = path.resolve(fileURLToPath(import.meta.url), "..");
   const buildDir = path.resolve(here, "..", "build");
-  const zkConfigProvider = new NodeZkConfigProvider<"declareRoster" | "confirmPayroll" | "enroll" | "checkReceipt" | "publishReport" | "publishVariablePay">(buildDir);
+  const zkConfigProvider = new NodeZkConfigProvider<Circuit>(buildDir);
   const accountId = walletAndMidnightProvider.getCoinPublicKey();
   const storagePassword = `${Buffer.from(accountId, "hex").toString("base64")}!`;
   const providers = {

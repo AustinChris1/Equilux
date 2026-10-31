@@ -21,8 +21,8 @@ import { Buffer } from "node:buffer";
 import { createCircuitContext } from "@midnight-ntwrk/compact-runtime";
 import { Contract, pureCircuits } from "../build/contract/index.js";
 import { connectMidnight, initialPrivateState } from "./client.js";
-import { assignBands, buildClaim, buildVariableClaim, padOpenings, padRecords, padRows, type PayRecord } from "./claims.js";
-import { bytes32, witnesses } from "./witnesses.js";
+import { assignBands, buildClaim, buildVariableClaim, type PayRecord } from "./claims.js";
+import { bytes32, confirmSteps, payReportSteps, rosterSteps, variableReportSteps, witnesses, type Step } from "./witnesses.js";
 
 const EMPLOYER_SK = bytes32("acme:employer-root-secret");
 const PROVIDER_SK = bytes32("payroll-provider:personio");
@@ -58,14 +58,20 @@ async function main() {
   const address = d.deployTxData.public.contractAddress;
   log(`deployed at ${address} (block ${d.deployTxData.public.blockHeight})`);
 
-  await mn.setPrivateState(base);
-  const roster: any = await d.callTx.declareRoster(padRows(TEAM.map(rowOf)), BigInt(TEAM.length));
-  log(`payroll provider committed ${TEAM.length} payroll rows (block ${roster.public.blockHeight})`);
-
-  const openings = padOpenings(TEAM.map(({ rec, nonce }) => ({ salary: rec.salary, variable: rec.variable, gender: rec.gender, category: rec.category, nonce })));
-  await mn.setPrivateState({ ...base, openings });
-  const confirmed: any = await d.callTx.confirmPayroll();
-  log(`works council opened all ${TEAM.length} rows and confirmed the payroll (block ${confirmed.public.blockHeight})`);
+  // v4: each phase is a list of transactions (batches of 16), proven and finalized in order
+  const send = async (steps: Step[]) => {
+    let res: any = null;
+    for (const st of steps) {
+      await mn.setPrivateState(st.ps);
+      res = await d.callTx[st.circuit](...st.args);
+      log(`${st.label} (block ${res.public.blockHeight})`);
+    }
+    return res;
+  };
+  await send(rosterSteps(base, TEAM.map(rowOf)));
+  log(`payroll provider committed ${TEAM.length} payroll rows`);
+  await send(confirmSteps(base, TEAM.map(({ rec, nonce }) => ({ salary: rec.salary, variable: rec.variable, gender: rec.gender, category: rec.category, nonce }))));
+  log(`works council opened all ${TEAM.length} rows and confirmed the payroll`);
 
   for (const t of TEAM) {
     const { name, rec, nonce } = t;
@@ -91,13 +97,11 @@ async function main() {
   }
 
   const records = TEAM.map((t) => t.rec);
-  await mn.setPrivateState({ ...base, payroll: padRecords(records), claim: buildClaim(records) });
-  const pub: any = await d.callTx.publishReport();
-  log(`publishReport proven & finalized (tx ${pub.public.txId}, block ${pub.public.blockHeight})`);
+  const pub: any = await send(payReportSteps(base, records, buildClaim(records)));
+  log(`pay report proven & finalized (tx ${pub.public.txId}, block ${pub.public.blockHeight})`);
 
-  await mn.setPrivateState({ ...base, payroll: padRecords(records, assignBands(records)), variableClaim: buildVariableClaim(records) });
-  const pubV: any = await d.callTx.publishVariablePay();
-  log(`publishVariablePay proven & finalized (tx ${pubV.public.txId}, block ${pubV.public.blockHeight})`);
+  const pubV: any = await send(variableReportSteps(base, records, buildVariableClaim(records), assignBands(records)));
+  log(`variable-pay report proven & finalized (tx ${pubV.public.txId}, block ${pubV.public.blockHeight})`);
 
   const l: any = await mn.readLedger(address);
   const r = l.latestReport.value;

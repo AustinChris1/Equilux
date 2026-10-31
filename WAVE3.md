@@ -43,7 +43,7 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 - [x] app on v4 (`3817774`): 14-person story 9.69% in ~10 s, 11/11 cheats refused, 250-person company in ~62 s in the browser (e2e: video/scripts/e2e-v4.mjs)
 - [x] /verify decodes v4 and the Wave 2 (v3) preprod contract (`0d734c0`), checked against preprod
 - [x] wallet-chain on v4: whole phases simulated in the page before any fee (`3817774`)
-- [ ] API server / standalone demo on v4
-- [ ] preprod run on GitHub Actions at a size that finishes
+- [x] API server and scripted demo on v4 phases (type-checked; not run: they need the Docker local network)
+- [ ] preprod run on GitHub Actions at a size that finishes: workflow `Preprod v4` ready (probe mode first, then run, 32 people). Midnight's own preprod indexer AND RPC are closed; everything goes through Blockfrost. NEEDS the repo secret BLOCKFROST_PROJECT_ID (owner action)
 - [ ] equal-levels gap
 - [ ] research paragraph, README, submission, video update
