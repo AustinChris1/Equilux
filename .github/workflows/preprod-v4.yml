@@ -1,0 +1,121 @@
+# Equilux v4 (batched) on Midnight's public preprod testnet, through Blockfrost.
+# Runs on GitHub's machines, not a laptop: the first wallet sync replays preprod's history (hours).
+#
+#   mode = probe : ~15 minutes. Checks Blockfrost's indexer and RPC, the contract reader, and that the
+#                  wallet sync moves. Run this first.
+#   mode = run   : sync, then deploy v4 and run the whole flow for a sample company (default 32 people,
+#                  2 batches). Resumable: wallet state and progress are cached, so a rerun continues.
+#
+# Needs repository secrets PREPROD_SEED (the deploy wallet's hex seed) and BLOCKFROST_PROJECT_ID.
+name: Preprod v4
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "probe (15 min check) or run (the full flow)"
+        required: true
+        default: probe
+        type: choice
+        options: [probe, run]
+      company_size:
+        description: "people in the sample company (run mode)"
+        required: false
+        default: "32"
+
+concurrency:
+  group: preprod-v4
+  cancel-in-progress: false
+
+jobs:
+  preprod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
+      COMPANY_SIZE: ${{ inputs.company_size }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Check the secrets are set
+        run: |
+          test -n "$BLOCKFROST_PROJECT_ID" || { echo "::error::Add the BLOCKFROST_PROJECT_ID repository secret"; exit 1; }
+          test -n "${{ secrets.PREPROD_SEED }}" || { echo "::error::Add the PREPROD_SEED repository secret"; exit 1; }
+
+      - name: Install the Compact toolchain
+        if: inputs.mode == 'run'
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Compile the contract with proving keys
+        if: inputs.mode == 'run'
+        working-directory: contract
+        run: |
+          compact update 0.30.0
+          compact compile +0.30.0 src/equilux.compact build
+          ls -la build/keys
+
+      - name: Start the proof server
+        if: inputs.mode == 'run'
+        run: docker run -d --name proof-server -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v
+
+      - name: Install dependencies
+        run: |
+          (cd contract && pnpm install --frozen-lockfile)
+          (cd contract/preprod && npm install --no-audit --no-fund)
+
+      # A new cache line: wallet state synced against Midnight's closed indexer does not carry over.
+      - name: Restore wallet state and progress
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            contract/preprod/.state
+            contract/preprod/deployment-v4.json
+            contract/preprod/midnight-level-db
+          key: preprod-v4-blockfrost-${{ github.run_id }}
+          restore-keys: preprod-v4-blockfrost-
+
+      - name: Deploy wallet seed
+        run: printf '%s' "${{ secrets.PREPROD_SEED }}" > contract/preprod/.seed
+
+      - name: Probe Blockfrost and the wallet sync
+        if: inputs.mode == 'probe'
+        working-directory: contract/preprod
+        run: node --max-old-space-size=8192 --import tsx probe.ts
+
+      - name: Sync the wallet with preprod
+        if: inputs.mode == 'run'
+        working-directory: contract/preprod
+        run: npm run sync
+
+      - name: Run the v4 flow on preprod
+        if: inputs.mode == 'run'
+        working-directory: contract/preprod
+        run: npm run deploy-v4
+
+      - name: Save wallet state and progress
+        if: always() && inputs.mode == 'run'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            contract/preprod/.state
+            contract/preprod/deployment-v4.json
+            contract/preprod/midnight-level-db
+          key: preprod-v4-blockfrost-${{ github.run_id }}
+
+      - name: Upload the deployment record
+        if: always() && inputs.mode == 'run'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preprod-v4-deployment
+          path: contract/preprod/deployment-v4.json
+          if-no-files-found: ignore
