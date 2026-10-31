@@ -37,7 +37,7 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
     order across batches; finish checks each band holds a quarter (4c ≤ b·n < 4c+4).
 
 ## Progress
-- [x] v4 contract compiles (--skip-zk), 11 circuits (`9ea8d4b`); keys: recompiling after a power cut (`contract/compile-keys.sh`)
+- [x] v4 contract compiles (--skip-zk), 11 circuits (`9ea8d4b`); keys built in 9 min: batch circuits ~153 MB of prover key each (heavy for in-browser proving), the rest 3 to 39 MB
 - [x] claims.ts: batch arithmetic mirroring the circuits, quartile cut points (`7af88df`)
 - [x] tests: 67 pass (57 circuits incl. a 250-person company in ~2 min, 10 CSV) (`7af88df`)
 - [x] app on v4 (`3817774`): 14-person story 9.69% in ~10 s, 11/11 cheats refused, 250-person company in ~62 s in the browser (e2e: video/scripts/e2e-v4.mjs)
