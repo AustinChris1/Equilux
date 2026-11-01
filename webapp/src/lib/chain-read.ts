@@ -24,7 +24,8 @@ export const explorerContractUrl = (network: ChainNetwork, address: string) =>
 
 const hexToBytes = (h: string) => new Uint8Array(h.match(/../g)?.map((x) => parseInt(x, 16)) ?? []);
 
-export async function readContract(network: ChainNetwork, address: string): Promise<LedgerView> {
+/** The contract's public state as the indexer holds it, not yet decoded. */
+export async function fetchContractData(network: ChainNetwork, address: string) {
   const clean = address.trim().toLowerCase().replace(/^0x/, "");
   if (!/^[0-9a-f]{64,}$/.test(clean)) throw new Error("That is not a contract address (expected hex).");
   let res: Response;
@@ -41,7 +42,11 @@ export async function readContract(network: ChainNetwork, address: string): Prom
   if (body?.errors?.length) throw new Error(`The indexer rejected the query: ${body.errors[0].message}`);
   const state = body?.data?.contractAction?.state as string | undefined;
   if (!state) throw new Error("No contract with that address on this network.");
-  const data = ContractState.deserialize(hexToBytes(state)).data;
+  return { clean, data: ContractState.deserialize(hexToBytes(state)).data };
+}
+
+export async function readContract(network: ChainNetwork, address: string): Promise<LedgerView> {
+  const { clean, data } = await fetchContractData(network, address);
   // v4 (batched) first, then the Wave 2 layout
   for (const [version, decode] of [["v4", ledger], ["v3", ledgerV3]] as const) {
     try {

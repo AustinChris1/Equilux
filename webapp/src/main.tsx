@@ -7,6 +7,7 @@ import App from './App.tsx'
 // The workspace (and Midnight's WebAssembly contract runtime) loads only on /app.
 const AppPage = lazy(() => import('./AppPage.tsx'))
 const VerifyPage = lazy(() => import('./VerifyPage.tsx'))
+const CheckPage = lazy(() => import('./CheckPage.tsx'))
 
 const clean = (p: string) => p.replace(/\/+$/, '') || '/'
 if (clean(location.pathname) === '/workspace') history.replaceState(null, '', `/app${location.search}${location.hash}`)
@@ -14,9 +15,9 @@ const route = clean(location.pathname)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {route === '/app' || route === '/verify' ? (
+    {route === '/app' || route === '/verify' || route === '/check' ? (
       <Suspense fallback={<div className="min-h-dvh bg-night-deep" />}>
-        {route === '/app' ? <AppPage /> : <VerifyPage />}
+        {route === '/app' ? <AppPage /> : route === '/check' ? <CheckPage /> : <VerifyPage />}
       </Suspense>
     ) : (
       <App />

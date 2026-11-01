@@ -78,6 +78,9 @@ export default function VerifyPage() {
           and decodes it with the compiled contract. A figure is on-chain only because the network accepted a zero-knowledge
           proof of how it was computed. Then load the employer's filing pack to check every figure in it against the chain.
         </p>
+        <a href={`/check${address ? `?contract=${address}` : ""}`} className="mt-2 inline-flex text-[13px] font-medium text-gold hover:underline">
+          Work there? Check your own record was counted, no wallet needed →
+        </a>
 
         <form className="mt-6 grid gap-2.5 rounded-2xl bg-night p-4 ring-1 ring-gold/12 sm:grid-cols-[auto_1fr_auto]" onSubmit={(e) => { e.preventDefault(); verify(); }}>
           <select value={network} onChange={(e) => setNetwork(e.target.value as ChainNetwork)} aria-label="Network"

@@ -53,9 +53,9 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 - [ ] optional: one real wallet deploy on v4 (Lace, 9 approvals) to confirm the split deploy from a browser
 
 ## Submission push (agreed 2026-10-31, aiming at every score)
-1. [ ] explorer links → preprod.midnightexplorer.com (the other host does not answer)
-2. [ ] webapp: landing roadmap (Wave 2 delivered, Wave 3 column), every Wave-2-era number on the site
-3. [ ] walletless employee check `/check`: from a payslip link, no wallet, no fee: row committed, council
+1. [x] explorer links (both hosts work; /verify links both) → preprod.midnightexplorer.com (the other host does not answer)
+2. [x] webapp: landing roadmap (Wave 2 delivered, Wave 3 column), every Wave-2-era number on the site
+3. [x] walletless employee check `/check` (video/scripts/e2e-check.mjs: 5 checks pass on preprod): from a payslip link, no wallet, no fee: row committed, council
        opened it, enrolled, counted in each published report (read-only against preprod). Enrollment itself
        still needs a wallet: say so.
 4. [ ] Wave 3 video on the v4 product (60 to 90 s) → README hero + SUBMISSION link
