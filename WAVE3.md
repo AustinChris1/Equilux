@@ -61,3 +61,16 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 4. [ ] Wave 3 video (video repo, branch wave3): voice 1:28.8 + 7 scenes + stills done; ending to settle after the judges' commercial note; then npm run audio, npm run render → out/wave3.mp4
 5. [ ] deck for Wave 3; the fee cost of the 32-person preprod run as a business number
 No invented outreach: the user cannot send HR messages; research stays labelled as research.
+
+## Judges' Wave 3 note (2026-11-01): commercial relevance is central
+Wave 3 is the final wave; they want live products, real users (even small numbers), what we learned
+bringing it to market, challenges, how the Midnight ecosystem could help.
+- [x] pilot request form on the landing (#pilot) → api/pilot.js, stored privately in Upstash Redis (list "pilots")
+- [x] anonymous counters (api/stats.js; GET /api/stats = counts only): story, story250, csv, check, verify, wallet, pilot
+- [x] Vercel Web Analytics injected (page views)
+- [ ] OWNER: Vercel dashboard → Storage → Upstash Redis (free) → connect to the equilux project (sets KV_REST_API_*), redeploy;
+      Vercel dashboard → Analytics → enable Web Analytics
+- [ ] OWNER: publish the pilot post (drafts in the chat) on LinkedIn / X
+- [ ] SUBMISSION: "Commercial relevance" section: live product, real numbers from /api/stats on submission day,
+      what we learned, challenges, how Midnight could help (fee sponsorship for employees, a payroll-provider intro, hosted proving)
+- [ ] film ending: pilot call to action (equilux-lac.vercel.app/#pilot), then render
