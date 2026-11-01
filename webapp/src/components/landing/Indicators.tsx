@@ -41,7 +41,7 @@ export function Indicators() {
   const reduce = useReducedMotion();
 
   return (
-    <section id="indicators" className="mx-2 mt-2 rounded-[28px] bg-gold text-night md:mx-3 md:mt-3">
+    <section id="indicators" className="mx-2 mt-2 overflow-hidden rounded-[28px] bg-gold text-night md:mx-3 md:mt-3">
       <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-24">
         <div className="grid grid-cols-12 items-end gap-6">
           <h2 className="display col-span-12 text-4xl leading-[1.05] md:col-span-7 md:text-6xl">All seven Article 9 figures. Proven.</h2>

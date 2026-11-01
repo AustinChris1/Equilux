@@ -4,6 +4,7 @@ import { AppHeader } from "./components/AppHeader";
 import { ReportView } from "./components/ReportView";
 import type { LedgerView } from "./lib/api";
 import { INDEXERS, explorerContractUrl, readContract, type ChainNetwork } from "./lib/chain-read";
+import { track } from "./lib/track";
 import { compareFiling, type Comparison, type FilingPack } from "./lib/filing";
 
 /** /verify — anyone reads a published report from the chain and checks a filing against it. */
@@ -26,6 +27,7 @@ export default function VerifyPage() {
     try {
       const v = await readContract(net, addr);
       setView(v);
+      track("verify");
       history.replaceState(null, "", `/verify?network=${net}&contract=${v.contractAddress}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

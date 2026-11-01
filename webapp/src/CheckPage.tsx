@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BadgeCheck, CircleAlert, CircleDashed, CircleX, ClipboardCheck, FileCheck2, Loader2, Lock, Search, UserCheck, Users } from "lucide-react";
 import { AppHeader } from "./components/AppHeader";
 import { fmtPct } from "./lib/api";
+import { track } from "./lib/track";
 import { checkEmployee, PREPROD_SAMPLE_CONTRACT, toBytes32, type EmployeeCheck, type PayslipRecord } from "./lib/employee-check";
 
 /** What a payslip link carries, after the #: never sent to any server. */
@@ -49,6 +50,7 @@ export default function CheckPage() {
       if (!f.nonce.trim()) throw new Error("Enter the payroll code printed on your payslip.");
       const rec: PayslipRecord = { salary, variable, gender: f.gender === "1" ? 1 : 0, category: Number(f.category) - 1, level: Number(f.level) - 1 };
       setResult(await checkEmployee("preprod", f.contract, rec, toBytes32(f.nonce), f.secret.trim() ? toBytes32(f.secret) : undefined));
+      track("check");
       // the details stay out of the address bar once checked
       history.replaceState(null, "", `/check?contract=${f.contract}`);
     } catch (e) {

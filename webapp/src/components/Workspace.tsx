@@ -7,6 +7,7 @@ import {
 import { getStatus, resolveApiBase, runJob, short, type LedgerView, type Status, type Tamper, type VariableTamper } from "../lib/api";
 import { BrowserContract, newNonce, payrollRowHash, type Row } from "../lib/browser-contract";
 import { parsePayrollCsv } from "../../../contract/deploy/payroll-csv";
+import { track } from "../lib/track";
 import { ReportView } from "./ReportView";
 import { useScramble } from "./landing/useScramble";
 import { PREPROD_VERIFY } from "./landing/data";
@@ -375,6 +376,7 @@ export function Workspace() {
     if (!vrep && (await step("Publishing the bonus figures…", () => bc.apply({ k: "publishVariable", rows }), { path: "/api/publish-variable", body: { payroll: rows } })) === undefined) return false;
     if ((await step("Publishing the gap inside job levels…", () => bc.apply({ k: "publishLevels", rows }), { path: "/api/publish-levels", body: { payroll: rows } })) === undefined) return false;
     setView("report");
+    track(rows.length >= 150 ? "story250" : "story");
     return true;
   };
 
@@ -436,6 +438,7 @@ export function Workspace() {
       setView(null);
       setMode("wallet");
       setSession(s);
+      track("wallet");
     } catch (e) {
       const m = e instanceof Error ? e.message : String(e);
       setProblem({ message: m });
@@ -472,6 +475,7 @@ export function Workspace() {
     setCategories([...cats, ...DEFAULT_CATEGORIES.slice(cats.length)].slice(0, 4));
     setCsvNote(`${capped.length} people imported from ${source}${rows.length > 512 ? " (this instance holds 512)" : ""}${errors.length ? ` · ${errors.length} row(s) skipped` : ""}`);
     push([`imported ${capped.length} payroll rows from ${source}: read in this browser, nothing sent anywhere`]);
+    if (source !== "a sample Personio export") track("csv");
   };
   const onFile = (f: File | undefined) => { if (f) f.text().then((t) => importCsv(t, f.name)); };
   const smallTeam = () => { setPeople(seedPeople().slice(0, 6)); setCategories(DEFAULT_CATEGORIES); setCsvNote(`A 6-person team: ${approvalsFor(6)} steps in total`); };

@@ -9,6 +9,7 @@ import { Mandate } from "./components/Mandate";
 import { Scope } from "./components/Scope";
 import { Roadmap } from "./components/Roadmap";
 import { TryIt } from "./components/TryIt";
+import { Pilot } from "./components/Pilot";
 import { Footer } from "./components/Footer";
 
 // Equinox: one scroll from a sealed night (salaries hidden) to a proven, equal day.
@@ -26,6 +27,7 @@ export default function App() {
         <Mandate />
         <Scope />
         <Roadmap />
+        <Pilot />
         <TryIt />
       </main>
       <Footer />

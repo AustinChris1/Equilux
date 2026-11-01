@@ -6,6 +6,7 @@ const links = [
   { label: "How it works", href: "#protocol" },
   { label: "Indicators", href: "#indicators" },
   { label: "Scale", href: "#scale" },
+  { label: "Pilot", href: "#pilot" },
   { label: "Try to cheat", href: "#cheats" },
   { label: "Scope", href: "#scope" },
   { label: "Verify", href: "/verify" },
