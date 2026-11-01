@@ -36,6 +36,15 @@ evidence: without it, the employer could still invent or edit records. Ways to m
 employers: confirmation inside the payslip portal the employee already uses (a link, no wallet), and fees
 sponsored by the employer's account so nobody handles a token.
 
+## What one report costs to run (measured, not researched)
+From the Wave 3 preprod run (`contract/preprod/deployment-v4.json`): a report for n people takes
+n + 5·⌈n/16⌉ + 16 transactions. That is 58 for the 32-person run and about 346 for a 250-person company.
+n of them are the employees' own enrollments; the rest are the provider's, the council's and the
+employer's. Preprod charges a nominal fee, so it says nothing yet about the mainnet price per transaction.
+What it does say: the cost grows with headcount, almost one transaction per person. That fits a
+per-employee price, and it makes who pays the employees' fees (the employer, through sponsored
+transactions) a real design question, not a detail.
+
 ## Competitors and pricing (what is public)
 - Pay-equity tools such as Syndio, Trusaic PayParity and Figures analyse pay and help write the report. Their
   prices are not published (quote only); third-party buyer guides estimate mid-market contracts in the tens

@@ -8,6 +8,7 @@
 |---|---|
 | **Try it** | [Play the whole story](https://equilux-lac.vercel.app/app) |
 | **Verify** | [The Wave 3 report on preprod (32 people, contract v4)](https://equilux-lac.vercel.app/verify?network=preprod&contract=7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f) |
+| **Check** | [An employee checks their own record, no wallet](https://equilux-lac.vercel.app/check) |
 | **Research** | [Who would pay (desk research)](docs/who-pays.md) |
 | **Deck** | [Wave 2 deck](deck/Equilux-Wave2-deck.pdf) |
 
@@ -55,6 +56,7 @@ wallet friction. Wave 3 answers the first two in full; the third is designed and
 | Reports | pay gap, variable pay | + **the gap inside equal job levels** (level mix, per-level gap at k = 3, level-adjusted gap) |
 | Circuits · tests | 6 · 55 | **14 · 73** (incl. a 250-person company through the compiled circuits) |
 | Preprod | 14 people | **32 people, 2 batches, 58 transactions** (table above) |
+| An employee checks their record | a receipt transaction, from a wallet | **[`/check`](https://equilux-lac.vercel.app/check)**: from a payslip, no wallet, no fee: row committed, council opened it, enrolled, counted once in each report, and what their category earns by gender |
 | Business | none | [desk research on who pays](docs/who-pays.md), labelled as research |
 
 ## Why now
@@ -123,6 +125,13 @@ Press **Try to cheat** and pick any of the 11 tricks: each is refused with the c
 For the Directive's size: **Use your own payroll → 250-person company → Play the whole story** (three
 batched reports in about 30 seconds). Or upload a Personio or DATEV CSV export; it is read in the page.
 
+**Check your own record, no wallet:** [`/check`](https://equilux-lac.vercel.app/check), then **Try an
+employee from the testnet run** (one of the 32 people above). The page recomputes the employee's sealed
+codes with the compiled contract (from their payslip details and, optionally, their own secret) and looks
+each one up in the contract's public state: row committed, council opened it, enrolled, counted once in
+each report. A payslip portal would link to it with the details after the `#`, which browsers never send
+to a server. Change the salary by €100 and no row matches.
+
 **With your own wallet on preprod:** **Connect wallet** in the header (Lace or 1AM, network set to
 Preprod, tNIGHT designated for DUST). Each step is then proven and submitted from your wallet; the
 deploy takes 9 approvals (the contract plus 8 circuits' keys, see below). Proving keys are served from
@@ -152,7 +161,9 @@ with preprod's limits would also refuse; the split deploy described below is the
 
 **Tests:** `cd contract && pnpm test`: 73 tests on the compiled circuits and the claim arithmetic
 (roster and council batches, binding, roles, receipts, every statistic across batches, a 250-person
-company, every rejection) and on the CSV importer.
+company, every rejection) and on the CSV importer. Browser tests against the live site:
+`webapp/e2e/e2e-v4.mjs` (the story, all 11 cheats, a 250-person company) and `webapp/e2e/e2e-check.mjs`
+(`/check` against the preprod contract: a real employee, a wrong salary, someone else's secret).
 
 ### Deploying a contract bigger than a block
 
@@ -179,8 +190,8 @@ A compliance tool that overstates itself is worse than none, so the boundary is 
   human judgement.
 - *Scale:* up to 512 people per contract instance (a compile-time size). Tested at 250 in the compiled
   circuits and in the browser; run on preprod at 32. We do not claim 250 on-chain.
-- *Wallet friction:* each employee confirms with a wallet today. A walletless link with fees paid by
-  the employer is designed, not built.
+- *Wallet friction:* checking your own record needs no wallet (`/check`); enrolling it still does. A
+  walletless enrollment link with fees paid by the employer is designed, not built.
 - *Gender beyond the Directive's annex:* binary reporting markers, as the annex is written today.
 
 ## Integration surface (the plugin)
@@ -224,8 +235,9 @@ In production each party runs its own prover with only its own secret.
 - **Wave 2 (delivered):** payroll provider and works council, all seven Article 9 indicators, the full
   flow on preprod, `/verify` and the filing pack, Connect wallet, CSV import, the guided app.
 - **Wave 3 (this wave):** contract v4, batched to 512 people with sealed running totals; the gap inside
-  equal job levels; a 32-person run on preprod; desk research on who pays.
-- **Next:** walletless employee confirmation; three validation conversations (an HR lead at a 250+
+  equal job levels; a 32-person run on preprod; `/check`, the employee's own check with no wallet;
+  desk research on who pays.
+- **Next:** walletless enrollment; three validation conversations (an HR lead at a 250+
   employer, a works council member, a payroll provider); a Personio sandbox plugin; 250 people on preprod.
 
 ## Brand

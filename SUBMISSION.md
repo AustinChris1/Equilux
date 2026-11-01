@@ -9,7 +9,10 @@ Paste-ready text for the AKINDO submission form. Each section is one field.
 - Live app: https://equilux-lac.vercel.app/app (press **Play the whole story**, then **Try to cheat**)
 - Wave 3 report on preprod (contract v4, 32 people, 58 transactions), checkable by anyone:
   https://equilux-lac.vercel.app/verify?network=preprod&contract=7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f
+- An employee checks their own record, no wallet: https://equilux-lac.vercel.app/check (press **Try an
+  employee from the testnet run**)
 - The same contract on Midnight's preprod explorer: https://explorer.preprod.midnight.network/contracts/7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f
+  (or https://preprod.midnightexplorer.com/contracts/7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f)
 - Who would pay (desk research, labelled as such): https://github.com/AustinChris1/Equilux/blob/main/docs/who-pays.md
 - Wave 3 update video: [WAVE 3 VIDEO LINK]
 
@@ -44,10 +47,22 @@ The Wave 2 review named the gaps; Wave 3 answers them in order.
    goes through Blockfrost; and a v4 deploy carrying all 14 circuits' keys wrote ~38,900 bytes, more
    than preprod accepts in one transaction, so the contract is now deployed with 6 keys and the other 8
    are added by maintenance transactions (in the GitHub run and in the visitor's-wallet path).
-4. **Who would pay** (business feedback): a desk-research note with sources, labelled as research. No
+4. **Employees check their own record with no wallet** (product feedback: less wallet friction).
+   `/check` takes what is on a payslip (pay, category, level, the payroll code) and, optionally, the
+   employee's own secret. It recomputes the sealed codes with the compiled contract and looks them up in
+   the contract's public state. The employee sees, step by step: the provider committed my row, the
+   council opened it, I enrolled it, I was counted once in each report. Then: what my category earns by
+   gender (Article 7) and my job level's gap. No wallet, no fee, nothing leaves the page. It runs against
+   the real preprod contract today. Enrolling still takes a wallet; that is the next step.
+5. **Who would pay** (business feedback): a desk-research note with sources, labelled as research. No
    interviews were done; it states three hypotheses (payroll-provider add-on, employer directly,
-   works-council pull) and what to ask to test each.
-5. **Tests: 55 → 73**, including a 250-person company run through the compiled circuits (~2 min).
+   works-council pull) and what to ask to test each. The cost structure is now measured, not guessed: a
+   report for n people takes about n + 5·⌈n/16⌉ + 16 transactions (58 for the 32-person run, about 346
+   for 250), and n of those are the employees' own enrollments.
+6. **The site shows Wave 3**: a Scale section (any company up to 512, 16 at a time, sealed in between),
+   the job-level figure, an updated scope and roadmap.
+7. **Tests: 55 → 73** on the compiled circuits, including a 250-person company (~2 min), plus browser
+   tests that run against the live site (`webapp/e2e/`).
 
 ## Progress completed during Wave 3 (evidence)
 
@@ -59,6 +74,8 @@ The Wave 2 review named the gaps; Wave 3 answers them in order.
 - `/verify` decodes v4 contracts and the Wave 2 (v3) contract; the link above shows the Wave 3 report.
 - Live site on v4: the 14-person story, all 11 cheats refused, and a 250-person company played through
   in the browser (three reports in ~30 s, practice mode, no proofs). Checked with automated browser runs.
+- `/check` on the live site against the preprod contract: a real employee passes all six steps; a salary
+  €100 off matches no row; someone else's secret is refused (`webapp/e2e/e2e-check.mjs`).
 - Workflow: `.github/workflows/preprod-v4.yml` (probe, then run; resumable after any interruption).
 
 ## How privacy shapes the design (Midnight integration)
@@ -78,8 +95,8 @@ design: partial sums are never public, only a salted hash of them, opened and re
   connected wallet, steps are proven and submitted on preprod. The wallet path now deploys in parts
   (1 deploy + 8 key transactions, each approved in the wallet); it has not yet been run end to end
   from a visitor's wallet on v4.
-- Walletless employee confirmation (a link instead of a wallet) is designed, not built: it needs an
-  always-on, synced relayer paying fees.
+- Checking needs no wallet; enrolling still does. Walletless enrollment (a payslip link, the employer
+  paying the fee) needs an always-on, synced relayer: designed, not built.
 - HR still holds payroll; a provider, employer and council colluding could commit false rows (each
   employee would see their own). Binary gender markers, as the Directive's annex is written.
 
@@ -91,10 +108,12 @@ design: partial sums are never public, only a salted hash of them, opened and re
    Directive's size.
 3. **Try to cheat** → pick any trick, e.g. "Add an employee who doesn't exist" or "Say the gap is 0%".
 4. **/verify** (link above): the Wave 3 report on preprod, then the explorer link.
-5. `cd contract && pnpm install && pnpm test` (73 tests). The contract: `contract/src/equilux.compact`.
+5. **/check** → **Try an employee from the testnet run**: one of the 32 people checks their own record
+   on the chain, no wallet. Change the salary by €100 and check again: no row matches.
+6. `cd contract && pnpm install && pnpm test` (73 tests). The contract: `contract/src/equilux.compact`.
 
 ## Next
 
-Walletless employee confirmation (a link in the payslip portal, fees paid by the employer); three
+Walletless enrollment (a link in the payslip portal, fees paid by the employer); three
 validation conversations (an HR lead at a 250+ employer, a works council member, a payroll provider);
 a payroll-provider plugin against a real Personio sandbox; a 250-person run on preprod.
