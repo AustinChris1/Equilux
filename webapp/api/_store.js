@@ -1,5 +1,6 @@
 // A tiny Redis client over Upstash's REST API (Vercel Marketplace: Storage → Upstash Redis, free tier).
 // The integration sets KV_REST_API_URL / KV_REST_API_TOKEN (or the UPSTASH_REDIS_REST_* names).
+// Every key starts with "equilux:", so one free database can be shared with other projects.
 const URL = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
 const TOKEN = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
 

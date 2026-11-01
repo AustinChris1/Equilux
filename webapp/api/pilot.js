@@ -1,4 +1,4 @@
-// Pilot requests from the landing page. Stored privately in the project's Redis (list "pilots"), never shown on
+// Pilot requests from the landing page. Stored privately in the project's Redis (list "equilux:pilots"), never shown on
 // the site; only their count is public (/api/stats). Spam: a honeypot field and 5 requests per address per hour.
 import { clientIp, hasStore, json, redis } from "./_store.js";
 
@@ -23,9 +23,9 @@ export async function POST(request) {
   };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry.email)) return json({ error: "Please enter an email address we can reply to." }, 400);
   if (b.consent !== true) return json({ error: "Please tick the box so we may store your request and reply." }, 400);
-  const rl = `rl:pilot:${clientIp(request)}`;
+  const rl = `equilux:rl:pilot:${clientIp(request)}`;
   const [n] = await redis(["INCR", rl], ["EXPIRE", rl, 3600]);
   if (n > 5) return json({ error: "Too many requests from this address; try again in an hour." }, 429);
-  await redis(["LPUSH", "pilots", JSON.stringify(entry)], ["INCR", "count:pilot"], ["INCR", `count:pilot:${entry.role}`]);
+  await redis(["LPUSH", "equilux:pilots", JSON.stringify(entry)], ["INCR", "equilux:count:pilot"], ["INCR", `equilux:count:pilot:${entry.role}`]);
   return json({ ok: true });
 }

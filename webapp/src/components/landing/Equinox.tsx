@@ -160,7 +160,8 @@ export function Equinox() {
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
   const [step, setStep] = useState(0);
   useMotionValueEvent(scrollYProgress, "change", (v) => setStep(Math.min(4, Math.max(0, Math.floor(v * 5)))));
-  const bg = useTransform(scrollYProgress, [0, 0.62, 0.8, 1], ["#131a15", "#202b22", "#ffd85f", "#ffd85f"]);
+  // night turns to day exactly where the text turns dark (step 4 starts at 0.8): never cream on gold
+  const bg = useTransform(scrollYProgress, [0, 0.62, 0.78, 0.82, 1], ["#131a15", "#202b22", "#202b22", "#ffd85f", "#ffd85f"]);
   const day = step === 4;
 
   const goTo = (i: number) => {
@@ -191,15 +192,12 @@ export function Equinox() {
                       </span>
                       <span className="min-w-0">
                         <span className={`block text-[15px] font-medium transition-colors duration-300 ${active ? (day ? "text-night" : "text-cream") : day ? "text-night/75" : "text-sage"}`}>{s.title}</span>
-                        <AnimatePresence initial={false}>
-                          {active && (
-                            <motion.span className={`block overflow-hidden text-[13px] leading-snug ${day ? "text-night/75" : "text-sage"}`}
-                              initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                              transition={{ duration: reduceAll ? 0 : 0.25, ease: EASE_OUT }}>
-                              <span className="block pt-1">{s.line}</span>
-                            </motion.span>
-                          )}
-                        </AnimatePresence>
+                        {/* opens with a CSS grid-rows transition: animating height to "auto" in framer-motion
+                            measures the page and calls scrollTo, which cancels a smooth scroll from the nav */}
+                        <span aria-hidden={!active}
+                          className={`grid text-[13px] leading-snug ease-out ${reduceAll ? "" : "transition-[grid-template-rows,opacity] duration-250"} ${active ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"} ${day ? "text-night/75" : "text-sage"}`}>
+                          <span className="block overflow-hidden"><span className="block pt-1">{s.line}</span></span>
+                        </span>
                       </span>
                     </button>
                   </li>
