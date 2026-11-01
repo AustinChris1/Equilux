@@ -11,6 +11,7 @@
 | **Docs** | [Overview, use cases, a guided tour, architecture, business model](https://equilux-lac.vercel.app/docs) |
 | **Check** | [An employee checks their own record, no wallet](https://equilux-lac.vercel.app/check) |
 | **Research** | [Who would pay (desk research)](docs/who-pays.md) |
+| **Pitch** | [Pitch deck](deck/Equilux-pitch.pdf) ([PowerPoint](deck/Equilux-pitch.pptx)): what Equilux is, for anyone |
 | **Deck** | [Wave 3 deck](deck/Equilux-Wave3-deck.pdf) ([PowerPoint](deck/Equilux-Wave3-deck.pptx)) · [Wave 2 deck](deck/Equilux-Wave2-deck.pdf) |
 
 Equilux lets a company prove that its legally required gender pay gap report was computed from its

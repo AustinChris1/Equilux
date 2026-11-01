@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Equilux — Pitch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --night: #202b22; --night-deep: #131a15; --gold: #ffd85f; --gold-deep: #d9a723; --gold-dim: #8a6d1f;
+    --cream: #faf6e9; --paper: #fffdf5; --moss: #55604f; --sage: #9aa398;
+    --display: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+    --wordmark: "Instrument Serif", Georgia, serif;
+    --body: "Instrument Sans", system-ui, sans-serif;
+    --mono: "Spline Sans Mono", ui-monospace, monospace;
+  }
+  @page { size: 1920px 1080px; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #0d120f; font-family: var(--body); -webkit-font-smoothing: antialiased; }
+  .slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; padding: 110px 140px; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
+  .slide.night { background: var(--night); color: var(--cream); }
+  .slide.gold { background: var(--gold); color: var(--night); }
+  .slide.paper { background: var(--paper); color: var(--night); }
+  .slide.deep { background: var(--night-deep); color: var(--cream); }
+  .overline { font-family: var(--mono); font-size: 20px; letter-spacing: .22em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 14px; }
+  .overline::before { content: ""; width: 34px; height: 2px; background: currentColor; opacity: .6; }
+  .night .overline, .deep .overline { color: var(--gold); } .gold .overline { color: rgba(32,43,34,.7); } .paper .overline { color: var(--moss); }
+  h1, h2 { font-family: var(--display); font-weight: 600; letter-spacing: -.025em; margin: 0; }
+  h1 { font-size: 120px; line-height: 1.0; }
+  h2 { font-size: 88px; line-height: 1.02; margin-top: 28px; max-width: 1500px; }
+  .sub { font-size: 30px; line-height: 1.45; max-width: 1240px; margin-top: 34px; }
+  .night .sub, .deep .sub { color: var(--sage); } .gold .sub { color: rgba(32,43,34,.78); } .paper .sub { color: var(--moss); }
+  .grid { display: grid; gap: 28px; margin-top: 56px; }
+  .g3 { grid-template-columns: repeat(3, 1fr); } .g2 { grid-template-columns: repeat(2, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+  .card { border-radius: 24px; padding: 40px; }
+  .night .card, .deep .card { border: 1.5px solid rgba(255,216,95,.18); } .gold .card { border: 1.5px solid rgba(32,43,34,.18); } .paper .card { border: 1.5px solid rgba(32,43,34,.12); background: #fff; }
+  .card h3 { font-family: var(--display); font-weight: 600; font-size: 40px; letter-spacing: -.02em; margin: 0 0 14px; }
+  .card p { font-size: 25px; line-height: 1.45; margin: 0; }
+  .night .card p, .deep .card p { color: var(--sage); } .gold .card p { color: rgba(32,43,34,.78); } .paper .card p { color: var(--moss); }
+  .stat { font-family: var(--display); font-weight: 600; font-size: 110px; letter-spacing: -.03em; line-height: 1; }
+  .stat small { display: block; font-family: var(--mono); font-size: 20px; letter-spacing: .18em; text-transform: uppercase; margin-top: 16px; font-weight: 400; opacity: .75; }
+  .mono { font-family: var(--mono); }
+  .code { font-family: var(--mono); font-size: 24px; line-height: 1.55; background: var(--night-deep); color: var(--cream); border: 1.5px solid rgba(255,216,95,.18); border-radius: 20px; padding: 36px 44px; white-space: pre; }
+  .code b { color: var(--gold); font-weight: 500; }
+  .foot { position: absolute; left: 140px; right: 140px; bottom: 56px; display: flex; justify-content: space-between; font-family: var(--mono); font-size: 18px; letter-spacing: .16em; text-transform: uppercase; opacity: .6; }
+  .lockup { display: flex; align-items: center; gap: 22px; }
+  .lockup .wm { font-family: var(--wordmark); font-style: italic; font-size: 64px; }
+  ul.clean { list-style: none; padding: 0; margin: 40px 0 0; display: flex; flex-direction: column; gap: 22px; font-size: 30px; line-height: 1.4; }
+  ul.clean li { display: flex; gap: 20px; align-items: flex-start; }
+  ul.clean li::before { content: ""; flex: none; width: 14px; height: 14px; border-radius: 50%; margin-top: 15px; background: var(--gold); }
+  .paper ul.clean li::before, .gold ul.clean li::before { background: var(--night); }
+  .chip { font-family: var(--mono); font-size: 19px; letter-spacing: .06em; border-radius: 10px; padding: 8px 14px; display: inline-block; }
+  .night .chip, .deep .chip { background: rgba(255,216,95,.14); color: var(--gold); }
+  .gold .chip { background: rgba(32,43,34,.12); } .paper .chip { background: rgba(32,43,34,.06); color: var(--moss); }
+  table { border-collapse: collapse; width: 100%; margin-top: 40px; font-size: 26px; }
+  th, td { text-align: left; padding: 18px 22px; border-bottom: 1.5px solid rgba(255,216,95,.14); vertical-align: top; }
+  .paper th, .paper td, .gold th, .gold td { border-color: rgba(32,43,34,.14); }
+  th { font-family: var(--mono); font-size: 18px; letter-spacing: .16em; text-transform: uppercase; font-weight: 500; opacity: .7; }
+  .shot { width: 100%; border-radius: 22px; border: 1.5px solid rgba(255,216,95,.2); display: block; }
+</style>
+</head>
+<body>
+<style>
+  .steps { display:grid; grid-template-columns:repeat(5,1fr); gap:22px; margin-top:64px; }
+  .step { border-radius:22px; padding:34px 30px; border:1.5px solid rgba(255,216,95,.18); }
+  .step .n { font-family:var(--mono); font-size:20px; color:var(--gold); letter-spacing:.14em; }
+  .step h3 { font-family:var(--display); font-weight:600; font-size:34px; letter-spacing:-.02em; margin:14px 0 10px; line-height:1.1; }
+  .step p { font-size:22px; line-height:1.4; color:var(--sage); margin:0; }
+  .big3 { display:grid; grid-template-columns:repeat(3,1fr); gap:28px; margin-top:56px; }
+  .honest { border-left:6px solid var(--night); padding:6px 0 6px 28px; font-size:28px; line-height:1.45; margin-top:40px; max-width:1500px; }
+  .deep .honest, .night .honest { border-color:var(--gold); color:var(--cream); }
+  .vs td { font-size:30px; } .vs td:first-child { color:#c9cfc4; } .vs td:last-child { font-weight:600; color:var(--cream); }
+  .who { display:grid; grid-template-columns:repeat(3,1fr); gap:24px; margin-top:50px; }
+  .who .card h3 { font-size:34px; } .who .card p { font-size:23px; }
+  .tag { font-family:var(--mono); font-size:17px; letter-spacing:.12em; text-transform:uppercase; opacity:.65; display:block; margin-bottom:12px; }
+</style>
+
+<!-- 1 · Title -->
+<section class="slide night" style="justify-content:flex-end">
+  <svg width="1100" height="1100" viewBox="0 0 64 64" fill="none" aria-hidden="true" style="position:absolute;right:-260px;top:-230px;opacity:.12">
+    <rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/>
+  </svg>
+  <div class="lockup" style="margin-bottom:60px">
+    <svg width="72" height="72" viewBox="0 0 64 64" fill="none"><rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/></svg>
+    <span class="wm">Equilux</span>
+  </div>
+  <h1>Pay, proven equal.<br/><span style="color:var(--gold)">No salary revealed.</span></h1>
+  <p class="sub" style="max-width:1400px">Equilux proves a company's gender pay-gap report came from its complete, real payroll, so staff, works councils and regulators can check it, without anyone seeing a single salary.</p>
+  <div style="display:flex;gap:16px;margin-top:44px"><span class="chip">equilux-lac.vercel.app</span><span class="chip">Built on Midnight</span><span class="chip">github.com/AustinChris1/Equilux</span></div>
+  <div class="foot"><span>Equilux</span><span>01 / 11</span></div>
+</section>
+
+<!-- 2 · Problem -->
+<section class="slide paper">
+  <span class="overline">The problem</span>
+  <h2>A pay-gap report that nobody can check.</h2>
+  <div class="grid g3" style="margin-top:60px">
+    <div class="card"><h3>Self-declared</h3><p>The company does its own sums and publishes a number. Everyone else has to take its word for it.</p></div>
+    <div class="card"><h3>Unverifiable</h3><p>Checking the number would mean looking at every salary, which nobody should see.</p></div>
+    <div class="card"><h3>Easy to bend</h3><p>Leave a few people out, nudge a figure, or just get it wrong, and nobody outside can tell.</p></div>
+  </div>
+  <p class="honest">"Our pay gap is 0%." Today there is no way to check that without opening the payroll.</p>
+  <div class="foot"><span>Equilux</span><span>02 / 11</span></div>
+</section>
+
+<!-- 3 · Why now -->
+<section class="slide gold">
+  <span class="overline">Why now</span>
+  <h2>From 7 June 2027 the report is EU law.</h2>
+  <div class="big3">
+    <div><div class="stat">250+<small>workers: every year</small></div></div>
+    <div><div class="stat">150–249<small>every three years · 100–149 from 2031</small></div></div>
+    <div><div class="stat">~53,000<small>EU businesses with 250+ staff</small></div></div>
+  </div>
+  <p class="honest" style="border-color:var(--night)">Seven figures, every employer in scope. A category gap of 5% or more triggers a joint pay assessment, and in a dispute the employer must prove it did not discriminate.</p>
+  <div class="foot"><span>Directive (EU) 2023/970 · Eurostat 2023</span><span>03 / 11</span></div>
+</section>
+
+<!-- 4 · Solution -->
+<section class="slide night">
+  <span class="overline">The solution</span>
+  <h2>Prove the report. Keep every salary sealed.</h2>
+  <table class="vs" style="margin-top:56px">
+    <tr><th style="width:50%">Without Equilux</th><th>With Equilux</th></tr>
+    <tr><td>The company says "our gap is 4%"</td><td>The company <span style="color:var(--gold)">proves</span> "our gap is 4%"</td></tr>
+    <tr><td>You trust the spreadsheet</td><td>Anyone checks the proof in seconds</td></tr>
+    <tr><td>Leaving someone out goes unnoticed</td><td>The report must cover every payroll row, or it is refused</td></tr>
+    <tr><td>Staff can't tell if they were counted</td><td>Each employee checks their own record, once</td></tr>
+    <tr><td>Whoever checks sees the salaries</td><td>No salary is ever published or shared</td></tr>
+  </table>
+  <div class="foot"><span>Zero-knowledge proofs on Midnight</span><span>04 / 11</span></div>
+</section>
+
+<!-- 5 · How it works -->
+<section class="slide deep">
+  <span class="overline">How it works</span>
+  <h2>Five people, five keys, one proof.</h2>
+  <div class="steps">
+    <div class="step"><div class="n">01</div><h3>Payroll provider seals the payroll</h3><p>Every row becomes a sealed code. Salaries stay with payroll.</p></div>
+    <div class="step"><div class="n">02</div><h3>Works council checks it</h3><p>Opens each sealed row against the real payroll and approves.</p></div>
+    <div class="step"><div class="n">03</div><h3>Each employee confirms</h3><p>A record must match its row. An inflated salary matches nothing.</p></div>
+    <div class="step"><div class="n">04</div><h3>Employer proves the figures</h3><p>All seven legal figures, checked inside the contract, 16 people at a time.</p></div>
+    <div class="step"><div class="n">05</div><h3>Anyone verifies</h3><p>Read the report from the chain. Employees check their own record.</p></div>
+  </div>
+  <p class="sub" style="margin-top:48px">Small groups stay private: if a group has fewer than 3 women or 3 men, its pay is not shown, so nobody can work out a colleague's salary.</p>
+  <div class="foot"><span>Equilux</span><span>05 / 11</span></div>
+</section>
+
+<!-- 6 · Proof it works -->
+<section class="slide night">
+  <span class="overline">It works today</span>
+  <h2>A real report on Midnight's public testnet.</h2>
+  <div class="grid g2" style="grid-template-columns:1.25fr 1fr;gap:50px;margin-top:46px;align-items:start">
+    <img class="shot" src="assets/w3-verify.png" alt="The verify page reading a 32-person report: payroll rows committed, council approval, 32 of 32 enrolled, both reports published." />
+    <div>
+      <ul class="clean" style="margin-top:0">
+        <li><span>A 32-person company: <b>58 transactions</b>, every figure proven</span></li>
+        <li><span>Average gap <b>9.50%</b>, middle gap <b>3.40%</b>, gap inside job levels <b>9.05%</b></span></li>
+        <li><span>Any company <b>up to 512 people</b>, proven 16 at a time; tested at 250</span></li>
+        <li><span>Every cheat refused in the contract's own words</span></li>
+        <li><span><b>0 salaries</b> on chain</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>equilux-lac.vercel.app/verify</span><span>06 / 11</span></div>
+</section>
+
+<!-- 7 · For employees -->
+<section class="slide paper">
+  <span class="overline">For employees</span>
+  <h2>Check your own record from your payslip. No wallet.</h2>
+  <div class="grid g2" style="grid-template-columns:1.35fr 1fr;gap:56px;margin-top:46px;align-items:start">
+    <img class="shot" src="assets/w3-check.png" style="border-color:rgba(32,43,34,.15)" alt="The check page: six steps passed for one employee, and what women and men in her group earn." />
+    <ul class="clean" style="margin-top:0">
+      <li><span>My row was sealed, the council checked it, I was counted <b>once in each report</b></span></li>
+      <li><span>What women and men in <b>my group</b> earn (the employee's right under Article 7)</span></li>
+      <li><span>Nothing leaves the page. Change the salary by €100: <b>no row matches</b></span></li>
+    </ul>
+  </div>
+  <div class="foot"><span>equilux-lac.vercel.app/check</span><span>07 / 11</span></div>
+</section>
+
+<!-- 8 · Who it's for -->
+<section class="slide paper">
+  <span class="overline">Who it's for</span>
+  <h2>Everyone who has to trust the report.</h2>
+  <div class="who">
+    <div class="card"><span class="tag">Pays</span><h3>Employers</h3><p>A report staff, regulators and courts can check, from the payroll export they already have.</p></div>
+    <div class="card"><span class="tag">Resells</span><h3>Payroll &amp; HR software</h3><p>They already make the report. Equilux adds proof it covers the whole payroll.</p></div>
+    <div class="card"><span class="tag">Checks</span><h3>Works councils</h3><p>Open every payroll row before the report goes out, without seeing names.</p></div>
+    <div class="card"><span class="tag">Checks</span><h3>Employees</h3><p>See they were counted, and what their group earns.</p></div>
+    <div class="card"><span class="tag">Verifies</span><h3>Regulators</h3><p>Read the proven figures from the chain instead of asking for the payroll.</p></div>
+    <div class="card"><span class="tag">Certifies</span><h3>Fair-pay certifiers</h3><p>Back a certificate with figures proven to come from the full payroll.</p></div>
+  </div>
+  <div class="foot"><span>Nine use cases: equilux-lac.vercel.app/docs/use-cases</span><span>08 / 11</span></div>
+</section>
+
+<!-- 9 · Business model -->
+<section class="slide gold">
+  <span class="overline">Business model · a plan to test</span>
+  <h2>Per employee, per year, through the tools employers already use.</h2>
+  <div class="grid g3" style="margin-top:56px">
+    <div class="card"><h3>Who pays</h3><p>The employer: the legal duty is theirs. Reached through payroll and pay-transparency software that resells Equilux as a feature.</p></div>
+    <div class="card"><h3>Why per employee</h3><p>The work grows with headcount: about one transaction per person (346 for a 250-person company).</p></div>
+    <div class="card"><h3>Why it sells</h3><p>Analysis tools (Syndio, Trusaic, Figures) can't make the report checkable without showing salaries. Equilux sits beside them.</p></div>
+  </div>
+  <p class="honest" style="border-color:var(--night)">No price is set yet: the first pilots will tell us what it has to cost to be worth it.</p>
+  <div class="foot"><span>Equilux</span><span>09 / 11</span></div>
+</section>
+
+<!-- 10 · Why Midnight -->
+<section class="slide deep">
+  <span class="overline">Why Midnight</span>
+  <h2>Private data, public proof, on the same network.</h2>
+  <div class="grid g3" style="margin-top:56px">
+    <div class="card"><h3>Private inputs</h3><p>Salaries, genders and job levels are private inputs on each person's device. They never reach the chain.</p></div>
+    <div class="card"><h3>Proven outputs</h3><p>Midnight checks a zero-knowledge proof for every step. Only the proven figures, sealed codes and anonymous marks become public.</p></div>
+    <div class="card"><h3>Anyone can verify</h3><p>The public record is open: regulators, staff and journalists read the same proven figures, with no account and no data request.</p></div>
+  </div>
+  <p class="sub" style="margin-top:46px">Written in Compact, Midnight's language for private contracts: 14 circuits, 73 tests, every disclosure explicit.</p>
+  <div class="foot"><span>Equilux</span><span>10 / 11</span></div>
+</section>
+
+<!-- 11 · Status and the ask -->
+<section class="slide night" style="justify-content:space-between">
+  <div class="lockup">
+    <svg width="72" height="72" viewBox="0 0 64 64" fill="none"><rect x="11" y="21" width="42" height="9" rx="4.5" fill="#FFD85F"/><rect x="12.5" y="35.5" width="39" height="6" rx="3" stroke="#FFD85F" stroke-width="3"/></svg>
+    <span class="wm">Equilux</span>
+  </div>
+  <div>
+    <span class="overline">Where we are · what we ask</span>
+    <h2 style="font-size:80px">Live and working. Looking for the first pilots.</h2>
+    <div class="grid g3" style="margin-top:46px">
+      <div class="card"><h3>Today</h3><p>Live product, up to 512 people per report, proven on Midnight's testnet. No customers yet.</p></div>
+      <div class="card"><h3>We ask</h3><p>Employers and works councils for a free pilot; payroll and HR software companies for a partner conversation.</p></div>
+      <div class="card"><h3>Start here</h3><p><span class="mono" style="color:var(--gold)">equilux-lac.vercel.app</span><br/>Docs: <span class="mono">/docs</span><br/>Pilot: <span class="mono">/#pilot</span></p></div>
+    </div>
+  </div>
+  <div class="foot"><span>Built on Midnight · Apache 2.0</span><span>11 / 11</span></div>
+</section>
+
+</body>
+</html>
