@@ -1,6 +1,7 @@
 # Equilux: Wave 3 submission
 
 Paste-ready text for the AKINDO submission form. Each section is one field.
+Before submitting: fill every [N] and [DATE] from https://equilux-lac.vercel.app/api/stats, and the video link.
 
 ## Links
 
@@ -77,6 +78,42 @@ The Wave 2 review named the gaps; Wave 3 answers them in order.
 - `/check` on the live site against the preprod contract: a real employee passes all six steps; a salary
   €100 off matches no row; someone else's secret is refused (`webapp/e2e/e2e-check.mjs`).
 - Workflow: `.github/workflows/preprod-v4.yml` (probe, then run; resumable after any interruption).
+
+## Commercial relevance: where Equilux stands, stated plainly
+
+**The product is live**: https://equilux-lac.vercel.app. Anyone can run the whole report in the browser,
+check the preprod report at `/verify`, and check their own record at `/check`, with nothing to install.
+
+**Users: early, and counted from now on.** No employer, works council or payroll provider uses Equilux
+yet, and there is no revenue. In Wave 3 we opened free pilots (the form at
+https://equilux-lac.vercel.app/#pilot, stored privately) and started counting what visitors do,
+anonymously: https://equilux-lac.vercel.app/api/stats (counts only, no identifiers). On submission day:
+[N] report runs, [N] 250-person runs, [N] employee checks, [N] verifies, [N] pilot requests
+([N] HR, [N] works councils, [N] payroll providers), since [DATE].
+
+**What we learned taking it toward the market**
+1. *The cost grows with headcount, almost one transaction per person*: a report for n people takes
+   n + 5·⌈n/16⌉ + 16 transactions (58 measured for 32 people, about 346 for 250). That points to a
+   per-employee price, and it makes "who pays the employees' fees" a product decision, not a detail.
+2. *Wallets are the adoption barrier*, as the Wave 2 judges said. We split the employee's two jobs:
+   checking your own record now needs no wallet (`/check`); enrolling still does.
+3. *The infrastructure moves under you.* Midnight closed its own preprod indexer and RPC during the
+   Buildathon; we moved to Blockfrost within a week, behind a read-only proxy that keeps the key off the page.
+4. *A contract this size does not deploy in one block.* All 14 circuits' keys wrote ~38,900 bytes, and
+   the node refused it; the deploy now carries 6 and adds 8 by maintenance transactions.
+5. *Employers will see employee confirmation as extra process.* It is: one step per person, and the step
+   that turns the report from a claim into evidence. The answer is to make it a payslip link.
+
+**Challenges we are working through**
+- Reaching buyers: we have no network into HR yet, hence the public pilot page and outreach.
+- Walletless enrollment needs an always-on, synced wallet that pays fees (a preprod wallet sync from
+  scratch took 2.5 hours on GitHub's machines).
+- Mainnet fees are unknown, so the per-employee price is a hypothesis.
+
+**How the Midnight ecosystem could help us take the next step**
+- Fee sponsorship (DUST paid by the employer for its employees' enrollments), so no employee ever holds a token.
+- An introduction to an HR, payroll or compliance partner in the ecosystem for a first pilot.
+- A server-side wallet SDK and hosted proving that a relayer can rely on.
 
 ## How privacy shapes the design (Midnight integration)
 
