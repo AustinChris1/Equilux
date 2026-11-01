@@ -5,7 +5,7 @@ import { LogoMark } from "./Logo";
 const REPO = "https://github.com/AustinChris1/Equilux";
 
 /** Top bar for the app pages (/app, /verify); `right` holds the page's own control, such as Connect wallet. */
-export function AppHeader({ current, right }: { current: "app" | "verify" | "check"; right?: ReactNode }) {
+export function AppHeader({ current, right }: { current: "app" | "verify" | "check" | "docs"; right?: ReactNode }) {
   const link = (href: string, label: string, active: boolean) => (
     <a href={href} aria-current={active ? "page" : undefined}
       className={`transition-colors hover:text-gold ${active ? "text-cream" : "text-sage"}`}>
@@ -24,6 +24,7 @@ export function AppHeader({ current, right }: { current: "app" | "verify" | "che
           {link("/app", "Try it", current === "app")}
           {link("/verify", "Verify", current === "verify")}
           {link("/check", "My record", current === "check")}
+          {link("/docs", "Docs", current === "docs")}
         </nav>
         <nav className="ml-auto flex items-center gap-4 text-[13px] font-medium sm:gap-5">
           <a href="/#protocol" className="hidden text-sage transition-colors hover:text-gold md:block">How it works</a>

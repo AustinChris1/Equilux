@@ -9,19 +9,20 @@ import App from './App.tsx'
 const AppPage = lazy(() => import('./AppPage.tsx'))
 const VerifyPage = lazy(() => import('./VerifyPage.tsx'))
 const CheckPage = lazy(() => import('./CheckPage.tsx'))
+const DocsPage = lazy(() => import('./DocsPage.tsx'))
 
 // page views only, no cookies (Vercel Web Analytics); what visitors do is counted in api/stats.js
 inject()
 
 const clean = (p: string) => p.replace(/\/+$/, '') || '/'
 if (clean(location.pathname) === '/workspace') history.replaceState(null, '', `/app${location.search}${location.hash}`)
-const route = clean(location.pathname)
+const route = clean(location.pathname).startsWith('/docs') ? '/docs' : clean(location.pathname)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {route === '/app' || route === '/verify' || route === '/check' ? (
+    {route === '/app' || route === '/verify' || route === '/check' || route === '/docs' ? (
       <Suspense fallback={<div className="min-h-dvh bg-night-deep" />}>
-        {route === '/app' ? <AppPage /> : route === '/check' ? <CheckPage /> : <VerifyPage />}
+        {route === '/app' ? <AppPage /> : route === '/check' ? <CheckPage /> : route === '/docs' ? <DocsPage /> : <VerifyPage />}
       </Suspense>
     ) : (
       <App />

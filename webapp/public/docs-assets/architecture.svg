@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" font-family="Instrument Sans, Segoe UI, sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Equilux architecture</title>
+  <desc id="d">Four parties work in their own browsers with private data. Each browser runs the compiled contract and makes a proof. Only the proof and sealed codes go to Midnight. Anyone reads the public state with the verify and check pages.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#202b22"/></marker>
+  </defs>
+  <rect width="960" height="520" rx="18" fill="#fffdf5"/>
+
+  <!-- column labels -->
+  <text x="40" y="40" font-size="13" font-weight="600" fill="#55604f" letter-spacing="1.2">PRIVATE · ON EACH PERSON'S DEVICE</text>
+  <text x="600" y="40" font-size="13" font-weight="600" fill="#55604f" letter-spacing="1.2">PUBLIC · ON MIDNIGHT</text>
+
+  <!-- parties -->
+  <g font-size="15" fill="#202b22">
+    <rect x="40" y="60" width="190" height="62" rx="12" fill="#f3efe0" stroke="#d9d3bd"/>
+    <text x="58" y="87" font-weight="600">Payroll provider</text><text x="58" y="107" font-size="13" fill="#55604f">the salaries</text>
+    <rect x="40" y="134" width="190" height="62" rx="12" fill="#f3efe0" stroke="#d9d3bd"/>
+    <text x="58" y="161" font-weight="600">Works council</text><text x="58" y="181" font-size="13" fill="#55604f">the payroll to check</text>
+    <rect x="40" y="208" width="190" height="62" rx="12" fill="#f3efe0" stroke="#d9d3bd"/>
+    <text x="58" y="235" font-weight="600">Employees</text><text x="58" y="255" font-size="13" fill="#55604f">their own record</text>
+    <rect x="40" y="282" width="190" height="62" rx="12" fill="#f3efe0" stroke="#d9d3bd"/>
+    <text x="58" y="309" font-weight="600">Employer</text><text x="58" y="329" font-size="13" fill="#55604f">the claimed figures</text>
+  </g>
+
+  <!-- browser + contract -->
+  <rect x="290" y="60" width="250" height="284" rx="16" fill="#202b22"/>
+  <text x="312" y="92" font-size="16" font-weight="600" fill="#ffd85f">Browser</text>
+  <text x="312" y="114" font-size="13" fill="#9aa398">equilux-lac.vercel.app</text>
+  <rect x="312" y="132" width="206" height="78" rx="10" fill="#2b382d"/>
+  <text x="326" y="158" font-size="14" font-weight="600" fill="#faf6e9">Compiled contract</text>
+  <text x="326" y="178" font-size="12.5" fill="#9aa398">14 circuits (Compact),</text>
+  <text x="326" y="196" font-size="12.5" fill="#9aa398">runs every check locally</text>
+  <rect x="312" y="222" width="206" height="100" rx="10" fill="#2b382d"/>
+  <text x="326" y="248" font-size="14" font-weight="600" fill="#faf6e9">Prover</text>
+  <text x="326" y="268" font-size="12.5" fill="#9aa398">the wallet's own (1AM),</text>
+  <text x="326" y="286" font-size="12.5" fill="#9aa398">or a proof server on the</text>
+  <text x="326" y="304" font-size="12.5" fill="#9aa398">same computer (Lace)</text>
+
+  <g stroke="#202b22" stroke-width="1.6" fill="none" marker-end="url(#a)">
+    <path d="M232 91 H286"/><path d="M232 165 H286"/><path d="M232 239 H286"/><path d="M232 313 H286"/>
+  </g>
+
+  <!-- arrow to chain -->
+  <path d="M542 202 H594" stroke="#202b22" stroke-width="2.2" fill="none" marker-end="url(#a)"/>
+  <text x="568" y="174" font-size="12" fill="#55604f" text-anchor="middle">proof</text>
+  <text x="568" y="189" font-size="12" fill="#55604f" text-anchor="middle">+</text>
+  <text x="568" y="222" font-size="12" fill="#55604f" text-anchor="middle">sealed</text>
+  <text x="568" y="237" font-size="12" fill="#55604f" text-anchor="middle">codes</text>
+
+  <!-- chain -->
+  <rect x="600" y="60" width="320" height="284" rx="16" fill="#ffd85f"/>
+  <text x="622" y="92" font-size="16" font-weight="600" fill="#202b22">Midnight (public state)</text>
+  <g font-size="13.5" fill="#202b22">
+    <text x="622" y="124">• sealed payroll rows</text>
+    <text x="622" y="148">• "council opened this row" marks</text>
+    <text x="622" y="172">• anonymous employee marks</text>
+    <text x="622" y="196">• sealed running totals (between batches)</text>
+    <text x="622" y="220">• the proven figures</text>
+  </g>
+  <rect x="622" y="244" width="276" height="78" rx="10" fill="#202b22"/>
+  <text x="638" y="272" font-size="14" font-weight="600" fill="#ffd85f">No salaries. No names.</text>
+  <text x="638" y="294" font-size="12.5" fill="#faf6e9">Only what the proofs let through.</text>
+
+  <!-- readers -->
+  <path d="M760 346 V392" stroke="#202b22" stroke-width="1.6" fill="none" marker-end="url(#a)"/>
+  <text x="748" y="368" font-size="12.5" fill="#55604f" text-anchor="end">read through an indexer</text>
+  <text x="748" y="384" font-size="12.5" fill="#55604f" text-anchor="end">(Blockfrost)</text>
+  <g font-size="14.5">
+    <rect x="600" y="398" width="152" height="84" rx="12" fill="#f3efe0" stroke="#d9d3bd"/>
+    <text x="616" y="426" font-weight="600" fill="#202b22">/verify</text>
+    <text x="616" y="448" font-size="12.5" fill="#55604f">anyone reads the</text>
+    <text x="616" y="465" font-size="12.5" fill="#55604f">proven report</text>
+    <rect x="768" y="398" width="152" height="84" rx="12" fill="#f3efe0" stroke="#d9d3bd"/>
+    <text x="784" y="426" font-weight="600" fill="#202b22">/check</text>
+    <text x="784" y="448" font-size="12.5" fill="#55604f">an employee checks</text>
+    <text x="784" y="465" font-size="12.5" fill="#55604f">their own record</text>
+  </g>
+  <text x="40" y="410" font-size="13" fill="#55604f">Salaries, genders, job levels and secrets never leave the device</text>
+  <text x="40" y="430" font-size="13" fill="#55604f">of the person who holds them. They go into the proof as private</text>
+  <text x="40" y="450" font-size="13" fill="#55604f">inputs; the proof shows the sums are right without showing them.</text>
+</svg>

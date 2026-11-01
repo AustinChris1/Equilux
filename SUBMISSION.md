@@ -7,6 +7,7 @@ Before submitting: fill every [N] and [DATE] from https://equilux-lac.vercel.app
 
 - GitHub repository (Apache-2.0, topic `midnightntwrk`): https://github.com/AustinChris1/Equilux
 - README (project, setup, architecture, Midnight integration, how to test): https://github.com/AustinChris1/Equilux#readme
+- Docs, in plain language (overview, nine use cases, a guided tour, architecture, business model): https://equilux-lac.vercel.app/docs
 - Live app: https://equilux-lac.vercel.app/app (press **Play the whole story**, then **Try to cheat**)
 - Wave 3 report on preprod (contract v4, 32 people, 58 transactions), checkable by anyone:
   https://equilux-lac.vercel.app/verify?network=preprod&contract=7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f

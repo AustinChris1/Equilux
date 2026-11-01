@@ -8,6 +8,7 @@
 |---|---|
 | **Try it** | [Play the whole story](https://equilux-lac.vercel.app/app) |
 | **Verify** | [The Wave 3 report on preprod (32 people, contract v4)](https://equilux-lac.vercel.app/verify?network=preprod&contract=7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f) |
+| **Docs** | [Overview, use cases, a guided tour, architecture, business model](https://equilux-lac.vercel.app/docs) |
 | **Check** | [An employee checks their own record, no wallet](https://equilux-lac.vercel.app/check) |
 | **Research** | [Who would pay (desk research)](docs/who-pays.md) |
 | **Deck** | [Wave 2 deck](deck/Equilux-Wave2-deck.pdf) |

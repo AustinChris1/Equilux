@@ -10,6 +10,7 @@ const links = [
   { label: "Try to cheat", href: "#cheats" },
   { label: "Scope", href: "#scope" },
   { label: "Verify", href: "/verify" },
+  { label: "Docs", href: "/docs" },
 ];
 
 export function Nav() {
