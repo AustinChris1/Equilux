@@ -58,6 +58,6 @@ Directive applies from **150 / 250 employees**. Wave 3 = **contract v4: batched,
 3. [x] walletless employee check `/check` (video/scripts/e2e-check.mjs: 5 checks pass on preprod): from a payslip link, no wallet, no fee: row committed, council
        opened it, enrolled, counted in each published report (read-only against preprod). Enrollment itself
        still needs a wallet: say so.
-4. [ ] Wave 3 video on the v4 product (60 to 90 s) → README hero + SUBMISSION link
+4. [ ] Wave 3 video (video repo, branch wave3): voice 1:28.8 + 7 scenes + stills done; ending to settle after the judges' commercial note; then npm run audio, npm run render → out/wave3.mp4
 5. [ ] deck for Wave 3; the fee cost of the 32-person preprod run as a business number
 No invented outreach: the user cannot send HR messages; research stays labelled as research.
