@@ -11,7 +11,7 @@
 | **Docs** | [Overview, use cases, a guided tour, architecture, business model](https://equilux-lac.vercel.app/docs) |
 | **Check** | [An employee checks their own record, no wallet](https://equilux-lac.vercel.app/check) |
 | **Research** | [Who would pay (desk research)](docs/who-pays.md) |
-| **Deck** | [Wave 2 deck](deck/Equilux-Wave2-deck.pdf) |
+| **Deck** | [Wave 3 deck](deck/Equilux-Wave3-deck.pdf) ([PowerPoint](deck/Equilux-Wave3-deck.pptx)) · [Wave 2 deck](deck/Equilux-Wave2-deck.pdf) |
 
 Equilux lets a company prove that its legally required gender pay gap report was computed from its
 complete, real payroll (every salary the payroll provider's own figure, checked by the works council,
