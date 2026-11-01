@@ -74,3 +74,12 @@ bringing it to market, challenges, how the Midnight ecosystem could help.
 - [x] SUBMISSION: "Commercial relevance" section (fill [N] from /api/stats on submission day): live product, real numbers from /api/stats on submission day,
       what we learned, challenges, how Midnight could help (fee sponsorship for employees, a payroll-provider intro, hosted proving)
 - [x] film ending: pilot call to action, rendered
+
+## Outreach (2026-11-01): five notes, EU, people who already work on this report
+Addresses verified on each organisation's own page. Status to report in SUBMISSION (reply or silence):
+- [ ] HANSE Betriebsratsseminare (works-council seminar on Entgelttransparenz), Felicitas Lindberg
+- [ ] K&K Bildungsmanufaktur (works-council network day 2027 on pay transparency)
+- [ ] EAF Berlin, Hanna Völkle (advises employers on the Directive; works with INES Analytics)
+- [ ] INES Analytics, Berlin (PAY_transparency software): partner angle
+- [ ] FPI Fair Pay Innovation Lab (Fair Pay Certificate): certification angle
+Not now: Personio / DATEV partner programmes (they require existing customers).
