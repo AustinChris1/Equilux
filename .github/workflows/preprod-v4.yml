@@ -13,15 +13,23 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe (15 min check), run (the full flow) or walletless (an employee enrolls without a wallet)"
+        description: "probe, run (full flow), walletless (an employee enrolls without a wallet) or sponsor (pay for a browser-proven tx)"
         required: true
         default: probe
         type: choice
-        options: [probe, run, walletless]
+        options: [probe, run, walletless, sponsor]
       company_size:
         description: "people in the sample company (run mode)"
         required: false
         default: "32"
+      tx:
+        description: "sponsor mode: the proven transaction (hex) from the /check page"
+        required: false
+        default: ""
+      label:
+        description: "sponsor mode: a label for the record"
+        required: false
+        default: "browser"
 
 concurrency:
   group: preprod-v4
@@ -51,13 +59,13 @@ jobs:
           test -n "${{ secrets.PREPROD_SEED }}" || { echo "::error::Add the PREPROD_SEED repository secret"; exit 1; }
 
       - name: Install the Compact toolchain
-        if: inputs.mode != 'probe'
+        if: inputs.mode == 'run' || inputs.mode == 'walletless'
         run: |
           curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Compile the contract with proving keys
-        if: inputs.mode != 'probe'
+        if: inputs.mode == 'run' || inputs.mode == 'walletless'
         working-directory: contract
         run: |
           compact update 0.30.0
@@ -108,6 +116,14 @@ jobs:
         if: inputs.mode == 'walletless'
         working-directory: contract/preprod
         run: npm run walletless
+
+      - name: Sponsor a browser-proven enrollment on preprod
+        if: inputs.mode == 'sponsor'
+        working-directory: contract/preprod
+        env:
+          TX_HEX: ${{ inputs.tx }}
+          LABEL: ${{ inputs.label }}
+        run: npm run sponsor
 
       - name: Save wallet state and progress
         if: always() && inputs.mode != 'probe'

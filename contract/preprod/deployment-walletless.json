@@ -1,0 +1,87 @@
+{
+  "network": "preprod",
+  "contractVersion": "v4",
+  "startedAt": "2026-11-03T13:06:52.445Z",
+  "steps": [
+    {
+      "step": "deploy",
+      "txId": "00cdb225ea3ddea6d3159940584512341d79f3f3fa27d993211d220d1760a47c88",
+      "txHash": "fb70af598ea4aeb349ffded2041a76bf5dc4f05ec7037fe7bd291ab4cae9cdf4",
+      "block": 3262722
+    },
+    {
+      "step": "verifierKey:reportBatch",
+      "txId": "00590614b84d35787f583f7dec1753444ffb208fb6bc8032c1aa3d2a063f71a0ad",
+      "txHash": "43fc35161d1e3f7f9e1f693ccdaa0b09941317dcc9fef786e3da434a43320287",
+      "block": 3262725
+    },
+    {
+      "step": "verifierKey:finishReport",
+      "txId": "00cc4bbf03c1af2da639395009a8e847baf6e14fca149fc5398105cfb0d1077027",
+      "txHash": "45258299c8c6a346425f6e73ebf9329f8389a16ffa709f289af785e93a7f35aa",
+      "block": 3262729
+    },
+    {
+      "step": "verifierKey:beginVariableReport",
+      "txId": "00c4ed4116a0668ee9401a869e2a785cb7bb6f3bfffe6aeb89a9eb525688a40368",
+      "txHash": "58a6b4b3d8fe6531bf0febf9351cbac3ecb42931c0e8c114d44a09fb9691d1b9",
+      "block": 3262734
+    },
+    {
+      "step": "verifierKey:variableBatch",
+      "txId": "00f16fa6e716a223d3c505cbe0a1521ffc4a2090071670a24fd00fb442d360b2ba",
+      "txHash": "72021dc64b838d0a3e7643e8db7bb2e2b65d87e472832c74bcb9fb5a785d71e2",
+      "block": 3262738
+    },
+    {
+      "step": "verifierKey:finishVariableReport",
+      "txId": "0067f55ee746cb81daa02be14e45ba4eda3bdea90a6bc9930a7d2f19465c7a9226",
+      "txHash": "6c1d931ba8355937742a38a4d5a163569d750353e9cb66924dc3e3f629cef488",
+      "block": 3262743
+    },
+    {
+      "step": "verifierKey:beginLevelReport",
+      "txId": "001b10b4651bd75a1a51605574302ca1fd4db9315c487a4db1ecb9b79c2fbb0bb4",
+      "txHash": "edbe22e38ca89fad28f118bd9954971ea7b91755148d5d8b37310ec767fef35b",
+      "block": 3262747
+    },
+    {
+      "step": "verifierKey:levelBatch",
+      "txId": "009901088ba55181018bba0fee6e139c4dc94e31aeaa57e758dcc68064b75ae959",
+      "txHash": "8afc6d1c1c94019d2ebd2dd177c4e980f0f48b7e73ad12ad67d92e1000d61590",
+      "block": 3262752
+    },
+    {
+      "step": "verifierKey:finishLevelReport",
+      "txId": "00c0201e7000c7b9206e8114bbe50da7f6e3f005f36315520bd40f36881ecf442f",
+      "txHash": "b1cd3f46b5b11a86a5e8adc4d5f1c546d1d3a1d062d0733ffdbca2802547fa9c",
+      "block": 3262757
+    },
+    {
+      "step": "declareRoster",
+      "txId": "00b1d9e90e50e1474a171dbbbdebcbbc5bb0ffd444eaf72ece25f5c1f88c9aaf94",
+      "txHash": "67dc2d86300154ae481df5f6a4d4b211ae3532f03d4f7f730dcd1aeed074e284",
+      "block": 3262761
+    },
+    {
+      "step": "addPayrollRows:1",
+      "txId": "00ae323f3a3a69d847a18576935ea533f6b4e2d551a232f4f6b84afd91bf5c6db5",
+      "txHash": "0f5f236a45b5423a952343f403cb88234814129b50664c0420b2d44c2c7cbb8e",
+      "block": 3262765
+    },
+    {
+      "step": "confirmPayroll:1",
+      "txId": "007fc52996a02c22eeb6a139e337a5729e4d33e68f8cb89a31cb9b7e94288a423a",
+      "txHash": "da1b8fd691049f8fe7151af70aec76ae03f4d872a968b1cbe120b515ded10363",
+      "block": 3262774
+    },
+    {
+      "step": "enroll:w0:walletless",
+      "txId": "002ba08b04c8cce421ed3f881a43d5a844a868b9064ddc8e033d914ea97bf14b8d",
+      "txHash": "9bfd22483bbf5e5d9a7f3f88bb00ba442f9a595586a5fbe653660cb69b912096",
+      "block": 3263021,
+      "note": "proof by the WASM prover in 62 s; fee paid by the sponsor wallet"
+    }
+  ],
+  "contract": "31e304288e418f2511eab561b25401a204196a8ce0bc897f4caa924de9165345"
+}
