@@ -5,3 +5,4 @@ compile.sh
 midnight-level-db/
 compile015.sh
 logs/
+.params/

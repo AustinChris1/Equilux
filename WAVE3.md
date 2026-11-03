@@ -88,7 +88,7 @@ Not now: Personio / DATEV partner programmes (they require existing customers).
 Design: the employee's browser makes the enroll proof itself (Midnight's WASM prover, zkir-v2), so the
 secret never leaves it; the employer's wallet only balances (pays the fee) and submits. A tx expires in
 1 hour (global_ttl), so the employer sponsors live ("N employees waiting → Pay for these").
-- [ ] R1: prove `enroll` with zkir-v2 (no proof server), keys from build/, params bls_midnight_2p<k>
+- [x] R1: `enroll` proven with zkir-v2, no proof server, no wallet: 67–74 s in Node, 5,699-byte proven tx; needs params k=15 (6.3 MB, sha256 matches the SDK). Script: contract/test/wasm-prove.offline.ts
 - [ ] R2: params re-hosted on GitHub Pages (srs.midnight.network sends no CORS header)
 - [ ] R3: the browser does it (time, memory)
 - [ ] R4: a proven, unbalanced tx balanced + submitted by another wallet (preprod deploy wallet in CI = evidence tx)
