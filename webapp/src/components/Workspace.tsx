@@ -8,6 +8,7 @@ import { getStatus, resolveApiBase, runJob, short, type LedgerView, type Status,
 import { BrowserContract, newNonce, payrollRowHash, type Row } from "../lib/browser-contract";
 import { parsePayrollCsv } from "../../../contract/deploy/payroll-csv";
 import { track } from "../lib/track";
+import { SponsorPanel } from "./SponsorPanel";
 import { ReportView } from "./ReportView";
 import { useScramble } from "./landing/useScramble";
 import { PREPROD_VERIFY } from "./landing/data";
@@ -586,7 +587,14 @@ export function Workspace() {
                 <span className="text-[13px] text-sage">{enrolledCount} of {ledger?.declaredHeadcount ?? people.length} done{mode === "wallet" ? ` · one approval each in ${session?.walletName}` : ""}</span>
               </div>
             ),
-          body: <TeamGrid people={people} categories={categories} open={payrollConfirmed} busy={!!busy} onEnroll={enroll} onReceipt={receipt} />,
+          body: (
+            <>
+              {mode === "wallet" && session && deployed && payrollConfirmed && (
+                <SponsorPanel session={session} contract={deployed} people={people} log={push} onPaid={async () => setWalletLedger(await session.readLedger())} />
+              )}
+              <TeamGrid people={people} categories={categories} open={payrollConfirmed} busy={!!busy} onEnroll={enroll} onReceipt={receipt} />
+            </>
+          ),
         };
       case "report":
         return {
