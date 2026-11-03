@@ -2,7 +2,9 @@
 
 **The first employee-verifiable pay-transparency reporting protocol. Built on Midnight.**
 
-[![Wave 2 demo. Click to play.](assets/wave2-demo.jpg)](https://www.youtube.com/watch?v=AmFv_UKSj4A)
+[![Wave 3 film. Click to play.](assets/wave3-demo.jpg)](https://youtu.be/Wy531rFG9ZE)
+
+Wave 3 film (90 s): [youtu.be/Wy531rFG9ZE](https://youtu.be/Wy531rFG9ZE) · Wave 2 film: [youtube.com/watch?v=AmFv_UKSj4A](https://www.youtube.com/watch?v=AmFv_UKSj4A)
 
 | | |
 |---|---|

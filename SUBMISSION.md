@@ -16,7 +16,7 @@ Before submitting: fill every [N] and [DATE] from https://equilux-lac.vercel.app
 - The same contract on Midnight's preprod explorer: https://explorer.preprod.midnight.network/contracts/7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f
   (or https://preprod.midnightexplorer.com/contracts/7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f)
 - Who would pay (desk research, labelled as such): https://github.com/AustinChris1/Equilux/blob/main/docs/who-pays.md
-- Wave 3 update video: [WAVE 3 VIDEO LINK]
+- Wave 3 update video: https://youtu.be/Wy531rFG9ZE
 - Wave 3 deck (12 slides): https://github.com/AustinChris1/Equilux/blob/main/deck/Equilux-Wave3-deck.pdf
 
 ## Project description (short)
