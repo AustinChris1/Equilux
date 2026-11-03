@@ -81,6 +81,13 @@
       "txHash": "9bfd22483bbf5e5d9a7f3f88bb00ba442f9a595586a5fbe653660cb69b912096",
       "block": 3263021,
       "note": "proof by the WASM prover in 62 s; fee paid by the sponsor wallet"
+    },
+    {
+      "step": "enroll:w1:browser",
+      "txId": "00db73d6ac2771cc2e07d331d3661df0226944d6c545bb8b2346f237bd57b1e129",
+      "txHash": "cee3b639cda92cd3981b82474b397bf1b1501a2d895ee2d1e261141ff9593797",
+      "block": 3263153,
+      "note": "proof made in Chrome by the /check page's worker (zkir-v2 WASM); fee paid by the sponsor wallet"
     }
   ],
   "contract": "31e304288e418f2511eab561b25401a204196a8ce0bc897f4caa924de9165345"
