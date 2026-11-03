@@ -93,6 +93,11 @@ anonymously: https://equilux-lac.vercel.app/api/stats (counts only, no identifie
 [N] report runs, [N] 250-person runs, [N] employee checks, [N] verifies, [N] pilot requests
 ([N] HR, [N] works councils, [N] payroll providers), since [DATE].
 
+**Outreach.** On 3 November 2026 we emailed five EU organisations that work on this report: two
+works-council trainers, an equal-pay consultancy, a pay-transparency software maker and a fair-pay certifier.
+One question each: would you use it, and who would pay? No replies yet; every answer, including silence, is
+reported as it is.
+
 **What we learned taking it toward the market**
 1. *The cost grows with headcount, almost one transaction per person*: a report for n people takes
    n + 5·⌈n/16⌉ + 16 transactions (58 measured for 32 people, about 346 for 250). That points to a
