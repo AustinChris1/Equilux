@@ -81,7 +81,7 @@ export function ConfirmCard({ contract, record, nonce, onConfirmed }: { contract
           <h2 id="confirm" className="display text-2xl">Confirm your record, no wallet</h2>
           <p className="mt-1.5 text-[14px] leading-relaxed text-night/80">
             Your row is sealed and the works council checked it; it just needs your confirmation. Your browser makes the proof itself.
-            A secret key is created here and never leaves this device. Your employer pays the small network fee.
+            A secret key is created here and never leaves this device. The small network fee is paid for you, automatically.
           </p>
         </div>
         {phase.k === "idle" || phase.k === "error" ? (
@@ -94,7 +94,7 @@ export function ConfirmCard({ contract, record, nonce, onConfirmed }: { contract
       {phase.k === "proving" && <p className="mt-4 inline-flex items-center gap-2 text-[14px] font-medium" role="status"><Loader2 size={15} className="animate-spin" /> {STEP_TEXT[phase.step]}</p>}
       {phase.k === "waiting" && (
         <p className="mt-4 inline-flex items-center gap-2 text-[14px] font-medium" role="status">
-          <Wallet size={15} /> Proof made. Waiting for your employer's wallet to pay the fee ({left} min left before it expires)…
+          <Wallet size={15} /> Proof made. The fee is paid automatically, usually within 15 to 30 minutes; you can leave this page open ({left} min left before it expires)…
         </p>
       )}
       {phase.k === "done" && (

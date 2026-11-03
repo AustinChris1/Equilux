@@ -11,7 +11,8 @@
     "deploy-v4": "node --max-old-space-size=8192 --import tsx run-v4.ts",
     "probe": "node --max-old-space-size=8192 --import tsx probe.ts",
     "walletless": "node --max-old-space-size=8192 --import tsx walletless.ts",
-    "sponsor": "node --max-old-space-size=8192 --import tsx sponsor.ts"
+    "sponsor": "node --max-old-space-size=8192 --import tsx sponsor.ts",
+    "autosponsor": "node --max-old-space-size=8192 --import tsx autosponsor.ts"
   },
   "dependencies": {
     "@midnight-ntwrk/wallet-sdk-abstractions": "3.0.0-rc.0",

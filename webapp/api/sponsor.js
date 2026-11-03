@@ -32,13 +32,28 @@ export async function POST(request) {
   if (n > 10) return json({ error: "Too many confirmations from this address; try again in an hour." }, 429);
   const id = crypto.randomUUID();
   const entry = { id, at: Date.now(), tx: b.tx, commitment: String(b.commitment ?? "").slice(0, 64), status: "waiting" };
-  await redis(["HSET", key, id, JSON.stringify(entry)], ["EXPIRE", key, 3600]);
+  await redis(["HSET", key, id, JSON.stringify(entry)], ["EXPIRE", key, 3600], ["SADD", "equilux:sponsor:contracts", b.contract]);
   return json({ id });
 }
 
 export async function GET(request) {
   if (!hasStore()) return json({ entries: [], open: false });
   const u = new URL(request.url);
+  // the automatic sponsor (.github/workflows/autosponsor.yml) asks for everything waiting, on every contract
+  if (u.searchParams.get("waiting") === "all") {
+    const contracts = (await redis(["SMEMBERS", "equilux:sponsor:contracts"]))[0] ?? [];
+    const entries = [];
+    for (const c of contracts) {
+      const all = (await redis(["HGETALL", keyOf(c)]))[0] ?? [];
+      if (!all.length) { await redis(["SREM", "equilux:sponsor:contracts", c]); continue; } // expired
+      for (let i = 1; i < all.length; i += 2) {
+        const e = JSON.parse(all[i]);
+        if (e.status === "waiting" && Date.now() - e.at < 55 * 60_000) entries.push({ contract: c, ...e });
+      }
+    }
+    entries.sort((a, b) => a.at - b.at);
+    return json({ entries, open: true });
+  }
   const contract = u.searchParams.get("contract");
   if (!okContract(contract)) return json({ error: "Unknown contract." }, 400);
   const id = u.searchParams.get("id");

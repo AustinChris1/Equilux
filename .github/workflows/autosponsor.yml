@@ -1,0 +1,66 @@
+# The automatic sponsor for walletless enrollment (contract/preprod/autosponsor.ts).
+# Every 15 minutes: sync the project's sponsor wallet (so it never falls behind) and pay the network fee for every
+# employee confirmation waiting in https://equilux-lac.vercel.app/api/sponsor. Employees never touch a wallet and
+# nobody approves each one. Only genuine Equilux `enroll` calls are paid. Preprod (testnet) only.
+name: Automatic sponsor
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+# shares the wallet with "Preprod v4": never both at once
+concurrency:
+  group: preprod-v4
+  cancel-in-progress: false
+
+jobs:
+  sponsor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      BLOCKFROST_PROJECT_ID: ${{ secrets.BLOCKFROST_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Start the proof server (the fee itself is proven)
+        run: docker run -d --name proof-server -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v
+
+      - name: Install dependencies
+        working-directory: contract/preprod
+        run: npm install --no-audit --no-fund
+
+      - name: Restore wallet state
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            contract/preprod/.state
+            contract/preprod/deployment-v4.json
+            contract/preprod/deployment-walletless.json
+            contract/.params
+            contract/preprod/midnight-level-db
+          key: preprod-v4-blockfrost-${{ github.run_id }}
+          restore-keys: preprod-v4-blockfrost-
+
+      - name: Sponsor wallet seed
+        run: printf '%s' "${{ secrets.PREPROD_SEED }}" > contract/preprod/.seed
+
+      - name: Pay the fees for waiting confirmations
+        working-directory: contract/preprod
+        run: npm run autosponsor
+
+      - name: Save wallet state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            contract/preprod/.state
+            contract/preprod/deployment-v4.json
+            contract/preprod/deployment-walletless.json
+            contract/.params
+            contract/preprod/midnight-level-db
+          key: preprod-v4-blockfrost-${{ github.run_id }}
