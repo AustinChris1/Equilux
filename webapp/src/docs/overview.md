@@ -2,6 +2,8 @@
 
 Equilux lets a company **prove** that its gender pay-gap report is true, without showing anyone's salary.
 
+> **Prefer to watch?** [The 2½-minute film](https://youtu.be/lYivT3qvzZM) shows the whole idea, start to finish.
+
 ## The problem in one minute
 
 From **7 June 2027**, a new EU law (the Pay Transparency Directive, 2023/970) makes companies publish how much less women are paid than men, on average and in several other ways.

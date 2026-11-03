@@ -2,9 +2,9 @@
 
 **The first employee-verifiable pay-transparency reporting protocol. Built on Midnight.**
 
-[![Wave 3 film. Click to play.](assets/wave3-demo.jpg)](https://youtu.be/Wy531rFG9ZE)
+[![Equilux in 2½ minutes. Click to play.](assets/pitch-film.jpg)](https://youtu.be/lYivT3qvzZM)
 
-Wave 3 film (90 s): [youtu.be/Wy531rFG9ZE](https://youtu.be/Wy531rFG9ZE) · Wave 2 film: [youtube.com/watch?v=AmFv_UKSj4A](https://www.youtube.com/watch?v=AmFv_UKSj4A)
+The pitch film (2½ min): [youtu.be/lYivT3qvzZM](https://youtu.be/lYivT3qvzZM) · What changed in Wave 3 (90 s): [youtu.be/Wy531rFG9ZE](https://youtu.be/Wy531rFG9ZE) · Wave 2 film: [youtube.com/watch?v=AmFv_UKSj4A](https://www.youtube.com/watch?v=AmFv_UKSj4A)
 
 | | |
 |---|---|

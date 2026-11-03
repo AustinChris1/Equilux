@@ -16,6 +16,7 @@ Paste-ready text for the AKINDO submission form. Each section is one field.
   (or https://preprod.midnightexplorer.com/contracts/7b4e8bab4075715a90c99c0460f49743b3bd6af5b4fb0ce6314118902051021f)
 - Who would pay (desk research, labelled as such): https://github.com/AustinChris1/Equilux/blob/main/docs/who-pays.md
 - Wave 3 update video: https://youtu.be/Wy531rFG9ZE
+- Pitch film (what Equilux is, for anyone, 2½ min): https://youtu.be/lYivT3qvzZM
 - Wave 3 deck (12 slides): https://github.com/AustinChris1/Equilux/blob/main/deck/Equilux-Wave3-deck.pdf
 
 ## Project description (short)
