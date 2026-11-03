@@ -73,7 +73,7 @@ export function ConfirmCard({ contract, record, nonce, onConfirmed }: { contract
     URL.revokeObjectURL(a.href);
   };
 
-  const left = phase.k === "waiting" ? Math.max(0, 60 - Math.floor((now - phase.since) / 60_000)) : 0;
+  const left = phase.k === "waiting" ? Math.min(60, Math.max(0, 60 - Math.floor((Math.max(now, phase.since) - phase.since) / 60_000))) : 0;
   return (
     <section aria-labelledby="confirm" className="mt-6 rounded-2xl bg-gold p-5 text-night md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
