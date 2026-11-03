@@ -46,7 +46,7 @@ None of them makes the report **checkable by others without showing salaries**. 
 - **Product:** live, free, and works today for up to 512 people per report.
 - **Customers:** none yet. **Revenue:** none.
 - **Pilots:** open. Employers, works councils and payroll providers can [ask for one](/#pilot).
-- **Outreach (planned, November 2026):** short notes to works-council trainers, an equal-pay consultancy, a pay-transparency software company and a fair-pay certifier in Germany. Their answers, including silence, will be reported here as they are.
+- **Outreach:** on 3 November 2026 we emailed five organisations in Germany that work on this report: two works-council trainers, an equal-pay consultancy, a pay-transparency software company and a fair-pay certifier. No replies yet; every answer, including silence, will be reported here as it is.
 
 ## What would help next
 
