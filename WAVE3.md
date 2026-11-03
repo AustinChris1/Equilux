@@ -83,3 +83,13 @@ Addresses verified on each organisation's own page. Status to report in SUBMISSI
 - [ ] INES Analytics, Berlin (PAY_transparency software): partner angle
 - [ ] FPI Fair Pay Innovation Lab (Fair Pay Certificate): certification angle
 Not now: Personio / DATEV partner programmes (they require existing customers).
+
+## Walletless enrollment (started 2026-11-03, after the Wave 3 submission)
+Design: the employee's browser makes the enroll proof itself (Midnight's WASM prover, zkir-v2), so the
+secret never leaves it; the employer's wallet only balances (pays the fee) and submits. A tx expires in
+1 hour (global_ttl), so the employer sponsors live ("N employees waiting → Pay for these").
+- [ ] R1: prove `enroll` with zkir-v2 (no proof server), keys from build/, params bls_midnight_2p<k>
+- [ ] R2: params re-hosted on GitHub Pages (srs.midnight.network sends no CORS header)
+- [ ] R3: the browser does it (time, memory)
+- [ ] R4: a proven, unbalanced tx balanced + submitted by another wallet (preprod deploy wallet in CI = evidence tx)
+- [ ] app: payslip link → Confirm (proves in page) → queue; employer: "Pay for N" with Lace
