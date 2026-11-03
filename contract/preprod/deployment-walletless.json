@@ -88,6 +88,12 @@
       "txHash": "cee3b639cda92cd3981b82474b397bf1b1501a2d895ee2d1e261141ff9593797",
       "block": 3263153,
       "note": "proof made in Chrome by the /check page's worker (zkir-v2 WASM); fee paid by the sponsor wallet"
+    },
+    {
+      "step": "enroll:w2:automatic",
+      "txId": "001a5453936a3667c0be542b2d8c2eb17b8fc6b109b2c24268a7ff9ab40902c58d",
+      "block": 3263812,
+      "note": "confirmed on the live /check page (proof made in Chrome, 88 s); fee paid by the automatic sponsor job (run 41658715129), nobody clicking"
     }
   ],
   "contract": "31e304288e418f2511eab561b25401a204196a8ce0bc897f4caa924de9165345"
