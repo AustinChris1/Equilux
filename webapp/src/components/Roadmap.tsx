@@ -31,6 +31,7 @@ const waves = [
       "The gap inside equal job levels, with each level's mix",
       "On preprod again: 32 people, 2 batches, 58 transactions",
       "Employees check their own record from a link, no wallet",
+      "Employees confirm without a wallet: the proof is made in their browser, the employer pays the fee",
       "73 tests, incl. a 250-person company",
       "Desk research: who would pay",
     ],
@@ -39,7 +40,7 @@ const waves = [
     wave: "Next",
     dates: "after the Buildathon",
     status: "Open",
-    items: ["Enrollment from a payslip link, fee paid by the employer", "A named pilot with a works council and an EU employer", "Mainnet, when Midnight opens it"],
+    items: ["A named pilot with a works council and an EU employer", "Mainnet, when Midnight opens it"],
   },
 ];
 

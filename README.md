@@ -43,6 +43,8 @@ reads the contract's state from the indexer, decodes it with the compiled contra
 proven figure: mean gap 9.50%, median gap 3.40%, variable-pay mean gap 9.26%, the gap per worker
 category, pay quartiles, and a level-adjusted gap of 9.05% over 31 people. No salary is on chain.
 
+**Walletless enrollment:** contract [`31e30428…5345`](https://equilux-lac.vercel.app/check?contract=31e304288e418f2511eab561b25401a204196a8ce0bc897f4caa924de9165345), two employees enrolled with no wallet. Their proofs were made by Midnight's WebAssembly prover (one inside Chrome, by the `/check` page), and a sponsor wallet paid each fee: blocks 3,263,021 and 3,263,153 ([record](contract/preprod/deployment-walletless.json)).
+
 **Wave 2, contract v3:** 14 employees, both reports, blocks 2,787,450 to 2,787,556, contract
 [`598b346e…d1cb`](https://equilux-lac.vercel.app/verify?network=preprod&contract=598b346e40e5233c605936b9430a80362773b778918b0a899d9bae025257d1cb)
 ([record](contract/preprod/deployment.json)). `/verify` still decodes it.
@@ -61,6 +63,7 @@ wallet friction. Wave 3 answers the first two in full; the third is designed and
 | Circuits · tests | 6 · 55 | **14 · 73** (incl. a 250-person company through the compiled circuits) |
 | Preprod | 14 people | **32 people, 2 batches, 58 transactions** (table above) |
 | An employee checks their record | a receipt transaction, from a wallet | **[`/check`](https://equilux-lac.vercel.app/check)**: from a payslip, no wallet, no fee: row committed, council opened it, enrolled, counted once in each report, and what their category earns by gender |
+| An employee confirms their record | from their own wallet | **no wallet**: their browser makes the proof (about a minute) and keeps their secret; the employer's wallet pays the fee. On preprod: blocks 3,263,021 and 3,263,153 (the second proof made in Chrome), [record](contract/preprod/deployment-walletless.json) |
 | Business | none | [desk research on who pays](docs/who-pays.md), labelled as research |
 
 ## Why now
@@ -194,8 +197,9 @@ A compliance tool that overstates itself is worse than none, so the boundary is 
   human judgement.
 - *Scale:* up to 512 people per contract instance (a compile-time size). Tested at 250 in the compiled
   circuits and in the browser; run on preprod at 32. We do not claim 250 on-chain.
-- *Wallet friction:* checking your own record needs no wallet (`/check`); enrolling it still does. A
-  walletless enrollment link with fees paid by the employer is designed, not built.
+- *Wallet friction:* none for employees. Checking a record (`/check`) and confirming it both work without a wallet:
+  the employee's browser makes the proof and the employer's wallet pays the fee (proven on preprod, blocks
+  3,263,021 and 3,263,153). The employer and the payroll provider still use a wallet.
 - *Gender beyond the Directive's annex:* binary reporting markers, as the annex is written today.
 
 ## Integration surface (the plugin)

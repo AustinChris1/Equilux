@@ -42,8 +42,8 @@ const doesNot = [
     body: "Proven on Midnight's public preprod testnet: contract v4 for 32 people (58 transactions, contract 7b4e8bab…1021f), and the Wave 2 contract for 14. Midnight closed its own preprod indexer, so the site reads through Blockfrost. Mainnet follows Midnight.",
   },
   {
-    head: "Employees still need a wallet to enroll",
-    body: "Checking your own record needs no wallet. Enrolling it does, today. A link in the payslip portal, with the employer paying the fee, is the next step.",
+    head: "No wallet for employees, but the employer pays the fee",
+    body: "Employees confirm and check their record with no wallet: their browser makes the proof and keeps their secret. The employer's wallet pays the network fee, live, within the hour the proof stays valid. On Midnight's testnet today, not yet mainnet.",
   },
   {
     head: "Binary gender markers",

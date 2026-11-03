@@ -52,6 +52,6 @@ None of them makes the report **checkable by others without showing salaries**. 
 
 - **An introduction** to one payroll or HR software company for a first real pilot.
 - **Fee sponsorship on Midnight**, so the employer can pay every employee's small fee and nobody has to hold a token.
-- **A dependable server-side wallet and proving service**, so employees can confirm from a payslip link with no wallet at all.
+- **Fee sponsorship built into Midnight wallets**, so an employer can pay for a whole team of walletless confirmations in one approval instead of one per person.
 
 Sources: [Directive (EU) 2023/970](https://eur-lex.europa.eu/eli/dir/2023/970/oj) · [Eurostat, large businesses in the EU](https://ec.europa.eu/eurostat/web/products-eurostat-news/w/ddn-20241205-1) · full research notes in [`docs/who-pays.md`](https://github.com/AustinChris1/Equilux/blob/main/docs/who-pays.md).

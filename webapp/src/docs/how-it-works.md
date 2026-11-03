@@ -71,6 +71,6 @@ The **Connect wallet** button in the app connects a Midnight wallet (Lace or 1AM
 
 **What if the company leaves someone out?** It can't. The report must count every sealed payroll row, each exactly once, or the proof fails.
 
-**Does the employee need crypto?** Not to check their record. To confirm it today, yes (a wallet); a payslip link with the fee paid by the employer is the next step.
+**Does the employee need crypto?** No. They confirm and check their record from a payslip link: their browser makes the proof (about a minute), and the employer's wallet pays the small network fee.
 
 Next: [Architecture](/docs/architecture) shows what is under the hood.

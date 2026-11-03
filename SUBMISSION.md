@@ -56,7 +56,7 @@ The Wave 2 review named the gaps; Wave 3 answers them in order.
    the contract's public state. The employee sees, step by step: the provider committed my row, the
    council opened it, I enrolled it, I was counted once in each report. Then: what my category earns by
    gender (Article 7) and my job level's gap. No wallet, no fee, nothing leaves the page. It runs against
-   the real preprod contract today. Enrolling still takes a wallet; that is the next step.
+   the real preprod contract today.
 5. **Who would pay** (business feedback): a desk-research note with sources, labelled as research. No
    interviews were done; it states three hypotheses (payroll-provider add-on, employer directly,
    works-council pull) and what to ask to test each. The cost structure is now measured, not guessed: a
@@ -98,7 +98,7 @@ anonymously: https://equilux-lac.vercel.app/api/stats (counts only, no identifie
    n + 5·⌈n/16⌉ + 16 transactions (58 measured for 32 people, about 346 for 250). That points to a
    per-employee price, and it makes "who pays the employees' fees" a product decision, not a detail.
 2. *Wallets are the adoption barrier*, as the Wave 2 judges said. We split the employee's two jobs:
-   checking your own record now needs no wallet (`/check`); enrolling still does.
+   checking your own record needs no wallet (`/check`), and neither does confirming it: the employee's browser makes the proof and the employer's wallet pays the fee.
 3. *The infrastructure moves under you.* Midnight closed its own preprod indexer and RPC during the
    Buildathon; we moved to Blockfrost within a week, behind a read-only proxy that keeps the key off the page.
 4. *A contract this size does not deploy in one block.* All 14 circuits' keys wrote ~38,900 bytes, and
@@ -134,8 +134,8 @@ design: partial sums are never public, only a salted hash of them, opened and re
   connected wallet, steps are proven and submitted on preprod. The wallet path now deploys in parts
   (1 deploy + 8 key transactions, each approved in the wallet); it has not yet been run end to end
   from a visitor's wallet on v4.
-- Checking needs no wallet; enrolling still does. Walletless enrollment (a payslip link, the employer
-  paying the fee) needs an always-on, synced relayer: designed, not built.
+- Employees need no wallet: checking and confirming both run in the browser; the employer's wallet pays the fee
+  live (a proof stays valid for an hour). Proven on preprod: blocks 3,263,021 and 3,263,153.
 - HR still holds payroll; a provider, employer and council colluding could commit false rows (each
   employee would see their own). Binary gender markers, as the Directive's annex is written.
 
