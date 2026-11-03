@@ -1,7 +1,6 @@
 # Equilux: Wave 3 submission
 
 Paste-ready text for the AKINDO submission form. Each section is one field.
-Before submitting: fill every [N] and [DATE] from https://equilux-lac.vercel.app/api/stats, and the video link.
 
 ## Links
 
@@ -89,9 +88,8 @@ check the preprod report at `/verify`, and check their own record at `/check`, w
 **Users: early, and counted from now on.** No employer, works council or payroll provider uses Equilux
 yet, and there is no revenue. In Wave 3 we opened free pilots (the form at
 https://equilux-lac.vercel.app/#pilot, stored privately) and started counting what visitors do,
-anonymously: https://equilux-lac.vercel.app/api/stats (counts only, no identifiers). On submission day:
-[N] report runs, [N] 250-person runs, [N] employee checks, [N] verifies, [N] pilot requests
-([N] HR, [N] works councils, [N] payroll providers), since [DATE].
+anonymously: https://equilux-lac.vercel.app/api/stats (counts only, no identifiers). Counting started on
+3 November 2026; at submission every counter read zero, including pilot requests.
 
 **Outreach.** On 3 November 2026 we emailed five EU organisations that work on this report: two
 works-council trainers, an equal-pay consultancy, a pay-transparency software maker and a fair-pay certifier.
