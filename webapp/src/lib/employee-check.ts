@@ -15,6 +15,7 @@ export interface PayslipRecord { salary: number; variable: number; gender: 0 | 1
 export interface EmployeeCheck {
   round: number;
   rowCommitted: boolean;   // the payroll provider committed this exact row
+  rowClaimed: boolean;     // someone has already enrolled against this row
   councilOpened: boolean;  // the works council opened it against the payroll
   enrolled: boolean | null; // the employee enrolled this record (null: no secret given)
   counted: { pay: number | null; variable: number | null; levels: number | null } | null; // report number it was counted in
@@ -70,6 +71,7 @@ export async function checkEmployee(network: ChainNetwork, address: string, rec:
     round: Number(round),
     rowCommitted: l.payrollRows.member(row),
     councilOpened: l.councilOpened.member(row),
+    rowClaimed: l.claimedRows.member(row),
     enrolled,
     counted,
     reportsBegun,

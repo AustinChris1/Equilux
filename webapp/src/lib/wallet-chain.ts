@@ -134,6 +134,8 @@ export interface WalletSession {
   dust(): Promise<{ balance: bigint; cap: bigint } | null>;
   address: string | null;
   run<T = unknown>(path: string, body: any, log: Log): Promise<T>;
+  /** Pays the fee for an employee's walletless enrollment (a proven transaction, hex) and submits it. */
+  sponsor(txHex: string, log: Log): Promise<{ txId: string; blockHeight: number }>;
   readLedger(): Promise<LedgerView | null>;
   forget(): void;
 }
@@ -458,6 +460,17 @@ export async function connectWallet(choice: WalletChoice, log: Log): Promise<Wal
     dust: readDust,
     get address() { return saved?.address ?? null; },
     run,
+    async sponsor(txHex, log) {
+      // the employee proved it in their own browser; this wallet only adds the fee (DUST) and submits
+      await requireDust();
+      const proven = Transaction.deserialize("signature", "proof", "pre-binding", fromHex(txHex));
+      const balanced = await wallet.balanceTx(proven as never);
+      const txId = await wallet.submitTx(balanced);
+      const fin: any = await providers.publicDataProvider.watchForTxData(txId as never);
+      if (fin.status !== "SucceedEntirely") throw new Error(`the confirmation did not go through on chain (${fin.status})`);
+      log([`walletless confirmation submitted (block ${fin.blockHeight})`]);
+      return { txId: String(txId), blockHeight: n(fin.blockHeight) };
+    },
     readLedger,
     forget() { save(null); saved = null; deployed = null; secrets = null; },
   };

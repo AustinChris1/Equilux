@@ -47,6 +47,9 @@ importers:
       '@midnight-ntwrk/wallet-sdk-address-format':
         specifier: 3.1.2
         version: 3.1.2
+      '@midnight-ntwrk/zkir-v2':
+        specifier: 2.1.1
+        version: 2.1.1
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.2.2(@types/node@24.13.3)(jiti@2.7.0))
@@ -203,6 +206,9 @@ packages:
 
   '@midnight-ntwrk/wallet-sdk-address-format@3.1.2':
     resolution: {integrity: sha512-SRkgwmKFOZSUR25iurAB8U7kTKF7AljSl+tMkuuj8Pthc/l0yIg+/q1rFSozJ0Nz9FJRhshazDyrL0l84fOabg==}
+
+  '@midnight-ntwrk/zkir-v2@2.1.1':
+    resolution: {integrity: sha512-U3sh3kM8bj3BPqWov5o6ewLcq6SJ/tscJD5wATG6LVzqlKWUVudeb7QzUUHXmzeV8XMGgt97+lol/Gnc101Eqw==}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
@@ -1310,6 +1316,8 @@ snapshots:
       '@midnight-ntwrk/ledger-v8': 8.0.3
       '@scure/base': 2.4.0
       '@subsquid/scale-codec': 4.0.1
+
+  '@midnight-ntwrk/zkir-v2@2.1.1': {}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     optional: true

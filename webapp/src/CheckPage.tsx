@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BadgeCheck, CircleAlert, CircleDashed, CircleX, ClipboardCheck, FileCheck2, Loader2, Lock, Search, UserCheck, Users } from "lucide-react";
 import { AppHeader } from "./components/AppHeader";
+import { ConfirmCard } from "./components/ConfirmCard";
 import { fmtPct } from "./lib/api";
 import { track } from "./lib/track";
 import { checkEmployee, PREPROD_SAMPLE_CONTRACT, toBytes32, type EmployeeCheck, type PayslipRecord } from "./lib/employee-check";
@@ -128,6 +129,12 @@ export default function CheckPage() {
           <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-lg bg-red-950/30 p-3.5 text-[13px] text-red-200 ring-1 ring-red-400/30">
             <CircleAlert size={16} className="mt-0.5 shrink-0" /> {error}
           </div>
+        )}
+
+        {result && result.rowCommitted && result.councilOpened && !result.rowClaimed && (
+          <ConfirmCard contract={form.contract} nonce={form.nonce}
+            record={{ salary: Number(form.salary), variable: Number(form.variable || 0), gender: form.gender === "1" ? 1 : 0, category: Number(form.category) - 1, level: Number(form.level) - 1 }}
+            onConfirmed={(secretHex) => { const f = { ...form, secret: secretHex }; setForm(f); setTimeout(() => check(f), 4000); }} />
         )}
 
         {result && (

@@ -19,6 +19,8 @@ export default defineConfig({
     dedupe: ['@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/onchain-runtime-v3'],
   },
   build: { target: 'esnext' },
+  // the walletless-enrollment worker loads Midnight's WASM prover and contract runtime too
+  worker: { format: 'es', plugins: () => [wasm()] },
   optimizeDeps: { exclude: ['@midnight-ntwrk/onchain-runtime-v3'], include: ['@midnight-ntwrk/compact-runtime > object-inspect'] },
   server: { fs: { allow: ['..'] } },
 })
