@@ -193,9 +193,23 @@ async function main() {
     log(`employee proved the enrollment with the WASM prover in ${proveSecs} s (${handed.length} bytes handed to the sponsor)`);
 
     // 2. THE SPONSOR: receives only the proven transaction bytes, pays the fee and submits
-    const received = Transaction.deserialize("signature", "proof", "pre-binding", handed);
-    const balanced = await walletProvider.balanceTx(received);
-    const txId = await walletProvider.submitTx(balanced);
+    // The fee is a DUST spend proven against the sponsor wallet's view of the chain. The first run was refused
+    // with 170 (InvalidDustSpendProof): the wallet's indexer connection dropped while the employee was proving, so
+    // it paid from a stale snapshot. So: let the wallet catch up right before paying, and on a refusal catch up
+    // and pay again. The employee's proven transaction stays valid for an hour.
+    let txId: unknown;
+    for (let attempt = 1; ; attempt++) {
+      await new Promise((r) => setTimeout(r, 20_000));
+      state = await Rx.firstValueFrom(facade.state().pipe(Rx.filter((s: any) => s.isSynced)));
+      try {
+        const received = Transaction.deserialize("signature", "proof", "pre-binding", handed);
+        txId = await walletProvider.submitTx(await walletProvider.balanceTx(received));
+        break;
+      } catch (e) {
+        log(`sponsor attempt ${attempt} refused (${String((e as Error)?.message ?? e).slice(0, 120)})`);
+        if (attempt >= 4) throw e;
+      }
+    }
     log(`sponsor paid the fee and submitted tx ${String(txId).slice(0, 16)}…; waiting for the block`);
     const fin: any = await providers.publicDataProvider.watchForTxData(txId as never);
     if (fin.status !== "SucceedEntirely") throw new Error(`the walletless enrollment failed on chain: ${fin.status}`);

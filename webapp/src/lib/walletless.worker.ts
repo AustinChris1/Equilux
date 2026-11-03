@@ -23,6 +23,7 @@ export interface EnrollRequest {
   indexer: string; keysUrl: string;
 }
 export type EnrollMessage =
+  | { kind: "ready" }
   | { kind: "step"; step: "state" | "build" | "keys" | "prove"; }
   | { kind: "done"; tx: string; commitment: string; seconds: number }
   | { kind: "error"; message: string };
@@ -76,3 +77,6 @@ self.onmessage = async (e: MessageEvent<EnrollRequest>) => {
     post({ kind: "error", message: idx >= 0 ? m.slice(idx + "failed assert:".length).trim() : m });
   }
 };
+
+// the module (and its WebAssembly) is loaded: a request sent before this point would have been dropped
+post({ kind: "ready" });
