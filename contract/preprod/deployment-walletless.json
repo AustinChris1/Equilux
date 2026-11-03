@@ -93,7 +93,7 @@
       "step": "enroll:w2:automatic",
       "txId": "001a5453936a3667c0be542b2d8c2eb17b8fc6b109b2c24268a7ff9ab40902c58d",
       "block": 3263812,
-      "note": "confirmed on the live /check page (proof made in Chrome, 88 s); fee paid by the automatic sponsor job (run 41658715129), nobody clicking"
+      "note": "confirmed on the live /check page (proof made in Chrome, 88 s); fee paid by the automatic sponsor job (run 41658715129, started by hand because the new schedule had not fired yet), no employer approval"
     }
   ],
   "contract": "31e304288e418f2511eab561b25401a204196a8ce0bc897f4caa924de9165345"

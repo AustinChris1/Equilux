@@ -140,7 +140,8 @@ design: partial sums are never public, only a salted hash of them, opened and re
   from a visitor's wallet on v4.
 - Employees need no wallet: checking and confirming both run in the browser; the employer's wallet pays the fee
   live (a proof stays valid for an hour). Proven on preprod: blocks 3,263,021 and 3,263,153, and block
-  3,263,812 paid by the automatic sponsor job (every 15 minutes), with nobody clicking.
+  3,263,812 paid by the automatic sponsor job with no employer approval (scheduled every 15 minutes;
+  that run was started by hand while GitHub had not yet begun running the new schedule).
 - HR still holds payroll; a provider, employer and council colluding could commit false rows (each
   employee would see their own). Binary gender markers, as the Directive's annex is written.
 
