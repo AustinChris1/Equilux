@@ -13,11 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "probe (15 min check) or run (the full flow)"
+        description: "probe (15 min check), run (the full flow) or walletless (an employee enrolls without a wallet)"
         required: true
         default: probe
         type: choice
-        options: [probe, run]
+        options: [probe, run, walletless]
       company_size:
         description: "people in the sample company (run mode)"
         required: false
@@ -51,13 +51,13 @@ jobs:
           test -n "${{ secrets.PREPROD_SEED }}" || { echo "::error::Add the PREPROD_SEED repository secret"; exit 1; }
 
       - name: Install the Compact toolchain
-        if: inputs.mode == 'run'
+        if: inputs.mode != 'probe'
         run: |
           curl --proto '=https' --tlsv1.2 -LsSf https://github.com/midnightntwrk/compact/releases/latest/download/compact-installer.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Compile the contract with proving keys
-        if: inputs.mode == 'run'
+        if: inputs.mode != 'probe'
         working-directory: contract
         run: |
           compact update 0.30.0
@@ -65,7 +65,7 @@ jobs:
           ls -la build/keys
 
       - name: Start the proof server
-        if: inputs.mode == 'run'
+        if: inputs.mode != 'probe'
         run: docker run -d --name proof-server -p 6300:6300 midnightntwrk/proof-server:8.0.3 midnight-proof-server -v
 
       - name: Install dependencies
@@ -80,6 +80,8 @@ jobs:
           path: |
             contract/preprod/.state
             contract/preprod/deployment-v4.json
+            contract/preprod/deployment-walletless.json
+            contract/.params
             contract/preprod/midnight-level-db
           key: preprod-v4-blockfrost-${{ github.run_id }}
           restore-keys: preprod-v4-blockfrost-
@@ -93,7 +95,7 @@ jobs:
         run: node --max-old-space-size=8192 --import tsx probe.ts
 
       - name: Sync the wallet with preprod
-        if: inputs.mode == 'run'
+        if: inputs.mode != 'probe'
         working-directory: contract/preprod
         run: npm run sync
 
@@ -102,20 +104,29 @@ jobs:
         working-directory: contract/preprod
         run: npm run deploy-v4
 
+      - name: Walletless enrollment on preprod (WASM prover + sponsor wallet)
+        if: inputs.mode == 'walletless'
+        working-directory: contract/preprod
+        run: npm run walletless
+
       - name: Save wallet state and progress
-        if: always() && inputs.mode == 'run'
+        if: always() && inputs.mode != 'probe'
         uses: actions/cache/save@v4
         with:
           path: |
             contract/preprod/.state
             contract/preprod/deployment-v4.json
+            contract/preprod/deployment-walletless.json
+            contract/.params
             contract/preprod/midnight-level-db
           key: preprod-v4-blockfrost-${{ github.run_id }}
 
       - name: Upload the deployment record
-        if: always() && inputs.mode == 'run'
+        if: always() && inputs.mode != 'probe'
         uses: actions/upload-artifact@v4
         with:
           name: preprod-v4-deployment
-          path: contract/preprod/deployment-v4.json
+          path: |
+            contract/preprod/deployment-v4.json
+            contract/preprod/deployment-walletless.json
           if-no-files-found: ignore
