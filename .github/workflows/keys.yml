@@ -4,6 +4,7 @@
 # from the committed source and serve them at
 #   https://austinchris1.github.io/Equilux/keys/<circuit>.prover|.verifier
 #   https://austinchris1.github.io/Equilux/zkir/<circuit>.bzkir
+#   https://austinchris1.github.io/Equilux/params/bls_midnight_2p15  (public parameters, for proving in the browser)
 name: Proving keys
 
 on:
@@ -50,6 +51,12 @@ jobs:
         run: |
           mkdir -p _site
           cp -r contract/build/keys contract/build/zkir _site/
+          # Midnight's public proving parameters, for proving in the browser (walletless enrollment needs k = 15).
+          # srs.midnight.network sends no CORS header, so pages cannot fetch them there; the checksum is the one
+          # Midnight's wallet SDK pins (wallet-sdk-prover-client, KeyMaterial.js).
+          mkdir -p _site/params
+          curl -sSfL -o _site/params/bls_midnight_2p15 https://srs.midnight.network/bls_midnight_2p15
+          echo "724c7c3d779148bb113c7ee9c034b2f27db16e6bdf315fde90105a9bad00b1de  _site/params/bls_midnight_2p15" | sha256sum -c -
           printf '<!doctype html><meta charset="utf-8"><title>Equilux proving keys</title><p>Proving keys and circuit IR for the Equilux contract, used by <a href="https://equilux-lac.vercel.app/app">equilux-lac.vercel.app/app</a>.</p>\n' > _site/index.html
           ls -la _site/keys _site/zkir
 
