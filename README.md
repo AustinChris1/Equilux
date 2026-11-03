@@ -243,10 +243,12 @@ In production each party runs its own prover with only its own secret.
 - **Wave 2 (delivered):** payroll provider and works council, all seven Article 9 indicators, the full
   flow on preprod, `/verify` and the filing pack, Connect wallet, CSV import, the guided app.
 - **Wave 3 (this wave):** contract v4, batched to 512 people with sealed running totals; the gap inside
-  equal job levels; a 32-person run on preprod; `/check`, the employee's own check with no wallet;
-  desk research on who pays.
-- **Next:** walletless enrollment; three validation conversations (an HR lead at a 250+
-  employer, a works council member, a payroll provider); a Personio sandbox plugin; 250 people on preprod.
+  equal job levels; a 32-person run on preprod; walletless checking and confirming for employees
+  (proofs made in the browser, fees paid by the employer's wallet; two enrollments on preprod);
+  desk research on who pays; outreach to five EU organisations (3 November 2026).
+- **Next:** the employer pays every waiting confirmation in one approval (today: one per person, within
+  the hour a proof stays valid); the in-app Lace payment tried for real; first pilots; a Personio sandbox
+  plugin; 250 people on preprod.
 
 ## Brand
 
